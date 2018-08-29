@@ -17,8 +17,7 @@ from elasticsearch import Elasticsearch
 from pony.orm import db_session
 from .schema import *
 
-FORMAT = u'%(asctime)s - %(levelname)s - %(message)s'
-logging.basicConfig(format=FORMAT)
+logging.basicConfig(format = u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 stopwatch = timer()
@@ -46,7 +45,8 @@ except:
 
 # Contact maken met postgres database
 try:
-    db.bind(provider='postgres', user=cfg['postgres']['user'], password=cfg['postgres']['pass'], host=cfg['postgres']['host'], database=cfg['postgres']['db'])
+    db.bind(provider='postgres', user=cfg['postgres']['user'], password=cfg['postgres']['pass'],
+            host=cfg['postgres']['host'], database=cfg['postgres']['db'])
 except:
     msg = 'Cannot connect to postgres database'
     logger.fatal(msg)
@@ -135,7 +135,7 @@ def remove_doubles(config):
         source=config.get('table'), idfield=config.get('id')))
     elapsed = "%0.2f" % (timer() - start)
     logger.debug('Index [{elapsed} seconds]'.format(elapsed=elapsed))
-    doublequery = "SELECT  array_agg(id) importids, rec->>'{idfield}' recid FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
+    doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
         source=config.get('table'), idfield=config.get('id'))
     doubles = db.select(doublequery)
     elapsed = "%0.2f" % (timer() - start)
@@ -181,12 +181,14 @@ def list_changes(sourceconfig={}):
     idfield = sourceconfig.get('id')
 
     if (len(source)):
-        leftdiffquery = 'SELECT {source}_import.hash FROM {source}_import FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash WHERE {source}_current.hash is null'.format(
-            source=source)
+        leftdiffquery = 'SELECT {source}_import.hash FROM {source}_import ' \
+                        'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
+                        'WHERE {source}_current.hash is null'.format(source=source)
         neworupdates = db.select(leftdiffquery)
 
-        rightdiffquery = 'SELECT {source}_current.hash FROM {source}_import FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash WHERE {source}_import.hash is null'.format(
-            source=source)
+        rightdiffquery = 'SELECT {source}_current.hash FROM {source}_import ' \
+                         'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
+                         'WHERE {source}_import.hash is null'.format(source=source)
         updateordeletes = db.select(rightdiffquery)
 
         importtable = globals()[source.capitalize() + '_import']
@@ -241,14 +243,16 @@ def handle_new(changes = {}, sourceconfig = {}):
     for change in changes['new']:
         importrec = importtable.select(lambda p: p.rec[idfield] == change).get()
         if (importrec):
-            insertquery = "insert into {table}_current (rec, hash, datum) select rec, hash, datum from {table}_import where id={id}".format(
-                table=sourceconfig.get('table'), id=importrec.id)
+            insertquery = "insert into {table}_current (rec, hash, datum) " \
+                          "select rec, hash, datum from {table}_import where id={id}".format(table=sourceconfig.get('table'),
+                                                                                             id=importrec.id)
             if (fp):
                 json.dump(importrec.rec, fp)
                 fp.write('\n')
             else:
                 logger.debug("New record [{id}] posted to NBA".format(id=importrec.rec[idfield]))
-                es.index(index=sourceconfig.get('index'), doc_type=sourceconfig.get('doctype', 'unknown'),
+                es.index(index=sourceconfig.get('index'),
+                         doc_type=sourceconfig.get('doctype', 'unknown'),
                          body=importrec.rec, id=importrec.rec[idfield])
             db.execute(insertquery)
             logger.info("New record [{id}] inserted".format(id=importrec.rec[idfield]))
@@ -278,15 +282,20 @@ def handle_updates(changes = dict(), sourceconfig = dict()):
         newrec = importtable.select(lambda p: p.rec[idfield] == change).get()
         oldrec = currenttable.select(lambda p: p.rec[idfield] == change).get()
         if (newrec and oldrec):
-            updatequery = "update {table}_current set (rec, hash, datum) = (select rec, hash, datum from {table}_import where {table}_import.id={importid}) where {table}_current.id={currentid}".format(
-                table=table, currentid=oldrec.id, importid=newrec.id)
+            updatequery = "update {table}_current set (rec, hash, datum) = " \
+                          "(select rec, hash, datum from {table}_import where {table}_import.id={importid}) " \
+                          "where {table}_current.id={currentid}".format(table=table,
+                                                                        currentid=oldrec.id,
+                                                                        importid=newrec.id)
             if (fp):
                 json.dump(newrec.rec, fp)
                 fp.write('\n')
             else:
                 logger.debug("Updated record [{id}] to NBA".format(id=newrec.rec[idfield]))
-                es.index(index=sourceconfig.get('index'), doc_type=sourceconfig.get('doctype', 'unknown'),
-                         body=newrec.rec, id=newrec.rec[idfield])
+                es.index(index=sourceconfig.get('index'),
+                         doc_type=sourceconfig.get('doctype', 'unknown'),
+                         body=newrec.rec,
+                         id=newrec.rec[idfield])
 
             logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
     if (fp):
@@ -318,8 +327,10 @@ def handle_deletes(changes = dict(), sourceconfig = dict()):
                 fp.write('{deleteid}\n'.format(deleteid=deleteid))
             else:
                 # delete from elastic search index
-                es.delete(index=sourceconfig.get('index'), doc_type=sourceconfig.get('doctype', 'unknown'),
-                          id=oldrec.rec[idfield], ignore=[400, 404])
+                es.delete(index=sourceconfig.get('index'),
+                          doc_type=sourceconfig.get('doctype', 'unknown'),
+                          id=oldrec.rec[idfield],
+                          ignore=[400, 404])
                 logger.debug("Delete record [{id}] from NBA".format(id=deleteid))
             oldrec.delete()
             logger.info("Record [{deleteid}] deleted".format(deleteid=deleteid))
