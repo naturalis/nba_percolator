@@ -128,3 +128,46 @@ Parameters:
  * changes - dictionary met veranderingen
  * sourceconfig - de configuratie van een bron
 
+
+## Voorbeelden
+
+Voorbeeld van een script dat een kale import doet.
+
+```python
+from ppdb_nba import *
+logger.setLevel(logging.DEBUG)
+# Zet de logging level op DEBUG
+srcconfig = cfg.get('sources').get('brahms-specimen')
+# Haal de configuratie voor de bron
+clear_data(table=srcconfig.get('table') + "_import")
+# Maak de current tabel leeg
+kill_index(srcconfig)
+# Verwijder de index uit elastic search
+import_data(table=srcconfig.get('table') + "_import", datafile='/data/brahms-specimen/1-base.json')
+# importeer de basis data
+remove_doubles(srcconfig)
+# verwijder de dubbele
+changes = list_changes(srcconfig)
+# bepaalde veranderingen (allemaal nieuwe records)
+handle_changes(srcconfig)
+# handel de nieuwe af
+```
+
+Een voorbeeld van een script dat in een bestaande tabel aanpassingen, importeert:
+
+```python
+from ppdb_nba import *
+logger.setLevel(logging.DEBUG)
+# Zet de logging level op DEBUG
+srcconfig = cfg.get('sources').get('brahms-specimen')
+# Verwijder de index uit elastic search
+import_data(table=srcconfig.get('table') + "_import", datafile='/data/brahms-specimen/5-updatesnew.json')
+# importeer de basis data
+remove_doubles(srcconfig)
+# verwijder de dubbele
+changes = list_changes(srcconfig)
+# bepaalde veranderingen (allemaal nieuwe records)
+handle_changes(srcconfig)
+# handel de nieuwe af
+```
+
