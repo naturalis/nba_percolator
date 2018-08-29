@@ -10,9 +10,9 @@ class BrahmsspecimenTestCase(unittest.TestCase):
      'index': 'specimen_test',
      'doctype': 'Specimen',
      'enrich': True,
-     'elastic': False,
+     'elastic': True,
      'incremental': False,
-     'path': './data/brahms-specimen'}
+     'path': '/data/brahms-specimen/'}
 
     def __init__(self, *args, **kwargs):
         super(BrahmsspecimenTestCase, self).__init__(*args, **kwargs)

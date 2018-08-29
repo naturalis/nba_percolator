@@ -12,7 +12,7 @@ class XcspecimenTestCase(unittest.TestCase):
              'enrich': True,
              'elastic': True,
              'incremental': False,
-             'path': './data/xenocanto-specimen'
+             'path': '/data/xenocanto-specimen'
     }
 
     def __init__(self, *args, **kwargs):
