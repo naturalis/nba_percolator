@@ -32,7 +32,7 @@ except:
     sys.exit(msg)
 
 """
-Inlezen van de sources.yml file waarin alle bronnen en hun specifieke wensen in moeten worden vermeld.
+Inlezen van de config.yml file waarin alle bronnen en hun specifieke wensen in moeten worden vermeld.
 """
 
 # Verbinden met Elastic search
@@ -45,11 +45,11 @@ except:
 
 
 db = Database()
-msg = 'Cannot connect to postgres database'
 # Contact maken met postgres database
 try:
     db.bind(provider='postgres', user=cfg['postgres']['user'], password=cfg['postgres']['pass'], host=cfg['postgres']['host'], database=cfg['postgres']['db'])
 except:
+    msg = 'Cannot connect to postgres database'
     logger.fatal(msg)
     sys.exit(msg)
 
@@ -63,17 +63,38 @@ except:
 
 
 def kill_index(sourceconfig):
-    """Verwijderd de index uit elastic search."""
+    """
+    Verwijdert de index uit elastic search.
+    """
     if (sourceconfig):
         index = sourceconfig.get('index', 'specimen')
         es.indices.delete(index=index, ignore=[400, 404])
         logger.info('Elastic search index "{index}" removed'.format(index=index))
 
 
-# Importeren data
+def open_deltafile(action='new', index='unknown'):
+    """
+    Open een delta bestand met records of id's om weg te schrijven.
+    """
+    destpath = cfg.get('deltapath', '/tmp')
+    filename = "{index}-{ts}-{action}.json".format(index=index, ts=time.strftime('%Y%m%d%H%M%S'), action=action)
+    filepath = os.path.join(destpath, filename)
+
+    try:
+        fp = open(filepath, 'w')
+    except:
+        msg = 'Unable to write to "{filepath}"'.format(filepath=filepath)
+        logger.fatal(msg)
+        sys.exit(msg)
+    logger.debug(filepath + ' opened')
+
+    return fp
+
 @db_session
 def import_data(table='', datafile=''):
-    """Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf."""
+    """
+    Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
+    """
     # todo: check if data file exists and is readable
     # todo: check if table exists
     db.execute("TRUNCATE public.{table}".format(table=table))
@@ -135,7 +156,21 @@ def list_changes(sourceconfig=''):
     om een nieuw (new) record of een update.
 
     Een hash die aanwezig is in de bestaande data, maar ontbreekt in de nieuwe data kan gaan om een
-    verwijderd record. Maar dit is alleen te bepalen bij analyse van complete datasets.
+    verwijderd record. Maar dit is alleen te bepalen bij analyse van complete datasets. Een changes
+    dictionary ziet er over het algemeen zo uit.
+
+    ```
+        changes = {
+            'new': [
+                '3732672@BRAHMS',
+                '1369617@BRAHMS',
+                '2455323@BRAHMS'
+            ],
+            'update': [],
+            'delete': []
+        }
+    ```
+
     """
     changes = {'new': [], 'update': [], 'delete': []}
     source = sourceconfig.get('table')
@@ -181,8 +216,16 @@ def list_changes(sourceconfig=''):
 
 
 @db_session
-def handle_new(changes, sourceconfig):
-    """ Afhandelen van alle nieuwe records. """
+def handle_new(changes = {}, sourceconfig = {}):
+    """
+    Afhandelen van alle nieuwe records.
+
+    Parameters:
+
+     * changes - dictionary met veranderingen
+     * sourceconfig - de configuratie van een bron
+
+    """
     table = sourceconfig.get('table')
     idfield = sourceconfig.get('id')
     importtable = globals()[table.capitalize() + '_import']
@@ -210,8 +253,15 @@ def handle_new(changes, sourceconfig):
 
 
 @db_session
-def handle_updates(changes, sourceconfig):
-    """ Afhandelen van alle updates. """
+def handle_updates(changes = {}, sourceconfig = {}):
+    """
+    Afhandelen van alle updates.
+
+    Parameters:
+
+     * changes - dictionary met veranderingen
+     * sourceconfig - de configuratie van een bron
+    """
     table = sourceconfig.get('table')
     idfield = sourceconfig.get('id')
     importtable = globals()[table.capitalize() + '_import']
@@ -240,8 +290,15 @@ def handle_updates(changes, sourceconfig):
 
 
 @db_session
-def handle_deletes(changes, sourceconfig):
-    """ Afhandelen van alle deletes. """
+def handle_deletes(changes = {}, sourceconfig = {}):
+    """
+    Afhandelen van alle deletes.
+
+    Parameters:
+
+     * changes - dictionary met veranderingen
+     * sourceconfig - de configuratie van een bron
+    """
     table = sourceconfig.get('table')
     idfield = sourceconfig.get('id')
     currenttable = globals()[table.capitalize() + '_current']
@@ -268,7 +325,14 @@ def handle_deletes(changes, sourceconfig):
 
 @db_session
 def handle_changes(sourceconfig={}):
-    """ Afhandelen van alle veranderingen. """
+    """
+    Afhandelen van alle veranderingen.
+
+    Parameters:
+
+     * changes - dictionary met veranderingen
+     * sourceconfig - de configuratie van een bron
+    """
     changes = list_changes(sourceconfig)
 
     if (len(changes['new'])):
@@ -281,19 +345,3 @@ def handle_changes(sourceconfig={}):
 
     return changes
 
-
-def open_deltafile(action='new', index='unknown'):
-    """ Wegschrijven van deltas in een bestand """
-    destpath = cfg.get('deltapath', '/tmp')
-    filename = "{index}-{ts}-{action}.json".format(index=index, ts=time.strftime('%Y%m%d%H%M%S'), action=action)
-    filepath = os.path.join(destpath, filename)
-
-    try:
-        fp = open(filepath, 'w')
-    except:
-        msg = 'Unable to write to "{filepath}"'.format(filepath=filepath)
-        logger.fatal(msg)
-        sys.exit(msg)
-    logger.debug(filepath + ' opened')
-
-    return fp
