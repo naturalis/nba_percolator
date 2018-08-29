@@ -13,4 +13,4 @@ from .__about__ import (
     __url__,
 )
 
-import ppdb_nba
+from .ppdb_nba import *
