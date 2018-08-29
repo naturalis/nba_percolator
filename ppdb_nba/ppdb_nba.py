@@ -15,7 +15,7 @@ import yaml
 from elasticsearch import Elasticsearch
 
 from pony.orm import db_session
-from schema import *
+from .schema import *
 
 FORMAT = u'%(asctime)s - %(levelname)s - %(message)s'
 logging.basicConfig(format=FORMAT)
