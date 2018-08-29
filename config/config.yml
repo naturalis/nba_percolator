@@ -1,5 +1,13 @@
 # The ppdb_nba config file lists all the sources and the meta info
 # needed for importing data.
+elastic:                            # Elastic search config
+    host: es
+postgres:                           # Postgres database config
+    host: postgres
+    user: postgres
+    pass: postgres
+    db: ppdb
+deltapath: /data/incremental        # The path where all delta files are written
 sources:                            # List with sources
     nsr-taxa:                       # NSR taxonomy
         table: nsrtaxa              # Prefix_ of table
@@ -52,11 +60,3 @@ sources:                            # List with sources
         enrich: no
         incremental: yes
         path: /data/waarneming-specimen
-deltapath: /data/incremental            # The path where all delta files are written
-elastic:                                # Elastic search config
-    host: es
-postgres:                               # Postgres database config
-    host: postgres
-    user: postgres
-    pass: postgres
-    db: ppdb

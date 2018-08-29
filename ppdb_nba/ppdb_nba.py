@@ -152,7 +152,7 @@ def remove_doubles(config):
 
 
 
-def list_changes(sourceconfig=''):
+def list_changes(sourceconfig={}):
     """
     Identificeert de verschillen tussen de huidige database en de nieuwe data, op basis van hash.
 
@@ -257,7 +257,7 @@ def handle_new(changes = {}, sourceconfig = {}):
 
 
 @db_session
-def handle_updates(changes = {}, sourceconfig = {}):
+def handle_updates(changes = dict(), sourceconfig = dict()):
     """
     Afhandelen van alle updates.
 
@@ -287,14 +287,14 @@ def handle_updates(changes = {}, sourceconfig = {}):
                 logger.debug("Updated record [{id}] to NBA".format(id=newrec.rec[idfield]))
                 es.index(index=sourceconfig.get('index'), doc_type=sourceconfig.get('doctype', 'unknown'),
                          body=newrec.rec, id=newrec.rec[idfield])
-            db.execute(updatequery)
+
             logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
     if (fp):
         fp.close()
 
 
 @db_session
-def handle_deletes(changes = {}, sourceconfig = {}):
+def handle_deletes(changes = dict(), sourceconfig = dict()):
     """
     Afhandelen van alle deletes.
 
@@ -328,7 +328,7 @@ def handle_deletes(changes = {}, sourceconfig = {}):
 
 
 @db_session
-def handle_changes(sourceconfig={}):
+def handle_changes(sourceconfig=dict()):
     """
     Afhandelen van alle veranderingen.
 
