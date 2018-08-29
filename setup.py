@@ -3,6 +3,7 @@ import setuptools
 setuptools.setup(
       name='ppdb_nba',
       version='0.1',
+      scripts=['bin/ppdb_nba'],
       description='Pre-processing database for NBA',
       url='https://github.com/jandevires71/ppdb_nba',
       author='Joep Vermaat',

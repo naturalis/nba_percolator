@@ -1,0 +1,4 @@
+#!/usr/bin/env python
+import ppdb_nba
+
+print("hello ppdb_nba")
