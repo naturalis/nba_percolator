@@ -62,15 +62,6 @@ except:
     sys.exit(msg)
 
 
-def kill_index(sourceconfig):
-    """
-    Verwijdert de index uit elastic search.
-    """
-    if (sourceconfig):
-        index = sourceconfig.get('index', 'specimen')
-        es.indices.delete(index=index, ignore=[400, 404])
-        logger.info('Elastic search index "{index}" removed'.format(index=index))
-
 
 def open_deltafile(action='new', index='unknown'):
     """
@@ -90,11 +81,28 @@ def open_deltafile(action='new', index='unknown'):
 
     return fp
 
+def kill_index(sourceconfig):
+    """
+    Verwijdert de index uit elastic search.
+    """
+    if (sourceconfig):
+        index = sourceconfig.get('index', 'specimen')
+        es.indices.delete(index=index, ignore=[400, 404])
+        logger.info('Elastic search index "{index}" removed'.format(index=index))
+
+@db_session
+def clear_data(table=''):
+    """ Verwijder data uit tabel. """
+    db.execute("TRUNCATE public.{table}".format(table=table))
+    logger.debug('Truncated table "{table}"'.format(table=table))
+
+
 @db_session
 def import_data(table='', datafile=''):
     """
     Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
     """
+    start = timer()
     # todo: check if data file exists and is readable
     # todo: check if table exists
     db.execute("TRUNCATE public.{table}".format(table=table))
@@ -116,20 +124,23 @@ def import_data(table='', datafile=''):
     db.execute(
         "CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(table=table))
     # zet de index
-    logger.debug('Imported data "{datafile}" into "{table}"'.format(datafile=datafile, table=table))
+    elapsed = "%0.2f" % (timer() - start)
+    logger.debug('Imported data "{datafile}" into "{table} [{elapsed} seconds]'.format(datafile=datafile, table=table, elapsed=elapsed))
 
 
 @db_session
 def remove_doubles(config):
     """ Bepaalde bronnen bevatte dubbele records, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
-    logger.debug('Before index: {elapsed}'.format(elapsed=(timer() - stopwatch)))
+    start = timer()
     db.execute("CREATE INDEX idx_{source}_import__jsonid ON public.{source}_import((rec->>'{idfield}'))".format(
         source=config.get('table'), idfield=config.get('id')))
-    logger.debug('After index: {elapsed}'.format(elapsed=(timer() - stopwatch)))
+    elapsed = "%0.2f" % (timer() - start)
+    logger.debug('Index [{elapsed} seconds]'.format(elapsed=elapsed))
     doublequery = "SELECT  array_agg(id) importids, rec->>'{idfield}' recid FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
         source=config.get('table'), idfield=config.get('id'))
     doubles = db.select(doublequery)
-    logger.debug('After query: {elapsed}'.format(elapsed=(timer() - stopwatch)))
+    elapsed = "%0.2f" % (timer() - start)
+    logger.debug('Find doubles [{elapsed} seconds]'.format(elapsed=elapsed))
     count = 0
     for double in doubles:
         for importid in double.importids[:-1]:
@@ -137,15 +148,9 @@ def remove_doubles(config):
                                                                                      importid=importid)
             db.execute(deletequery)
         count += 1
-    logger.debug('After removing doubles: {elapsed}'.format(elapsed=(timer() - stopwatch)))
-    logger.debug('Filtered {doubles} records with more than one entry in the source data'.format(doubles=count))
+    elapsed = "%0.2f" % (timer() - start)
+    logger.debug('Filtered {doubles} records with more than one entry in the source data [{elapsed} seconds]'.format(doubles=count, elapsed=elapsed))
 
-
-@db_session
-def clear_data(table=''):
-    """ Verwijder data uit tabel. """
-    db.execute("TRUNCATE public.{table}".format(table=table))
-    logger.debug('Truncated table "{table}"'.format(table=table))
 
 
 def list_changes(sourceconfig=''):
