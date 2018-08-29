@@ -4,8 +4,9 @@ import logging
 from ppdb_nba import *
 
 def main():
-    parser = argparse.ArgumentParser(usage='ppdb_nba'
-                                           ' - Preprocessing data to create incremental updates or posting it directly to elastic search')
+    parser = argparse.ArgumentParser(usage='ppdb_nba --source sourcename /path/file1 /path/file2 ...'
+                                           '\n\nPreprocessing data to create incremental updates or posting it directly to elastic search')
+
     parser.add_argument('--source', help='Name of the data source', nargs=1)
     parser.add_argument('files', help='One or more json data files', nargs='+', default=[])
     args = parser.parse_args()
