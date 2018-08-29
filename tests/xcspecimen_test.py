@@ -5,12 +5,19 @@ from ppdb_nba import *
 class XcspecimenTestCase(unittest.TestCase):
 
     source = 'xenocanto-specimen'
-    config = {}
+    config = {'table': 'xenocantospecimen',
+             'id': 'id',
+             'index': 'specimen_test',
+             'doctype': 'Specimen',
+             'enrich': True,
+             'elastic': True,
+             'incremental': False,
+             'path': './data/xenocanto-specimen'
+    }
 
     def __init__(self, *args, **kwargs):
         super(XcspecimenTestCase, self).__init__(*args, **kwargs)
-        self.config = cfg.get('sources').get(self.source)
-        logger = logging.getLogger('ppdb')
+        logger = logging.getLogger('ppdb_nba')
         logger.setLevel(logging.ERROR)
 
     def setUp(self):

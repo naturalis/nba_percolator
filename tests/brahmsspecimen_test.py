@@ -5,12 +5,18 @@ from ppdb_nba import *
 class BrahmsspecimenTestCase(unittest.TestCase):
 
     source = 'brahms-specimen'
-    config = {}
+    config = {'table': 'brahmsspecimen',
+     'id': 'assemblageID',
+     'index': 'specimen_test',
+     'doctype': 'Specimen',
+     'enrich': True,
+     'elastic': False,
+     'incremental': False,
+     'path': './data/brahms-specimen'}
 
     def __init__(self, *args, **kwargs):
         super(BrahmsspecimenTestCase, self).__init__(*args, **kwargs)
-        self.config = cfg.get('sources').get(self.source)
-        logger = logging.getLogger('ppdb')
+        logger = logging.getLogger('ppdb_nba')
         logger.setLevel(logging.ERROR)
 
     def setUp(self):
