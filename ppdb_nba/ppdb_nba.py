@@ -135,7 +135,8 @@ def remove_doubles(config):
         source=config.get('table'), idfield=config.get('id')))
     elapsed = "%0.2f" % (timer() - start)
     logger.debug('Index [{elapsed} seconds]'.format(elapsed=elapsed))
-    doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
+    doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
+                  "FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
         source=config.get('table'), idfield=config.get('id'))
     doubles = db.select(doublequery)
     elapsed = "%0.2f" % (timer() - start)
