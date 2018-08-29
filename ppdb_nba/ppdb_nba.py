@@ -19,7 +19,7 @@ from .schema import *
 
 FORMAT = u'%(asctime)s - %(levelname)s - %(message)s'
 logging.basicConfig(format=FORMAT)
-logger = logging.getLogger('ppdb')
+logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 stopwatch = timer()
 
