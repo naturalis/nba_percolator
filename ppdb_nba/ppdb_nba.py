@@ -43,6 +43,7 @@ except:
     logger.fatal(msg)
     sys.exit(msg)
 
+
 db = Database()
 msg = 'Cannot connect to postgres database'
 # Contact maken met postgres database
