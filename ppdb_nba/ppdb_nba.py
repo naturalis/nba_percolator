@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Dit is de NBA preprocessing database module.
 
-Hierin zitten alle functies en tabel definities waarmee import data kan worden gefilterd alvorens
-een import in de NBA documentstore plaatsvind.
+Hierin zitten alle functies en database afhankelijkheden waarmee import data 
+kan worden gefilterd alvorens een import in de NBA documentstore plaatsvind.
 """
 import json
 import logging
@@ -24,10 +24,10 @@ logger.setLevel(logging.INFO)
 stopwatch = timer()
 
 try:
-    with open("sources.yml", 'r') as ymlfile:
+    with open("config.yml", 'r') as ymlfile:
         cfg = yaml.load(ymlfile)
 except:
-    msg = '"sources.yml" with configuration options of sources is missing'
+    msg = '"config.yml" with configuration options of sources is missing'
     logger.fatal(msg)
     sys.exit(msg)
 
@@ -37,19 +37,35 @@ Inlezen van de sources.yml file waarin alle bronnen en hun specifieke wensen in 
 
 # Verbinden met Elastic search
 try:
-    es = Elasticsearch(hosts='es')
+    es = Elasticsearch(hosts=cfg['elastic']['host'])
 except:
     msg = 'Cannot connect to elastic search server'
     logger.fatal(msg)
     sys.exit(msg)
 
+db = Database()
+msg = 'Cannot connect to postgres database'
+# Contact maken met postgres database
+try:
+    db.bind(provider='postgres', user=cfg['postgres']['user'], password=cfg['postgres']['pass'], host=cfg['postgres']['host'], database=cfg['postgres']['db'])
+except:
+    logger.fatal(msg)
+    sys.exit(msg)
 
+# Tabel definities met pony db
+try:
+    db.generate_mapping(create_tables=True)
+except:
+    msg = 'Creating tables needed for preprocessing failed'
+    logger.fatal(msg)
+    sys.exit(msg)
 
 
 def kill_index(sourceconfig):
+    """Verwijderd de index uit elastic search."""
     if (sourceconfig):
-        index = sourceconfig.get('index')
-        es.indices.delete(index='specimen', ignore=[400, 404])
+        index = sourceconfig.get('index', 'specimen')
+        es.indices.delete(index=index, ignore=[400, 404])
         logger.info('Elastic search index "{index}" removed'.format(index=index))
 
 

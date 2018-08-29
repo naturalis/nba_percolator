@@ -1,0 +1,62 @@
+# The ppdb_nba config file lists all the sources and the meta info
+# needed for importing data.
+sources:                            # List with sources
+    nsr-taxa:                       # NSR taxonomy
+        table: nsrtaxa              # Prefix_ of table
+        id: id                      # Name of the id field
+        incremental: no             # Is the source data incremental
+        index: taxon                # What destination index in ES
+        enrich: no                  # Should it be enriched
+        path: /data/nsr-taxa        # Path where the source data is found
+    xenocanto-specimen:
+        table: xenocantospecimen
+        id: id
+        index: specimen
+        doctype: Specimen
+        enrich: yes
+        elastic: yes
+        incremental: no
+        path: /data/xenocanto-specimen
+    brahms-specimen:
+        table: brahmsspecimen
+        id: assemblageID 
+        index: specimen
+        doctype: Specimen
+        enrich: yes
+        elastic: no
+        incremental: no
+        path: /data/brahms-specimen
+    brahms-media:
+        table: brahmsmedia
+        id: assemblageID 
+        enrich: yes
+        incremental: no
+        path: /data/brahms-media
+    crs-specimen:
+        table: crsspecimen
+        id: assemblageID 
+        index: specimen
+        doctype: Specimen
+        enrich: yes
+        incremental: no
+        path: /data/crs-specimen
+    crs-media:
+        table: crsmedia
+        id: assemblageID 
+        enrich: yes
+        incremental: no
+        path: /data/crs-media
+    waarneming-specimen:
+        table: waarnemingspecimen
+        id: id 
+        enrich: no
+        incremental: yes
+        path: /data/waarneming-specimen
+deltapath: /data/incremental            # The path where all delta files are written
+elastic:                                # Elastic search config
+    host: es
+postgres:                               # Postgres database config
+    host: postgres
+    user: postgres
+    pass: postgres
+    db: ppdb

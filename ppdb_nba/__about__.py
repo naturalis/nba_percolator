@@ -1,4 +1,4 @@
-"""The module that holds much of the metadata about topdesk.py."""
+"""The module that holds much of the metadata about ppdb_nba."""
 __package_name__ = 'ppdb_nba'
 __title__ = 'PreProcess Database for NBA'
 __author__ = 'Naturalis Biodiversity Center'

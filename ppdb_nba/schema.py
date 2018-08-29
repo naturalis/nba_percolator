@@ -1,15 +1,10 @@
+"""Dit is het NBA preprocessing database schema.
+
+Hierin zitten tabel definities waarmee import data kan worden gefilterd alvorens
+een import in de NBA documentstore plaatsvind.
+"""
 from datetime import datetime
-
 from pony.orm import Database, Optional, Json, Required
-
-db = Database()
-msg = 'Cannot connect to postgres database'
-# Contact maken met postgres database
-try:
-    db.bind(provider='postgres', user='postgres', password='postgres', host='postgres', database='ppdb')
-except:
-    logger.fatal(msg)
-    sys.exit(msg)
 
 class Nsrtaxa_import(db.Entity):
     rec = Optional(Json)
@@ -141,11 +136,3 @@ class Waarnemingmedia_import(db.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
-
-# Tabel definities met pony db
-try:
-    db.generate_mapping(create_tables=True)
-except:
-    msg = 'Creating tables needed for preprocessing failed'
-    logger.fatal(msg)
-    sys.exit(msg)
