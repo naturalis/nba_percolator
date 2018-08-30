@@ -14,10 +14,10 @@ def main():
 
     srcconfig = cfg.get('sources').get(source, False)
     if not srcconfig:
-        print('Bron "{source}" bestaat niet kies een van de bestaande bronnen'.format(source=source))
+        print('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
         sources = cfg.get('sources', None)
         if (sources) :
-            print(", ".join(sources))
+            print("\n".join(sources))
         exit(2)
 
     for file in args.files :

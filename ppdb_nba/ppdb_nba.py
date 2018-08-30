@@ -22,6 +22,7 @@ logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 stopwatch = timer()
 
+# @todo: refactor to class, and read config, connect to es and db trough the __init__
 try:
     with open("config.yml", 'r') as ymlfile:
         cfg = yaml.load(ymlfile)
