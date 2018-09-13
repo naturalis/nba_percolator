@@ -62,7 +62,6 @@ except:
     sys.exit(msg)
 
 
-
 def open_deltafile(action='new', index='unknown'):
     """
     Open een delta bestand met records of id's om weg te schrijven.
@@ -72,7 +71,7 @@ def open_deltafile(action='new', index='unknown'):
     filepath = os.path.join(destpath, filename)
 
     try:
-        fp = open(filepath, 'w')
+        fp = open(filepath, 'a')
     except:
         msg = 'Unable to write to "{filepath}"'.format(filepath=filepath)
         logger.fatal(msg)
@@ -98,7 +97,7 @@ def clear_data(table=''):
 
 
 @db_session
-def import_data(table='', datafile=''):
+def import_data(table='', datafile='', enriched=0):
     """
     Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
     """
@@ -110,9 +109,10 @@ def import_data(table='', datafile=''):
     db.execute("ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex".format(table=table))
     db.execute("DROP INDEX IF EXISTS public.idx_{table}__jsonid".format(table=table))
     db.execute("DROP INDEX IF EXISTS public.idx_{table}__hash".format(table=table))
+    db.execute("DROP INDEX IF EXISTS public.idx_{table}__gin".format(table=table))
     # verwijder de indexes
     db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
-    db.execute("COPY public.{table} (rec) FROM '{datafile}' WITH ESCAPE='{escape}'".format(table=table, datafile=datafile, escape='\\'))
+    db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
     # import alle data
     #
     # @todo: In bijvoorbeeld de xenocanto waarnemingen zitten velden met quotes in de tekst. Die zijn zo
@@ -121,9 +121,12 @@ def import_data(table='', datafile=''):
     #
     db.execute("UPDATE {table} SET hash=md5(rec::text)".format(table=table))
     # zet de hash
-    db.execute(
-        "CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(table=table))
-    # zet de index
+    db.execute("CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(table=table))
+    # zet hashing index
+    if (enriched):
+        db.execute("CREATE INDEX idx_{table}__gin ON public.{table} USING gin((rec->'identifications')) jsonb_path_ops".format(table=table))
+    # zet json record index voor scientificNameGroup
+
     elapsed = "%0.2f" % (timer() - start)
     logger.debug('Imported data "{datafile}" into "{table} [{elapsed} seconds]'.format(datafile=datafile, table=table, elapsed=elapsed))
 
@@ -274,6 +277,7 @@ def handle_updates(changes = dict(), sourceconfig = dict()):
     """
     table = sourceconfig.get('table')
     idfield = sourceconfig.get('id')
+    enriches = sourceconfig.get('enriches', None)
     importtable = globals()[table.capitalize() + '_import']
     currenttable = globals()[table.capitalize() + '_current']
 
@@ -298,6 +302,10 @@ def handle_updates(changes = dict(), sourceconfig = dict()):
                          doc_type=sourceconfig.get('doctype', 'unknown'),
                          body=newrec.rec,
                          id=newrec.rec[idfield])
+
+            if (enriches):
+                for source in enriches:
+                    handle_enrichment(source, oldrec)
 
             logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
     if (fp):
@@ -338,6 +346,44 @@ def handle_deletes(changes = dict(), sourceconfig = dict()):
             logger.info("Record [{deleteid}] deleted".format(deleteid=deleteid))
     if (fp):
         fp.close()
+
+def list_impacted(sourceconfig, scientificnamegroup):
+    '''
+    SELECT
+    rec ->> 'id'
+    FROM
+    public.brahmsspecimen_current
+    WHERE
+    rec->'identifications' @ > '[{"scientificName":{"scientificNameGroup":"bellis perennis"}}]'
+    '''
+    table = sourceconfig.get('table')
+    currenttable = globals()[table.capitalize() + '_current']
+
+    items = currenttable.select(lambda p: p.rec['identifications'][0]['scientificName']['scientificNameGroup'] == scientificnamegroup)
+
+    if (len(items)):
+        logger.info("Found {number} records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
+        return items
+    else :
+        logger.error("Found no records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
+        return False
+
+@db_session
+def handle_enrichment(source, rec):
+    scientificnamegroup = None
+    sourceconfig = cfg.get(source)
+
+    if (rec.rec.get('acceptedName')):
+        scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
+
+    if (scientificnamegroup):
+        impactedrecords = list_impacted(sourceconfig, scientificnamegroup)
+        if (impactedrecords):
+            fp = open_deltafile('enrich', sourceconfig.get('table'))
+            for record in impactedrecords:
+                json.dump(importrec.rec, fp)
+                fp.write('\n')
+            fp.close()
 
 
 @db_session

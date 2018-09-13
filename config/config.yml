@@ -17,8 +17,8 @@ sources:                            # List with sources
         enrich: no                  # Should it be enriched
         path: /data/nsr-taxa        # Path where the source data is found
         enriches:                    # Which sources should be queried for enrichment
-            brahms-specimen
-            crs-specimen
+            - brahms-specimen
+            - crs-specimen
     xenocanto-specimen:
         table: xenocantospecimen
         id: id
