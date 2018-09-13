@@ -353,7 +353,8 @@ def list_impacted(sourceconfig, scientificnamegroup):
     currenttable = globals()[table.capitalize() + '_current']
 
     jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (scientificnamegroup)
-    items = db.Brahmsspecimen_current.select(lambda p: raw_sql(jsonsql))
+    items = currenttable.select(lambda p: raw_sql(jsonsql))
+
     if (len(items)):
         logger.info("Found {number} records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
         return items
