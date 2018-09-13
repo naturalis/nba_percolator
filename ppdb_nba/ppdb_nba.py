@@ -365,9 +365,6 @@ def list_impacted(sourceconfig, scientificnamegroup):
 def handle_enrichment(source, rec):
     scientificnamegroup = None
     sourceconfig = cfg.get('sources').get(source)
-    print(source)
-    print(cfg)
-    print(sourceconfig)
 
     if (rec.rec.get('acceptedName')):
         scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
@@ -376,8 +373,8 @@ def handle_enrichment(source, rec):
         impactedrecords = list_impacted(sourceconfig, scientificnamegroup)
         if (impactedrecords):
             fp = open_deltafile('enrich', sourceconfig.get('table'))
-            for record in impactedrecords:
-                json.dump(importrec.rec, fp)
+            for impactedrec in impactedrecords:
+                json.dump(impactedrec.rec, fp)
                 fp.write('\n')
             fp.close()
 
