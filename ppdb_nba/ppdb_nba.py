@@ -305,6 +305,7 @@ def handle_updates(changes = dict(), sourceconfig = dict()):
 
             if (enriches):
                 for source in enriches:
+                    logger.debug('Enrich source = {source}'.format(source=source))
                     handle_enrichment(source, oldrec)
 
             logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
@@ -348,14 +349,6 @@ def handle_deletes(changes = dict(), sourceconfig = dict()):
         fp.close()
 
 def list_impacted(sourceconfig, scientificnamegroup):
-    '''
-    SELECT
-    rec ->> 'id'
-    FROM
-    public.brahmsspecimen_current
-    WHERE
-    rec->'identifications' @ > '[{"scientificName":{"scientificNameGroup":"bellis perennis"}}]'
-    '''
     table = sourceconfig.get('table')
     currenttable = globals()[table.capitalize() + '_current']
 
