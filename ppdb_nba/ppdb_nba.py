@@ -359,6 +359,7 @@ def list_impacted(sourceconfig, scientificnamegroup):
         return items
     else :
         logger.error("Found no records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
+        logger.debug(items.get_sql())
         return False
 
 @db_session
