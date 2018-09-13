@@ -364,7 +364,7 @@ def list_impacted(sourceconfig, scientificnamegroup):
 @db_session
 def handle_enrichment(source, rec):
     scientificnamegroup = None
-    sourceconfig = cfg.get(source)
+    sourceconfig = cfg.get('sources').get('source')
 
     if (rec.rec.get('acceptedName')):
         scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
