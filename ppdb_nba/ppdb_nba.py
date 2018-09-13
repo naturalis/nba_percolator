@@ -326,6 +326,7 @@ def handle_deletes(changes = dict(), sourceconfig = dict()):
     table = sourceconfig.get('table')
     idfield = sourceconfig.get('id')
     currenttable = globals()[table.capitalize() + '_current']
+    enriches = sourceconfig.get('enriches', None)
 
     fp = open_deltafile('delete', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
     # Geen toegang tot elastic search? Schrijf de data naar incrementele files
@@ -343,6 +344,12 @@ def handle_deletes(changes = dict(), sourceconfig = dict()):
                           id=oldrec.rec[idfield],
                           ignore=[400, 404])
                 logger.debug("Delete record [{id}] from NBA".format(id=deleteid))
+
+            if (enriches):
+                for source in enriches:
+                    logger.debug('Enrich source = {source}'.format(source=source))
+                    handle_enrichment(source, oldrec)
+
             oldrec.delete()
             logger.info("Record [{deleteid}] deleted".format(deleteid=deleteid))
     if (fp):
