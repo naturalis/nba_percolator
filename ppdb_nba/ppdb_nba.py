@@ -103,8 +103,8 @@ def import_data(table='', datafile=''):
     Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
     """
     start = timer()
-    # todo: check if data file exists and is readable
     # todo: check if table exists
+    # todo: check if data file exists and is readable
     db.execute("TRUNCATE public.{table}".format(table=table))
     # gooi de tabel leeg
     db.execute("ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex".format(table=table))
@@ -112,7 +112,7 @@ def import_data(table='', datafile=''):
     db.execute("DROP INDEX IF EXISTS public.idx_{table}__hash".format(table=table))
     # verwijder de indexes
     db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
-    db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
+    db.execute("COPY public.{table} (rec) FROM '{datafile}' WITH ESCAPE='{escape}'".format(table=table, datafile=datafile, escape='\\'))
     # import alle data
     #
     # @todo: In bijvoorbeeld de xenocanto waarnemingen zitten velden met quotes in de tekst. Die zijn zo
