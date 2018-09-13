@@ -97,7 +97,7 @@ def clear_data(table=''):
 
 
 @db_session
-def import_data(table='', datafile='', enriched=0):
+def import_data(table='', datafile='', enriched=False):
     """
     Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
     """
@@ -124,7 +124,7 @@ def import_data(table='', datafile='', enriched=0):
     db.execute("CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(table=table))
     # zet hashing index
     if (enriched):
-        db.execute("CREATE INDEX idx_{table}__gin ON public.{table} USING gin((rec->'identifications')) jsonb_path_ops".format(table=table))
+        db.execute("CREATE INDEX idx_{table}__gin ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(table=table))
     # zet json record index voor scientificNameGroup
 
     elapsed = "%0.2f" % (timer() - start)
