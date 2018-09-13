@@ -4,7 +4,7 @@ Hierin zitten tabel definities waarmee import data kan worden gefilterd alvorens
 een import in de NBA documentstore plaatsvind.
 """
 from datetime import datetime
-from pony.orm import Database, Optional, Json, Required
+from pony.orm import Database, Optional, Json, Required, raw_sql
 
 db = Database()
 
