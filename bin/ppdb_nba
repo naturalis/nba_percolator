@@ -4,6 +4,7 @@ import ppdb_nba
 
 def import_incremental(args,config):
     print("Incremental importing")
+    print("%r" % (config))
     ppdb_nba.import_data(config.get('table') + '_import', args.files[0])
     ppdb_nba.remove_doubles(config)
     changes = ppdb_nba.list_changes(config)
