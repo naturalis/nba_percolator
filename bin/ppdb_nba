@@ -5,9 +5,9 @@ import ppdb_nba
 def import_incremental(args,config):
     print("Incremental importing")
     ppdb_nba.import_data(config.get('table') + '_import', args.files[0])
-    remove_doubles(config)
-    changes = list_changes(config)
-    handle_changes(changes)
+    ppdb_nba.remove_doubles(config)
+    changes = ppdb_nba.list_changes(config)
+    ppdb_nba.handle_changes(changes)
 
 def import_to_current(args,config):
     print("Fill current table '%s' with data" % (config.get('table') + '_current'))
