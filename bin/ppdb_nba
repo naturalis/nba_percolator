@@ -3,12 +3,15 @@ from argparse import ArgumentParser
 import ppdb_nba
 
 def import_incremental(args,config):
-    print("import incremental")
-    print("%r" % (config))
+    print("Incremental importing")
+    ppdb_nba.import_data(config.get('table') + '_import', args.source)
+    remove_doubles(config)
+    changes = list_changes(config)
+    handle_changes(changes)
 
 def import_to_current(args,config):
-    print("import to current")
-    print("%r" % (config))
+    print("Fill current table with data")
+    ppdb_nba.import_data(config.get('table') + '_current', args.source)
 
 def main():
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1 /path/file2 ...'
@@ -16,7 +19,7 @@ def main():
                                            '\nto elastic search')
 
     parser.add_argument('--source', action='store', help='Name of the data source')
-    parser.add_argument('--current', action='store_true', help='Import data directly to current database')
+    parser.add_argument('--current', action='store_true', help='Import data directly to current table (default is normal incremental import)')
     parser.add_argument('files', help='One or more json data files', nargs='+', default=[])
     args = parser.parse_args()
 
