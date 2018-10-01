@@ -14,7 +14,7 @@ def import_to_current(args,config):
     ppdb_nba.import_data(config.get('table') + '_current', args.files[0])
 
 def main():
-    parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1 /path/file2 ...'
+    parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
                                            '\n\nPreprocessing data to create incremental updates or posting it directly'
                                            '\nto elastic search')
 
