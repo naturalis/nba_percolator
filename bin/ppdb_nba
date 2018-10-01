@@ -2,10 +2,10 @@
 from argparse import ArgumentParser
 from ppdb_nba import *
 
-def import_incremental(args):
+def import_incremental(args,config):
     print("import incremental")
 
-def import_to_current(args):
+def import_to_current(args,config):
     print("import to current")
 
 def main():
