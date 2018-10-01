@@ -30,7 +30,7 @@ def main():
 #            print("\n".join(sources))
 #        exit(2)
 
-    if (current):
+    if (args.current):
         import_to_current(args, srcconfig)
     else:
         import_incremental(args, srcconfig)
