@@ -14,7 +14,7 @@ def main():
                                            '\nto elastic search')
 
     parser.add_argument('--source', help='Name of the data source', nargs=1)
-    parser.add_argument('--current', help='Import data directly to current database')
+    parser.add_argument('--current', help='Import data directly to current database', default=True)
     parser.add_argument('files', help='One or more json data files', nargs='+', default=[])
     args = parser.parse_args()
 
