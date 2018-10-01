@@ -20,8 +20,8 @@ def main():
 
     sourceconfig = cfg.get('sources')
     print("%r" % (sourceconfig))
+    srcconfig = sourceconfig.get(args.source, False)
     exit()
-    srcconfig = cfg.get('sources').get(args.source, False)
 #    if not srcconfig:
 #        print('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
 #        sources = cfg.get('sources', None)
