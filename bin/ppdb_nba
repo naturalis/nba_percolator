@@ -13,7 +13,7 @@ def main():
                                            '\n\nPreprocessing data to create incremental updates or posting it directly'
                                            '\nto elastic search')
 
-    parser.add_argument('--source', help='Name of the data source', nargs=1)
+    parser.add_argument('--source', action='store', help='Name of the data source')
     parser.add_argument('--current', action='store_true', help='Import data directly to current database')
     parser.add_argument('files', help='One or more json data files', nargs='+', default=[])
     args = parser.parse_args()
