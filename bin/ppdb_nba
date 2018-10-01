@@ -19,8 +19,8 @@ def main():
     args = parser.parse_args()
 
     srcconfig = []
-    #print("%r" % (cfg))
-    #exit()
+    print("%r" % (cfg))
+    exit()
 #
 #    srcconfig = cfg.get('sources').get(args.source, False)
 #    if not srcconfig:
