@@ -248,37 +248,31 @@ class ppdbNBA():
 
 
     @db_session
-    def handle_new(self, changes = {}, sourceconfig = {}):
+    def handle_new(self):
         """
         Afhandelen van alle nieuwe records.
-
-        Parameters:
-
-         * changes - dictionary met veranderingen
-         * sourceconfig - de configuratie van een bron
-
         """
-        table = sourceconfig.get('table')
-        idfield = sourceconfig.get('id')
+        table = self.source_config.get('table')
+        idfield = self.source_config.get('id')
         importtable = globals()[table.capitalize() + '_import']
         currenttable = globals()[table.capitalize() + '_current']
 
-        fp = open_deltafile('new', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
+        fp = self.open_deltafile('new', self.source_config.get('table')) if not self.source_config.get('elastic') else False
         # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
-        for change in changes['new']:
+        for change in self.changes['new']:
             importrec = importtable.select(lambda p: p.rec[idfield] == change).get()
             if (importrec):
                 insertquery = "insert into {table}_current (rec, hash, datum) " \
-                              "select rec, hash, datum from {table}_import where id={id}".format(table=sourceconfig.get('table'),
+                              "select rec, hash, datum from {table}_import where id={id}".format(table=self.source_config.get('table'),
                                                                                                  id=importrec.id)
                 if (fp):
                     json.dump(importrec.rec, fp)
                     fp.write('\n')
                 else:
                     logger.debug("New record [{id}] posted to NBA".format(id=importrec.rec[idfield]))
-                    es.index(index=sourceconfig.get('index'),
-                             doc_type=sourceconfig.get('doctype', 'unknown'),
+                    es.index(index=self.source_config.get('index'),
+                             doc_type=self.source_config.get('doctype', 'unknown'),
                              body=importrec.rec, id=importrec.rec[idfield])
                 db.execute(insertquery)
                 logger.info("New record [{id}] inserted".format(id=importrec.rec[idfield]))
@@ -287,25 +281,20 @@ class ppdbNBA():
 
 
     @db_session
-    def handle_updates(self, changes = dict(), sourceconfig = dict()):
+    def handle_updates(self):
         """
         Afhandelen van alle updates.
-
-        Parameters:
-
-         * changes - dictionary met veranderingen
-         * sourceconfig - de configuratie van een bron
         """
-        table = sourceconfig.get('table')
-        idfield = sourceconfig.get('id')
-        enriches = sourceconfig.get('enriches', None)
+        table = self.source_config.get('table')
+        idfield = self.source_config.get('id')
+        enriches = self.source_config.get('enriches', None)
         importtable = globals()[table.capitalize() + '_import']
         currenttable = globals()[table.capitalize() + '_current']
 
-        fp = open_deltafile('update', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
+        fp = self.open_deltafile('update', self.source_config.get('table')) if not self.source_config.get('elastic') else False
         # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
-        for change in changes['update']:
+        for change in self.changes['update']:
             newrec = importtable.select(lambda p: p.rec[idfield] == change).get()
             oldrec = currenttable.select(lambda p: p.rec[idfield] == change).get()
             if (newrec and oldrec):
@@ -319,15 +308,15 @@ class ppdbNBA():
                     fp.write('\n')
                 else:
                     logger.debug("Updated record [{id}] to NBA".format(id=newrec.rec[idfield]))
-                    es.index(index=sourceconfig.get('index'),
-                             doc_type=sourceconfig.get('doctype', 'unknown'),
+                    self.es.index(index=self.source_config.get('index'),
+                             doc_type=self.source_config.get('doctype', 'unknown'),
                              body=newrec.rec,
                              id=newrec.rec[idfield])
 
                 if (enriches):
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
-                        handle_enrichment(source, oldrec)
+                        self.handle_enrichment(source, oldrec)
 
                 logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
         if (fp):
@@ -335,24 +324,19 @@ class ppdbNBA():
 
 
     @db_session
-    def handle_deletes(self, changes = dict(), sourceconfig = dict()):
+    def handle_deletes(self):
         """
         Afhandelen van alle deletes.
-
-        Parameters:
-
-         * changes - dictionary met veranderingen
-         * sourceconfig - de configuratie van een bron
         """
-        table = sourceconfig.get('table')
-        idfield = sourceconfig.get('id')
+        table = self.source_config.get('table')
+        idfield = self.source_config.get('id')
         currenttable = globals()[table.capitalize() + '_current']
-        enriches = sourceconfig.get('enriches', None)
+        enriches = self.source_config.get('enriches', None)
 
-        fp = open_deltafile('delete', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
+        fp = self.open_deltafile('delete', self.source_config.get('table')) if not self.source_config.get('elastic') else False
         # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
-        for change in changes['delete']:
+        for change in self.changes['delete']:
             oldrec = currenttable.select(lambda p: p.rec[idfield] == change).get()
             if (oldrec):
                 deleteid = oldrec.rec[idfield]
@@ -360,8 +344,8 @@ class ppdbNBA():
                     fp.write('{deleteid}\n'.format(deleteid=deleteid))
                 else:
                     # delete from elastic search index
-                    es.delete(index=sourceconfig.get('index'),
-                              doc_type=sourceconfig.get('doctype', 'unknown'),
+                    self.es.delete(index=self.source_config.get('index'),
+                              doc_type=self.source_config.get('doctype', 'unknown'),
                               id=oldrec.rec[idfield],
                               ignore=[400, 404])
                     logger.debug("Delete record [{id}] from NBA".format(id=deleteid))
@@ -369,7 +353,7 @@ class ppdbNBA():
                 if (enriches):
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
-                        handle_enrichment(source, oldrec)
+                        self.handle_enrichment(source, oldrec)
 
                 oldrec.delete()
                 logger.info("Record [{deleteid}] deleted".format(deleteid=deleteid))
@@ -401,7 +385,7 @@ class ppdbNBA():
         if (scientificnamegroup):
             impactedrecords = list_impacted(self.source_config, scientificnamegroup)
             if (impactedrecords):
-                fp = open_deltafile('enrich', self.source_config.get('table'))
+                fp = self.open_deltafile('enrich', self.source_config.get('table'))
                 for impactedrec in impactedrecords:
                     json.dump(impactedrec.rec, fp)
                     fp.write('\n')
@@ -413,14 +397,14 @@ class ppdbNBA():
         """
         Afhandelen van alle veranderingen.
         """
-        changes = list_changes()
+        self.list_changes()
 
-        if (len(changes['new'])):
-            handle_new(changes)
-        if (len(changes['update'])):
-            handle_updates(changes)
+        if (len(self.changes['new'])):
+            self.handle_new()
+        if (len(self.changes['update'])):
+            self.handle_updates()
         if (not self.source_config.get('incremental')):
-            if (len(changes['delete'])):
-                handle_deletes(changes)
+            if (len(self.changes['delete'])):
+                self.handle_deletes()
 
         return changes
