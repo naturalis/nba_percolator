@@ -18,6 +18,7 @@ def main():
     parser.add_argument('files', help='One or more json data files', nargs='+', default=[])
     args = parser.parse_args()
 
+    srcconfig = []
     #print("%r" % (cfg))
     #exit()
 #
