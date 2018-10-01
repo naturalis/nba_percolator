@@ -4,9 +4,11 @@ from ppdb_nba import *
 
 def import_incremental(args,config):
     print("import incremental")
+    print("%r" % (config))
 
 def import_to_current(args,config):
     print("import to current")
+    print("%r" % (config))
 
 def main():
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1 /path/file2 ...'
@@ -18,17 +20,13 @@ def main():
     parser.add_argument('files', help='One or more json data files', nargs='+', default=[])
     args = parser.parse_args()
 
-    sourceconfig = cfg.get('sources')
-    print("%r" % (sourceconfig))
-    print("%r" % (args.source))
     srcconfig = sourceconfig.get(args.source, False)
-    exit()
-#    if not srcconfig:
-#        print('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
-#        sources = cfg.get('sources', None)
-#        if (sources) :
-#            print("\n".join(sources))
-#        exit(2)
+    if not srcconfig:
+        print('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
+        sources = cfg.get('sources', None)
+        if (sources) :
+            print("\n".join(sources))
+        exit(2)
 
     if (args.current):
         import_to_current(args, srcconfig)
