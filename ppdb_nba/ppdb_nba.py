@@ -25,7 +25,7 @@ stopwatch = timer()
 # @todo: refactor to class, and read config, connect to es and db through the __init__
 try:
     with open("config.yml", 'r') as ymlfile:
-        cfg = yaml.load(ymlfile)
+        ppdb_config = yaml.load(ymlfile)
 except:
     msg = '"config.yml" with configuration options of sources is missing'
     logger.fatal(msg)
@@ -37,7 +37,7 @@ Inlezen van de config.yml file waarin alle bronnen en hun specifieke wensen in m
 
 # Verbinden met Elastic search
 try:
-    es = Elasticsearch(hosts=cfg['elastic']['host'])
+    es = Elasticsearch(hosts=ppdb_config['elastic']['host'])
 except:
     msg = 'Cannot connect to elastic search server'
     logger.fatal(msg)
@@ -46,8 +46,8 @@ except:
 
 # Contact maken met postgres database
 try:
-    db.bind(provider='postgres', user=cfg['postgres']['user'], password=cfg['postgres']['pass'],
-            host=cfg['postgres']['host'], database=cfg['postgres']['db'])
+    db.bind(provider='postgres', user=ppdb_config['postgres']['user'], password=ppdb_config['postgres']['pass'],
+            host=ppdb_config['postgres']['host'], database=ppdb_config['postgres']['db'])
 except:
     msg = 'Cannot connect to postgres database'
     logger.fatal(msg)
@@ -66,7 +66,7 @@ def open_deltafile(action='new', index='unknown'):
     """
     Open een delta bestand met records of id's om weg te schrijven.
     """
-    destpath = cfg.get('deltapath', '/tmp')
+    destpath = ppdb_config.get('deltapath', '/tmp')
     filename = "{index}-{ts}-{action}.json".format(index=index, ts=time.strftime('%Y%m%d%H%M%S'), action=action)
     filepath = os.path.join(destpath, filename)
 
@@ -373,7 +373,7 @@ def list_impacted(sourceconfig, scientificnamegroup):
 @db_session
 def handle_enrichment(source, rec):
     scientificnamegroup = None
-    sourceconfig = cfg.get('sources').get(source)
+    sourceconfig = ppdb_config.get('sources').get(source)
 
     if (rec.rec.get('acceptedName')):
         scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')

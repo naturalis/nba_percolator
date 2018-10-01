@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
-from ppdb_nba import *
+import ppdb_nba
 
 def import_incremental(args,config):
     print("import incremental")
@@ -20,10 +20,15 @@ def main():
     parser.add_argument('files', help='One or more json data files', nargs='+', default=[])
     args = parser.parse_args()
 
-    srcconfig = sourceconfig.get(args.source, False)
+    if (not ppdb_nba.ppdb_config) :
+        print("Configuratie ontbreekt")
+        exit(2)
+
+    srcconfig = ppdb_nba.ppdb_config.get('sources').get(args.source, False)
+
     if not srcconfig:
         print('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
-        sources = cfg.get('sources', None)
+        sources = ppdb_nba.ppdb_config.get('sources', None)
         if (sources) :
             print("\n".join(sources))
         exit(2)
