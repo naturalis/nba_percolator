@@ -23,7 +23,6 @@ logger.setLevel(logging.INFO)
 stopwatch = timer()
 
 
-# @todo: refactor to class, and read config, connect to es and db through the __init__
 class ppdbNBA():
 
     def __init__(self, config, source):
