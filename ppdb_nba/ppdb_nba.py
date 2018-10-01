@@ -26,35 +26,48 @@ stopwatch = timer()
 # @todo: refactor to class, and read config, connect to es and db through the __init__
 class ppdbNBA():
 
-    def __init__(self, configfile, source):
+    def __init__(self, config, source):
         """
         Inlezen van de config.yml file waarin alle bronnen en hun specifieke wensen in moeten worden vermeld.
         """
-        try:
-            with open("config.yml", 'r') as ymlfile:
-                self.config = yaml.load(ymlfile)
-        except:
-            msg = '"config.yml" with configuration options of sources is missing'
+        if (isintance(config,str)):
+            # config is string, read the config file
+            try:
+                with open(config, 'r') as ymlfile:
+                    self.config = yaml.load(ymlfile)
+            except:
+                msg = '"config.yml" with configuration options of sources is missing'
+                logger.fatal(msg)
+                sys.exit(msg)
+        elif (isintance(config, dict)):
+            # config is dictionary
+            self.config = config
+        else :
+            # do not accept any other type
+            msg = 'Config parameter should be dictionary or filename'
             logger.fatal(msg)
             sys.exit(msg)
+
         if (not self.config.get('sources', False)) :
-            msg = 'Sources part missing in config file'
+            msg = 'Sources part missing in config'
             sys.exit(msg)
         if (self.config.get('sources').get(source)):
             self.source_config = self.config.get('sources').get('source')
         else :
-            msg = 'Source "%s" missing in config file' % (source)
+            msg = 'Source "%s" does not exist in config file' % (source)
             sys.exit(msg)
-        if (self.source_config.get('es',False)):
-            self.connect_to_elastic()
 
-        self.connect_to_db()
+        if (self.source_config.get('es',False)):
+            self.es = self.connect_to_elastic()
+
+        self.connect_to_database()
 
 
     def connect_to_elastic(self):
         # Verbinden met Elastic search
         try:
-            self.es = Elasticsearch(hosts=self.config['elastic']['host'])
+            es = Elasticsearch(hosts=self.config['elastic']['host'])
+            return es
         except:
             msg = 'Cannot connect to elastic search server'
             logger.fatal(msg)
@@ -66,8 +79,12 @@ class ppdbNBA():
         self.db = db
 
         try:
-            self.db.bind(provider='postgres', user=self.config['postgres']['user'], password=ppdb_config['postgres']['pass'],
-                    host=self.config['postgres']['host'], database=ppdb_config['postgres']['db'])
+            self.db.bind(
+                provider='postgres',
+                user=self.config['postgres']['user'],
+                password=self.config['postgres']['pass'],
+                host=self.config['postgres']['host'],
+                database=self.config['postgres']['db'])
         except:
             msg = 'Cannot connect to postgres database'
             logger.fatal(msg)
@@ -102,7 +119,7 @@ class ppdbNBA():
 
     def kill_index(self):
         """
-        Verwijdert de index uit elastic search.
+        Verwijder de index uit elastic search.
         """
         if (self.source_config):
             index = self.source_config.get('index', 'specimen')
@@ -132,8 +149,10 @@ class ppdbNBA():
         self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__gin".format(table=table))
         # verwijder de indexes
         self.db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
+
         #db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
         self.db.execute("COPY public.{table} (rec) FROM '{datafile}' CSV QUOTE e'\x01' DELIMITER e'\x02'".format(table=table, datafile=datafile))
+
         # import alle data
         #
         # @todo: In bijvoorbeeld de xenocanto waarnemingen zitten velden met quotes in de tekst. Die zijn zo
@@ -210,12 +229,12 @@ class ppdbNBA():
             leftdiffquery = 'SELECT {source}_import.hash FROM {source}_import ' \
                             'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                             'WHERE {source}_current.hash is null'.format(source=source_base)
-            neworupdates = db.select(leftdiffquery)
+            neworupdates = self.db.select(leftdiffquery)
 
             rightdiffquery = 'SELECT {source}_current.hash FROM {source}_import ' \
                              'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                              'WHERE {source}_import.hash is null'.format(source=source_base)
-            updateordeletes = db.select(rightdiffquery)
+            updateordeletes = self.db.select(rightdiffquery)
 
             importtable = globals()[source_base.capitalize() + '_import']
             currenttable = globals()[source_base.capitalize() + '_current']
@@ -269,12 +288,13 @@ class ppdbNBA():
                 if (fp):
                     json.dump(importrec.rec, fp)
                     fp.write('\n')
-                else:
+
+                if (self.es) :
                     logger.debug("New record [{id}] posted to NBA".format(id=importrec.rec[idfield]))
-                    es.index(index=self.source_config.get('index'),
+                    self.es.index(index=self.source_config.get('index'),
                              doc_type=self.source_config.get('doctype', 'unknown'),
                              body=importrec.rec, id=importrec.rec[idfield])
-                db.execute(insertquery)
+                self.db.execute(insertquery)
                 logger.info("New record [{id}] inserted".format(id=importrec.rec[idfield]))
         if (fp):
             fp.close()
@@ -306,7 +326,8 @@ class ppdbNBA():
                 if (fp):
                     json.dump(newrec.rec, fp)
                     fp.write('\n')
-                else:
+
+                if (self.es) :
                     logger.debug("Updated record [{id}] to NBA".format(id=newrec.rec[idfield]))
                     self.es.index(index=self.source_config.get('index'),
                              doc_type=self.source_config.get('doctype', 'unknown'),
@@ -317,6 +338,8 @@ class ppdbNBA():
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
                         self.handle_enrichment(source, oldrec)
+
+                self.db.execute(updatequery)
 
                 logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
         if (fp):
@@ -342,7 +365,8 @@ class ppdbNBA():
                 deleteid = oldrec.rec[idfield]
                 if (fp):
                     fp.write('{deleteid}\n'.format(deleteid=deleteid))
-                else:
+
+                if (self.es) :
                     # delete from elastic search index
                     self.es.delete(index=self.source_config.get('index'),
                               doc_type=self.source_config.get('doctype', 'unknown'),
