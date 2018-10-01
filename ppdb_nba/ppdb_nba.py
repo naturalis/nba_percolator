@@ -112,7 +112,8 @@ def import_data(table='', datafile='', enriched=False):
     db.execute("DROP INDEX IF EXISTS public.idx_{table}__gin".format(table=table))
     # verwijder de indexes
     db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
-    db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
+    #db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
+    db.execute("COPY public.{table} (rec) FROM '{datafile}' CSV QUOTE e'\x01' DELIMITER e'\x02'".format(table=table, datafile=datafile))
     # import alle data
     #
     # @todo: In bijvoorbeeld de xenocanto waarnemingen zitten velden met quotes in de tekst. Die zijn zo
