@@ -156,7 +156,7 @@ def remove_doubles(config):
     logger.debug('Filtered {doubles} records with more than one entry in the source data [{elapsed} seconds]'.format(doubles=count, elapsed=elapsed))
 
 
-
+@db_session
 def list_changes(sourceconfig={}):
     """
     Identificeert de verschillen tussen de huidige database en de nieuwe data, op basis van hash.
