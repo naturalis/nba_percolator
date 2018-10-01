@@ -18,9 +18,10 @@ def main():
     parser.add_argument('files', help='One or more json data files', nargs='+', default=[])
     args = parser.parse_args()
 
-    srcconfig = cfg.get('sources').get(args.source, False)
-    print("%r" % (cfg))
+    sourceconfig = cfg.get('sources')
+    print("%r" % (sourceconfig))
     exit()
+    srcconfig = cfg.get('sources').get(args.source, False)
 #    if not srcconfig:
 #        print('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
 #        sources = cfg.get('sources', None)
