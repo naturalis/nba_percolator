@@ -4,13 +4,13 @@ import ppdb_nba
 
 def import_incremental(args,config):
     print("Incremental importing")
-    ppdb_nba.import_data(config.get('table') + '_import', args.file)
+    ppdb_nba.import_data(config.get('table') + '_import', args.files[0])
     ppdb_nba.remove_doubles(config)
     ppdb_nba.handle_changes(config)
 
 def import_to_current(args,config):
     print("Fill current table '%s' with data" % (config.get('table') + '_current'))
-    ppdb_nba.import_data(config.get('table') + '_current', args.file)
+    ppdb_nba.import_data(config.get('table') + '_current', args.files[0])
 
 def main():
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
@@ -19,7 +19,7 @@ def main():
 
     parser.add_argument('--source', action='store', help='Name of the data source')
     parser.add_argument('--current', action='store_true', help='Import data directly to current table (default is normal incremental import)')
-    parser.add_argument('file', help='One json data file', nargs=1, default=[])
+    parser.add_argument('files', help='One json data file', nargs=1, default=[])
     args = parser.parse_args()
 
     if (not ppdb_nba.ppdb_config) :
