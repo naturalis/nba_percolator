@@ -22,392 +22,405 @@ logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 stopwatch = timer()
 
+
 # @todo: refactor to class, and read config, connect to es and db through the __init__
-try:
-    with open("config.yml", 'r') as ymlfile:
-        ppdb_config = yaml.load(ymlfile)
-except:
-    msg = '"config.yml" with configuration options of sources is missing'
-    logger.fatal(msg)
-    sys.exit(msg)
+class ppdbNBA():
 
-"""
-Inlezen van de config.yml file waarin alle bronnen en hun specifieke wensen in moeten worden vermeld.
-"""
+    def __init__(self, configfile, source):
+        """
+        Inlezen van de config.yml file waarin alle bronnen en hun specifieke wensen in moeten worden vermeld.
+        """
+        try:
+            with open("config.yml", 'r') as ymlfile:
+                self.config = yaml.load(ymlfile)
+        except:
+            msg = '"config.yml" with configuration options of sources is missing'
+            logger.fatal(msg)
+            sys.exit(msg)
+        if (not self.config.get('sources', False)) :
+            msg = 'Sources part missing in config file'
+            sys.exit(msg)
+        if (self.config.get('sources').get(source)):
+            self.source_config = self.config.get('sources').get('source')
+        else :
+            msg = 'Source "%s" missing in config file' % (source)
+            sys.exit(msg)
+        if (self.source_config.get('es',False)):
+            self.connect_to_elastic()
 
-# Verbinden met Elastic search
-try:
-    es = Elasticsearch(hosts=ppdb_config['elastic']['host'])
-except:
-    msg = 'Cannot connect to elastic search server'
-    logger.fatal(msg)
-    sys.exit(msg)
-
-
-# Contact maken met postgres database
-try:
-    db.bind(provider='postgres', user=ppdb_config['postgres']['user'], password=ppdb_config['postgres']['pass'],
-            host=ppdb_config['postgres']['host'], database=ppdb_config['postgres']['db'])
-except:
-    msg = 'Cannot connect to postgres database'
-    logger.fatal(msg)
-    sys.exit(msg)
-
-# Tabel definities met pony db
-try:
-    db.generate_mapping(create_tables=True)
-except:
-    msg = 'Creating tables needed for preprocessing failed'
-    logger.fatal(msg)
-    sys.exit(msg)
+        self.connect_to_db()
 
 
-def open_deltafile(action='new', index='unknown'):
-    """
-    Open een delta bestand met records of id's om weg te schrijven.
-    """
-    destpath = ppdb_config.get('deltapath', '/tmp')
-    filename = "{index}-{ts}-{action}.json".format(index=index, ts=time.strftime('%Y%m%d%H%M%S'), action=action)
-    filepath = os.path.join(destpath, filename)
-
-    try:
-        fp = open(filepath, 'a')
-    except:
-        msg = 'Unable to write to "{filepath}"'.format(filepath=filepath)
-        logger.fatal(msg)
-        sys.exit(msg)
-    logger.debug(filepath + ' opened')
-
-    return fp
-
-def kill_index(sourceconfig):
-    """
-    Verwijdert de index uit elastic search.
-    """
-    if (sourceconfig):
-        index = sourceconfig.get('index', 'specimen')
-        es.indices.delete(index=index, ignore=[400, 404])
-        logger.info('Elastic search index "{index}" removed'.format(index=index))
-
-@db_session
-def clear_data(table=''):
-    """ Verwijder data uit tabel. """
-    db.execute("TRUNCATE public.{table}".format(table=table))
-    logger.debug('Truncated table "{table}"'.format(table=table))
+    def connect_to_elastic(self):
+        # Verbinden met Elastic search
+        try:
+            self.es = Elasticsearch(hosts=self.config['elastic']['host'])
+        except:
+            msg = 'Cannot connect to elastic search server'
+            logger.fatal(msg)
+            sys.exit(msg)
 
 
-@db_session
-def import_data(table='', datafile='', enriched=False):
-    """
-    Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
-    """
-    start = timer()
-    # todo: check if table exists
-    # todo: check if data file exists and is readable
-    db.execute("TRUNCATE public.{table}".format(table=table))
-    # gooi de tabel leeg
-    db.execute("ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex".format(table=table))
-    db.execute("DROP INDEX IF EXISTS public.idx_{table}__jsonid".format(table=table))
-    db.execute("DROP INDEX IF EXISTS public.idx_{table}__hash".format(table=table))
-    db.execute("DROP INDEX IF EXISTS public.idx_{table}__gin".format(table=table))
-    # verwijder de indexes
-    db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
-    #db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
-    db.execute("COPY public.{table} (rec) FROM '{datafile}' CSV QUOTE e'\x01' DELIMITER e'\x02'".format(table=table, datafile=datafile))
-    # import alle data
-    #
-    # @todo: In bijvoorbeeld de xenocanto waarnemingen zitten velden met quotes in de tekst. Die zijn zo
-    # gecodeerd: "dit is \"een\" voorbeeld". Dit accepteert het COPY statement niet. Die verwacht dubbele
-    # backslashes.  Hier moet iets op bedacht worden.
-    #
-    db.execute("UPDATE {table} SET hash=md5(rec::text)".format(table=table))
-    # zet de hash
-    db.execute("CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(table=table))
-    # zet hashing index
-    if (enriched):
-        db.execute("CREATE INDEX idx_{table}__gin ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(table=table))
-    # zet json record index voor scientificNameGroup
+    def connect_to_database(self):
+        # Contact maken met postgres database
+        self.db = db
 
-    elapsed = "%0.2f" % (timer() - start)
-    logger.debug('Imported data "{datafile}" into "{table} [{elapsed} seconds]'.format(datafile=datafile, table=table, elapsed=elapsed))
+        try:
+            self.db.bind(provider='postgres', user=self.config['postgres']['user'], password=ppdb_config['postgres']['pass'],
+                    host=self.config['postgres']['host'], database=ppdb_config['postgres']['db'])
+        except:
+            msg = 'Cannot connect to postgres database'
+            logger.fatal(msg)
+            sys.exit(msg)
+
+        # Tabel definities met pony db
+        try:
+            self.db.generate_mapping(create_tables=True)
+        except:
+            msg = 'Creating tables needed for preprocessing failed'
+            logger.fatal(msg)
+            sys.exit(msg)
 
 
-@db_session
-def remove_doubles(config):
-    """ Bepaalde bronnen bevatte dubbele records, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
-    start = timer()
-    db.execute("CREATE INDEX idx_{source}_import__jsonid ON public.{source}_import((rec->>'{idfield}'))".format(
-        source=config.get('table'), idfield=config.get('id')))
-    elapsed = "%0.2f" % (timer() - start)
-    logger.debug('Index [{elapsed} seconds]'.format(elapsed=elapsed))
-    doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
-                  "FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
-        source=config.get('table'), idfield=config.get('id'))
-    doubles = db.select(doublequery)
-    elapsed = "%0.2f" % (timer() - start)
-    logger.debug('Find doubles [{elapsed} seconds]'.format(elapsed=elapsed))
-    count = 0
-    for double in doubles:
-        for importid in double.importids[:-1]:
-            deletequery = "DELETE FROM {source}_import WHERE id = {importid}".format(source=config.get('table'),
-                                                                                     importid=importid)
-            db.execute(deletequery)
-        count += 1
-    elapsed = "%0.2f" % (timer() - start)
-    logger.debug('Filtered {doubles} records with more than one entry in the source data [{elapsed} seconds]'.format(doubles=count, elapsed=elapsed))
+    def open_deltafile(self, action='new', index='unknown'):
+        """
+        Open een delta bestand met records of id's om weg te schrijven.
+        """
+        destpath = self.config.get('deltapath', '/tmp')
+        filename = "{index}-{ts}-{action}.json".format(index=index, ts=time.strftime('%Y%m%d%H%M%S'), action=action)
+        filepath = os.path.join(destpath, filename)
+
+        try:
+            fp = open(filepath, 'a')
+        except:
+            msg = 'Unable to write to "{filepath}"'.format(filepath=filepath)
+            logger.fatal(msg)
+            sys.exit(msg)
+        logger.debug(filepath + ' opened')
+
+        return fp
+
+    def kill_index(self):
+        """
+        Verwijdert de index uit elastic search.
+        """
+        if (self.source_config):
+            index = self.source_config.get('index', 'specimen')
+            self.es.indices.delete(index=index, ignore=[400, 404])
+            logger.info('Elastic search index "{index}" removed'.format(index=index))
+
+    @db_session
+    def clear_data(self, table=''):
+        """ Verwijder data uit tabel. """
+        self.db.execute("TRUNCATE public.{table}".format(table=table))
+        logger.debug('Truncated table "{table}"'.format(table=table))
 
 
-@db_session
-def list_changes(sourceconfig={}):
-    """
-    Identificeert de verschillen tussen de huidige database en de nieuwe data, op basis van hash.
+    @db_session
+    def import_data(self, table='', datafile='', enriched=False):
+        """
+        Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
+        """
+        start = timer()
+        # todo: check if table exists
+        # todo: check if data file exists and is readable
+        self.db.execute("TRUNCATE public.{table}".format(table=table))
+        # gooi de tabel leeg
+        self.db.execute("ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex".format(table=table))
+        self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__jsonid".format(table=table))
+        self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__hash".format(table=table))
+        self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__gin".format(table=table))
+        # verwijder de indexes
+        self.db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
+        #db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
+        self.db.execute("COPY public.{table} (rec) FROM '{datafile}' CSV QUOTE e'\x01' DELIMITER e'\x02'".format(table=table, datafile=datafile))
+        # import alle data
+        #
+        # @todo: In bijvoorbeeld de xenocanto waarnemingen zitten velden met quotes in de tekst. Die zijn zo
+        # gecodeerd: "dit is \"een\" voorbeeld". Dit accepteert het COPY statement niet. Die verwacht dubbele
+        # backslashes.  Hier moet iets op bedacht worden.
+        #
+        self.db.execute("UPDATE {table} SET hash=md5(rec::text)".format(table=table))
+        # zet de hash
+        self.db.execute("CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(table=table))
+        # zet hashing index
+        if (enriched):
+            self.db.execute("CREATE INDEX idx_{table}__gin ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(table=table))
+        # zet json record index voor scientificNameGroup
 
-    Als een hash ontbreekt in de bestaande data, maar aanwezig is in de nieuwe data. Dan kan het gaan
-    om een nieuw (new) record of een update.
-
-    Een hash die aanwezig is in de bestaande data, maar ontbreekt in de nieuwe data kan gaan om een
-    verwijderd record. Maar dit is alleen te bepalen bij analyse van complete datasets. Een changes
-    dictionary ziet er over het algemeen zo uit.
-
-    ```
-        changes = {
-            'new': [
-                '3732672@BRAHMS',
-                '1369617@BRAHMS',
-                '2455323@BRAHMS'
-            ],
-            'update': [],
-            'delete': []
-        }
-    ```
-
-    """
-    changes = {'new': [], 'update': [], 'delete': []}
-    source = sourceconfig.get('table')
-    idfield = sourceconfig.get('id')
-
-    if (len(source)):
-        leftdiffquery = 'SELECT {source}_import.hash FROM {source}_import ' \
-                        'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
-                        'WHERE {source}_current.hash is null'.format(source=source)
-        neworupdates = db.select(leftdiffquery)
-
-        rightdiffquery = 'SELECT {source}_current.hash FROM {source}_import ' \
-                         'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
-                         'WHERE {source}_import.hash is null'.format(source=source)
-        updateordeletes = db.select(rightdiffquery)
-
-        importtable = globals()[source.capitalize() + '_import']
-        currenttable = globals()[source.capitalize() + '_current']
-
-        # new or update
-        for result in neworupdates:
-            r = importtable.get(hash=result)
-            if (r.rec):
-                changes['new'].append(r.rec[idfield])
-
-        # updates or deletes
-        for result in updateordeletes:
-            r = currenttable.get(hash=result)
-            if (r.rec):
-                uid = r.rec[idfield]
-                try:
-                    changes['new'].index(uid)
-                    changes['new'].remove(uid)
-                    changes['update'].append(uid)
-                except:
-                    changes['delete'].append(uid)
-
-        if (len(changes['new']) or len(changes['update']) or len(changes['delete'])):
-            logger.info('{new} new, {update} updated and {delete} removed'.format(new=len(changes['new']),
-                                                                                  update=len(changes['update']),
-                                                                                  delete=len(changes['delete'])))
-        else:
-            logger.info('No changes')
-    return changes
+        elapsed = "%0.2f" % (timer() - start)
+        logger.debug('Imported data "{datafile}" into "{table} [{elapsed} seconds]'.format(datafile=datafile, table=table, elapsed=elapsed))
 
 
-@db_session
-def handle_new(changes = {}, sourceconfig = {}):
-    """
-    Afhandelen van alle nieuwe records.
+    @db_session
+    def remove_doubles(self):
+        """ Bepaalde bronnen bevatte dubbele records, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
+        start = timer()
+        self.db.execute("CREATE INDEX idx_{source}_import__jsonid ON public.{source}_import((rec->>'{idfield}'))".format(
+            source=self.source_config.get('table'), idfield=self.source_config.get('id')))
+        elapsed = "%0.2f" % (timer() - start)
+        logger.debug('Index [{elapsed} seconds]'.format(elapsed=elapsed))
+        doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
+                      "FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
+            source=self.source_config.get('table'), idfield=self.source_config.get('id'))
+        doubles = self.db.select(doublequery)
+        elapsed = "%0.2f" % (timer() - start)
+        logger.debug('Find doubles [{elapsed} seconds]'.format(elapsed=elapsed))
+        count = 0
+        for double in doubles:
+            for importid in double.importids[:-1]:
+                deletequery = "DELETE FROM {source}_import WHERE id = {importid}".format(source=self.source_config.get('table'),
+                                                                                         importid=importid)
+                db.execute(deletequery)
+            count += 1
+        elapsed = "%0.2f" % (timer() - start)
+        logger.debug('Filtered {doubles} records with more than one entry in the source data [{elapsed} seconds]'.format(doubles=count, elapsed=elapsed))
 
-    Parameters:
 
-     * changes - dictionary met veranderingen
-     * sourceconfig - de configuratie van een bron
+    @db_session
+    def list_changes(self):
+        """
+        Identificeert de verschillen tussen de huidige database en de nieuwe data, op basis van hash.
 
-    """
-    table = sourceconfig.get('table')
-    idfield = sourceconfig.get('id')
-    importtable = globals()[table.capitalize() + '_import']
-    currenttable = globals()[table.capitalize() + '_current']
+        Als een hash ontbreekt in de bestaande data, maar aanwezig is in de nieuwe data. Dan kan het gaan
+        om een nieuw (new) record of een update.
 
-    fp = open_deltafile('new', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
-    # Geen toegang tot elastic search? Schrijf de data naar incrementele files
+        Een hash die aanwezig is in de bestaande data, maar ontbreekt in de nieuwe data kan gaan om een
+        verwijderd record. Maar dit is alleen te bepalen bij analyse van complete datasets. Een changes
+        dictionary ziet er over het algemeen zo uit.
 
-    for change in changes['new']:
-        importrec = importtable.select(lambda p: p.rec[idfield] == change).get()
-        if (importrec):
-            insertquery = "insert into {table}_current (rec, hash, datum) " \
-                          "select rec, hash, datum from {table}_import where id={id}".format(table=sourceconfig.get('table'),
-                                                                                             id=importrec.id)
-            if (fp):
-                json.dump(importrec.rec, fp)
-                fp.write('\n')
+        ```
+            changes = {
+                'new': [
+                    '3732672@BRAHMS',
+                    '1369617@BRAHMS',
+                    '2455323@BRAHMS'
+                ],
+                'update': [],
+                'delete': []
+            }
+        ```
+
+        """
+        self.changes = {'new': [], 'update': [], 'delete': []}
+        source_base = self.source_config.get('table')
+        idfield = self.source_config.get('id')
+
+        if (len(source_base)):
+            leftdiffquery = 'SELECT {source}_import.hash FROM {source}_import ' \
+                            'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
+                            'WHERE {source}_current.hash is null'.format(source=source_base)
+            neworupdates = db.select(leftdiffquery)
+
+            rightdiffquery = 'SELECT {source}_current.hash FROM {source}_import ' \
+                             'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
+                             'WHERE {source}_import.hash is null'.format(source=source_base)
+            updateordeletes = db.select(rightdiffquery)
+
+            importtable = globals()[source_base.capitalize() + '_import']
+            currenttable = globals()[source_base.capitalize() + '_current']
+
+            # new or update
+            for result in neworupdates:
+                r = importtable.get(hash=result)
+                if (r.rec):
+                    self.changes['new'].append(r.rec[idfield])
+
+            # updates or deletes
+            for result in updateordeletes:
+                r = currenttable.get(hash=result)
+                if (r.rec):
+                    uid = r.rec[idfield]
+                    try:
+                        self.changes['new'].index(uid)
+                        self.changes['new'].remove(uid)
+                        self.changes['update'].append(uid)
+                    except:
+                        self.changes['delete'].append(uid)
+
+            if (len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete'])):
+                logger.info('{new} new, {update} updated and {delete} removed'.format(new=len(self.changes['new']),
+                                                                                      update=len(self.changes['update']),
+                                                                                      delete=len(self.changes['delete'])))
             else:
-                logger.debug("New record [{id}] posted to NBA".format(id=importrec.rec[idfield]))
-                es.index(index=sourceconfig.get('index'),
-                         doc_type=sourceconfig.get('doctype', 'unknown'),
-                         body=importrec.rec, id=importrec.rec[idfield])
-            db.execute(insertquery)
-            logger.info("New record [{id}] inserted".format(id=importrec.rec[idfield]))
-    if (fp):
-        fp.close()
+                logger.info('No changes')
+        return self.changes
 
 
-@db_session
-def handle_updates(changes = dict(), sourceconfig = dict()):
-    """
-    Afhandelen van alle updates.
+    @db_session
+    def handle_new(self, changes = {}, sourceconfig = {}):
+        """
+        Afhandelen van alle nieuwe records.
 
-    Parameters:
+        Parameters:
 
-     * changes - dictionary met veranderingen
-     * sourceconfig - de configuratie van een bron
-    """
-    table = sourceconfig.get('table')
-    idfield = sourceconfig.get('id')
-    enriches = sourceconfig.get('enriches', None)
-    importtable = globals()[table.capitalize() + '_import']
-    currenttable = globals()[table.capitalize() + '_current']
+         * changes - dictionary met veranderingen
+         * sourceconfig - de configuratie van een bron
 
-    fp = open_deltafile('update', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
-    # Geen toegang tot elastic search? Schrijf de data naar incrementele files
+        """
+        table = sourceconfig.get('table')
+        idfield = sourceconfig.get('id')
+        importtable = globals()[table.capitalize() + '_import']
+        currenttable = globals()[table.capitalize() + '_current']
 
-    for change in changes['update']:
-        newrec = importtable.select(lambda p: p.rec[idfield] == change).get()
-        oldrec = currenttable.select(lambda p: p.rec[idfield] == change).get()
-        if (newrec and oldrec):
-            updatequery = "update {table}_current set (rec, hash, datum) = " \
-                          "(select rec, hash, datum from {table}_import where {table}_import.id={importid}) " \
-                          "where {table}_current.id={currentid}".format(table=table,
-                                                                        currentid=oldrec.id,
-                                                                        importid=newrec.id)
-            if (fp):
-                json.dump(newrec.rec, fp)
-                fp.write('\n')
-            else:
-                logger.debug("Updated record [{id}] to NBA".format(id=newrec.rec[idfield]))
-                es.index(index=sourceconfig.get('index'),
-                         doc_type=sourceconfig.get('doctype', 'unknown'),
-                         body=newrec.rec,
-                         id=newrec.rec[idfield])
+        fp = open_deltafile('new', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
+        # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
-            if (enriches):
-                for source in enriches:
-                    logger.debug('Enrich source = {source}'.format(source=source))
-                    handle_enrichment(source, oldrec)
-
-            logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
-    if (fp):
-        fp.close()
-
-
-@db_session
-def handle_deletes(changes = dict(), sourceconfig = dict()):
-    """
-    Afhandelen van alle deletes.
-
-    Parameters:
-
-     * changes - dictionary met veranderingen
-     * sourceconfig - de configuratie van een bron
-    """
-    table = sourceconfig.get('table')
-    idfield = sourceconfig.get('id')
-    currenttable = globals()[table.capitalize() + '_current']
-    enriches = sourceconfig.get('enriches', None)
-
-    fp = open_deltafile('delete', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
-    # Geen toegang tot elastic search? Schrijf de data naar incrementele files
-
-    for change in changes['delete']:
-        oldrec = currenttable.select(lambda p: p.rec[idfield] == change).get()
-        if (oldrec):
-            deleteid = oldrec.rec[idfield]
-            if (fp):
-                fp.write('{deleteid}\n'.format(deleteid=deleteid))
-            else:
-                # delete from elastic search index
-                es.delete(index=sourceconfig.get('index'),
-                          doc_type=sourceconfig.get('doctype', 'unknown'),
-                          id=oldrec.rec[idfield],
-                          ignore=[400, 404])
-                logger.debug("Delete record [{id}] from NBA".format(id=deleteid))
-
-            if (enriches):
-                for source in enriches:
-                    logger.debug('Enrich source = {source}'.format(source=source))
-                    handle_enrichment(source, oldrec)
-
-            oldrec.delete()
-            logger.info("Record [{deleteid}] deleted".format(deleteid=deleteid))
-    if (fp):
-        fp.close()
-
-def list_impacted(sourceconfig, scientificnamegroup):
-    table = sourceconfig.get('table')
-    currenttable = globals()[table.capitalize() + '_current']
-
-    jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (scientificnamegroup)
-    items = currenttable.select(lambda p: raw_sql(jsonsql))
-
-    if (len(items)):
-        logger.info("Found {number} records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
-        return items
-    else :
-        logger.error("Found no records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
-        logger.debug(items.get_sql())
-        return False
-
-@db_session
-def handle_enrichment(source, rec):
-    scientificnamegroup = None
-    sourceconfig = ppdb_config.get('sources').get(source)
-
-    if (rec.rec.get('acceptedName')):
-        scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
-
-    if (scientificnamegroup):
-        impactedrecords = list_impacted(sourceconfig, scientificnamegroup)
-        if (impactedrecords):
-            fp = open_deltafile('enrich', sourceconfig.get('table'))
-            for impactedrec in impactedrecords:
-                json.dump(impactedrec.rec, fp)
-                fp.write('\n')
+        for change in changes['new']:
+            importrec = importtable.select(lambda p: p.rec[idfield] == change).get()
+            if (importrec):
+                insertquery = "insert into {table}_current (rec, hash, datum) " \
+                              "select rec, hash, datum from {table}_import where id={id}".format(table=sourceconfig.get('table'),
+                                                                                                 id=importrec.id)
+                if (fp):
+                    json.dump(importrec.rec, fp)
+                    fp.write('\n')
+                else:
+                    logger.debug("New record [{id}] posted to NBA".format(id=importrec.rec[idfield]))
+                    es.index(index=sourceconfig.get('index'),
+                             doc_type=sourceconfig.get('doctype', 'unknown'),
+                             body=importrec.rec, id=importrec.rec[idfield])
+                db.execute(insertquery)
+                logger.info("New record [{id}] inserted".format(id=importrec.rec[idfield]))
+        if (fp):
             fp.close()
 
 
-@db_session
-def handle_changes(sourceconfig=dict()):
-    """
-    Afhandelen van alle veranderingen.
+    @db_session
+    def handle_updates(self, changes = dict(), sourceconfig = dict()):
+        """
+        Afhandelen van alle updates.
 
-    Parameters:
+        Parameters:
 
-     * changes - dictionary met veranderingen
-     * sourceconfig - de configuratie van een bron
-    """
-    changes = list_changes(sourceconfig)
+         * changes - dictionary met veranderingen
+         * sourceconfig - de configuratie van een bron
+        """
+        table = sourceconfig.get('table')
+        idfield = sourceconfig.get('id')
+        enriches = sourceconfig.get('enriches', None)
+        importtable = globals()[table.capitalize() + '_import']
+        currenttable = globals()[table.capitalize() + '_current']
 
-    if (len(changes['new'])):
-        handle_new(changes, sourceconfig)
-    if (len(changes['update'])):
-        handle_updates(changes, sourceconfig)
-    if (not sourceconfig.get('incremental')):
-        if (len(changes['delete'])):
-            handle_deletes(changes, sourceconfig)
+        fp = open_deltafile('update', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
+        # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
-    return changes
+        for change in changes['update']:
+            newrec = importtable.select(lambda p: p.rec[idfield] == change).get()
+            oldrec = currenttable.select(lambda p: p.rec[idfield] == change).get()
+            if (newrec and oldrec):
+                updatequery = "update {table}_current set (rec, hash, datum) = " \
+                              "(select rec, hash, datum from {table}_import where {table}_import.id={importid}) " \
+                              "where {table}_current.id={currentid}".format(table=table,
+                                                                            currentid=oldrec.id,
+                                                                            importid=newrec.id)
+                if (fp):
+                    json.dump(newrec.rec, fp)
+                    fp.write('\n')
+                else:
+                    logger.debug("Updated record [{id}] to NBA".format(id=newrec.rec[idfield]))
+                    es.index(index=sourceconfig.get('index'),
+                             doc_type=sourceconfig.get('doctype', 'unknown'),
+                             body=newrec.rec,
+                             id=newrec.rec[idfield])
 
+                if (enriches):
+                    for source in enriches:
+                        logger.debug('Enrich source = {source}'.format(source=source))
+                        handle_enrichment(source, oldrec)
+
+                logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
+        if (fp):
+            fp.close()
+
+
+    @db_session
+    def handle_deletes(self, changes = dict(), sourceconfig = dict()):
+        """
+        Afhandelen van alle deletes.
+
+        Parameters:
+
+         * changes - dictionary met veranderingen
+         * sourceconfig - de configuratie van een bron
+        """
+        table = sourceconfig.get('table')
+        idfield = sourceconfig.get('id')
+        currenttable = globals()[table.capitalize() + '_current']
+        enriches = sourceconfig.get('enriches', None)
+
+        fp = open_deltafile('delete', sourceconfig.get('table')) if not sourceconfig.get('elastic') else False
+        # Geen toegang tot elastic search? Schrijf de data naar incrementele files
+
+        for change in changes['delete']:
+            oldrec = currenttable.select(lambda p: p.rec[idfield] == change).get()
+            if (oldrec):
+                deleteid = oldrec.rec[idfield]
+                if (fp):
+                    fp.write('{deleteid}\n'.format(deleteid=deleteid))
+                else:
+                    # delete from elastic search index
+                    es.delete(index=sourceconfig.get('index'),
+                              doc_type=sourceconfig.get('doctype', 'unknown'),
+                              id=oldrec.rec[idfield],
+                              ignore=[400, 404])
+                    logger.debug("Delete record [{id}] from NBA".format(id=deleteid))
+
+                if (enriches):
+                    for source in enriches:
+                        logger.debug('Enrich source = {source}'.format(source=source))
+                        handle_enrichment(source, oldrec)
+
+                oldrec.delete()
+                logger.info("Record [{deleteid}] deleted".format(deleteid=deleteid))
+        if (fp):
+            fp.close()
+
+    def list_impacted(self, scientificnamegroup):
+        table = self.source_config.get('table')
+        currenttable = globals()[table.capitalize() + '_current']
+
+        jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (scientificnamegroup)
+        items = currenttable.select(lambda p: raw_sql(jsonsql))
+
+        if (len(items)):
+            logger.info("Found {number} records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
+            return items
+        else :
+            logger.error("Found no records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
+            logger.debug(items.get_sql())
+            return False
+
+    @db_session
+    def handle_enrichment(self, rec):
+        scientificnamegroup = None
+
+        if (rec.rec.get('acceptedName')):
+            scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
+
+        if (scientificnamegroup):
+            impactedrecords = list_impacted(self.source_config, scientificnamegroup)
+            if (impactedrecords):
+                fp = open_deltafile('enrich', self.source_config.get('table'))
+                for impactedrec in impactedrecords:
+                    json.dump(impactedrec.rec, fp)
+                    fp.write('\n')
+                fp.close()
+
+
+    @db_session
+    def handle_changes(self):
+        """
+        Afhandelen van alle veranderingen.
+        """
+        changes = list_changes()
+
+        if (len(changes['new'])):
+            handle_new(changes)
+        if (len(changes['update'])):
+            handle_updates(changes)
+        if (not self.source_config.get('incremental')):
+            if (len(changes['delete'])):
+                handle_deletes(changes)
+
+        return changes
