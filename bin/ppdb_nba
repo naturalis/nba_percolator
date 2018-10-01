@@ -19,7 +19,7 @@ def main():
 
     parser.add_argument('--source', action='store', help='Name of the data source')
     parser.add_argument('--current', action='store_true', help='Import data directly to current table (default is normal incremental import)')
-    parser.add_argument('files', help='One json data file', nargs=1, default=[])
+    parser.add_argument('file', help='One json data file', nargs=1, default=[])
     args = parser.parse_args()
 
     if (not ppdb_nba.ppdb_config) :
