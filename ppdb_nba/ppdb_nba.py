@@ -209,6 +209,7 @@ def list_changes(sourceconfig={}):
         for result in updateordeletes:
             r = currenttable.get(hash=result)
             if (r.rec):
+                print("%r" % (r.rec))
                 uid = r.rec[idfield]
                 try:
                     changes['new'].index(uid)
