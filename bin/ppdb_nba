@@ -20,6 +20,7 @@ def main():
 
     sourceconfig = cfg.get('sources')
     print("%r" % (sourceconfig))
+    print("%r" % (args.source))
     srcconfig = sourceconfig.get(args.source, False)
     exit()
 #    if not srcconfig:
