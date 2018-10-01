@@ -4,14 +4,14 @@ import ppdb_nba
 
 def import_incremental(args,config):
     print("Incremental importing")
-    ppdb_nba.import_data(config.get('table') + '_import', args.source)
+    ppdb_nba.import_data(config.get('table') + '_import', args.files[0])
     remove_doubles(config)
     changes = list_changes(config)
     handle_changes(changes)
 
 def import_to_current(args,config):
-    print("Fill current table with data")
-    ppdb_nba.import_data(config.get('table') + '_current', args.source)
+    print("Fill current table '%s' with data" % (config.get('table') + '_current'))
+    ppdb_nba.import_data(config.get('table') + '_current', args.files[0])
 
 def main():
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1 /path/file2 ...'
