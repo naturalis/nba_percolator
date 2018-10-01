@@ -18,16 +18,16 @@ def main():
     parser.add_argument('files', help='One or more json data files', nargs='+', default=[])
     args = parser.parse_args()
 
-    cfg
-    exit()
-
-    srcconfig = cfg.get('sources').get(args.source, False)
-    if not srcconfig:
-        print('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
-        sources = cfg.get('sources', None)
-        if (sources) :
-            print("\n".join(sources))
-        exit(2)
+    #print("%r" % (cfg))
+    #exit()
+#
+#    srcconfig = cfg.get('sources').get(args.source, False)
+#    if not srcconfig:
+#        print('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
+#        sources = cfg.get('sources', None)
+#        if (sources) :
+#            print("\n".join(sources))
+#        exit(2)
 
     if (current):
         import_to_current(args, srcconfig)
