@@ -8,7 +8,7 @@ logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 
 def import_incremental(pp, args):
-    file = args.file[0]
+    file = args.files[0]
 
     start = timer()
     logger.info("START incremental importing of {source}: {file}".format(source=args.source, file=file))
