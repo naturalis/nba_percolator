@@ -1,18 +1,39 @@
 import unittest
 from time import sleep
-from ppdb_nba import *
+from ppdb_nba import ppdbNBA
 
 class BrahmsspecimenTestCase(unittest.TestCase):
 
     source = 'brahms-specimen'
-    config = {'table': 'brahmsspecimen',
-     'id': 'assemblageID',
-     'index': 'specimen_test',
-     'doctype': 'Specimen',
-     'enrich': True,
-     'elastic': True,
-     'incremental': False,
-     'path': '/data/brahms-specimen/'}
+    config = {
+                  'sources' :
+                  {
+                      'brahms-specimen' :
+                      {
+                         'table': 'brahmsspecimen',
+                         'id': 'assemblageID',
+                         'index': 'specimen_test',
+                         'doctype': 'Specimen',
+                         'enrich': True,
+                         'elastic': True,
+                         'incremental': False,
+                         'path': '/data/brahms-specimen/'
+                      }
+                  },
+                  'elastic' :
+                  {
+                      'host' : 'es'
+                  },
+                  'postgres' :
+                  {
+                    'host' : 'postgres',
+                    'user' : 'postgres',
+                    'pass' : 'postgres',
+                    'db'   : 'ppdb'
+                  }
+              }
+
+    pp = ppdbNBA()
 
     def __init__(self, *args, **kwargs):
         super(BrahmsspecimenTestCase, self).__init__(*args, **kwargs)

@@ -1,56 +1,76 @@
 <h1 id="ppdb_nba">ppdb_nba</h1>
 
-Dit is de NBA preprocessing database module.
+Dit is de NBA preprocessing database class.
 
 Hierin zitten alle functies en database afhankelijkheden waarmee import data
 kan worden gefilterd alvorens een import in de NBA documentstore plaatsvind.
 
-## installeren
+## installatie
 
 Installeren kan het beste via pip. Dit is een python3 module.
 
 `pip install -e git+https://github.com/jandevires71/ppdb_nba.git#egg=ppdb_nba`
 
-<h2 id="ppdb_nba.ppdb_nba.open_deltafile">open_deltafile</h2>
+Vervolgens wordt de module `ppdb_nba` en het commando `ppdb_nba` toegevoegd
+aan je executable path. De aanroep is meestal:
+
+```
+ppdb_nba --source [bronnaam] /pad/naar/jsonlinesfile.txt
+```
+
+Meer opties zijn te vinden bij aanroep met --help
+
+```
+ppdb_nba --help
+```
+
+En om de class te gebruiken:
 
 ```python
-open_deltafile(action='new', index='unknown')
+from ppdb_nba import ppdbNBA
+pp = ppdbNBA(config='config.yml',source='/pad/naar/jsonlinesfile.json')
+```
+
+<h2 id="ppdb_nba.ppdb_nba.open_deltafile">ppdbNBA.open_deltafile</h2>
+
+```python
+pp.open_deltafile(action='new', index='unknown')
 ```
 
 Open een delta bestand met records of id's om weg te schrijven.
 
-<h2 id="ppdb_nba.ppdb_nba.kill_index">kill_index</h2>
+<h2 id="ppdb_nba.ppdb_nba.kill_index">ppdbNBA.kill_index</h2>
 
 ```python
-kill_index(sourceconfig)
+pp.kill_index()
 ```
 
 Verwijdert de index uit elastic search.
 
-<h2 id="ppdb_nba.ppdb_nba.clear_data">clear_data</h2>
+<h2 id="ppdb_nba.ppdb_nba.clear_data">ppdbNBA.clear_data</h2>
 
 ```python
-clear_data(table='')
+pp.clear_data(table='')
 ```
 Verwijder data uit tabel.
-<h2 id="ppdb_nba.ppdb_nba.import_data">import_data</h2>
+<h2 id="ppdb_nba.ppdb_nba.import_data">ppdbNBA.import_data</h2>
 
 ```python
-import_data(table='', datafile='')
+pp.import_data(table='', datafile='')
 ```
 
 Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
 
-<h2 id="ppdb_nba.ppdb_nba.remove_doubles">remove_doubles</h2>
+<h2 id="ppdb_nba.ppdb_nba.remove_doubles">ppdbNBA.remove_doubles</h2>
 
 ```python
-remove_doubles(config)
+pp.remove_doubles()
 ```
 Bepaalde bronnen bevatte dubbele records, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd.
-<h2 id="ppdb_nba.ppdb_nba.list_changes">list_changes</h2>
+<h2 id="ppdb_nba.ppdb_nba.list_changes">ppdbNBA.list_changes</h2>
 
 ```python
-list_changes(sourceconfig='')
+pp.list_changes()
 ```
 
 Identificeert de verschillen tussen de huidige database en de nieuwe data, op basis van hash.
@@ -75,99 +95,60 @@ dictionary ziet er over het algemeen zo uit.
 ```
 
 
-<h2 id="ppdb_nba.ppdb_nba.handle_new">handle_new</h2>
+<h2 id="ppdb_nba.ppdb_nba.handle_new">ppdbNBA.handle_new</h2>
 
 ```python
-handle_new(changes={}, sourceconfig={})
+pp.handle_new()
 ```
 
 Afhandelen van alle nieuwe records.
 
-Parameters:
 
- * changes - dictionary met veranderingen
- * sourceconfig - de configuratie van een bron
-
-
-<h2 id="ppdb_nba.ppdb_nba.handle_updates">handle_updates</h2>
+<h2 id="ppdb_nba.ppdb_nba.handle_updates">ppdbNBA.handle_updates</h2>
 
 ```python
-handle_updates(changes={}, sourceconfig={})
+pp.handle_updates()
 ```
 
 Afhandelen van alle updates.
 
-Parameters:
-
- * changes - dictionary met veranderingen
- * sourceconfig - de configuratie van een bron
-
-<h2 id="ppdb_nba.ppdb_nba.handle_deletes">handle_deletes</h2>
+<h2 id="ppdb_nba.ppdb_nba.handle_deletes">ppdbNBA.handle_deletes</h2>
 
 ```python
-handle_deletes(changes={}, sourceconfig={})
+pp.handle_deletes()
 ```
 
 Afhandelen van alle deletes.
 
-Parameters:
-
- * changes - dictionary met veranderingen
- * sourceconfig - de configuratie van een bron
-
-<h2 id="ppdb_nba.ppdb_nba.handle_changes">handle_changes</h2>
+<h2 id="ppdb_nba.ppdb_nba.handle_changes">ppdbNBA.handle_changes</h2>
 
 ```python
-handle_changes(sourceconfig={})
+pp.handle_changes()
 ```
 
 Afhandelen van alle veranderingen.
 
-Parameters:
-
- * changes - dictionary met veranderingen
- * sourceconfig - de configuratie van een bron
-
 
 ## Voorbeelden
 
-Voorbeeld van een script dat een kale import doet.
+Voorbeeld van een script dat een import doet.
 
 ```python
 from ppdb_nba import *
 logger.setLevel(logging.DEBUG)
 # Zet de logging level op DEBUG
-srcconfig = cfg.get('sources').get('brahms-specimen')
-# Haal de configuratie voor de bron
-clear_data(table=srcconfig.get('table') + "_import")
-# Maak de current tabel leeg
-kill_index(srcconfig)
-# Verwijder de index uit elastic search
-import_data(table=srcconfig.get('table') + "_import", datafile='/data/brahms-specimen/1-base.json')
-# importeer de basis data
-remove_doubles(srcconfig)
-# verwijder de dubbele
-changes = list_changes(srcconfig)
-# bepaalde veranderingen (allemaal nieuwe records)
-handle_changes(srcconfig)
-# handel de nieuwe af
-```
 
-Een voorbeeld van een script dat in een bestaande tabel aanpassingen, importeert:
-
-```python
-from ppdb_nba import *
-logger.setLevel(logging.DEBUG)
-# Zet de logging level op DEBUG
-srcconfig = cfg.get('sources').get('brahms-specimen')
-# Verwijder de index uit elastic search
-import_data(table=srcconfig.get('table') + "_import", datafile='/data/brahms-specimen/5-updatesnew.json')
+pp = ppdbNBA(config='config.yml',source='brahms-specimen')
+# configureer de preprocessor
+pp.clear_data(table=pp.source_config.get('table') + "_import")
+# verwijder de data uit de import tabel
+pp.import_data(table=pp.source_config.get('table') + "_import", datafile='/data/brahms-specimen/1-base.json')
 # importeer de basis data
-remove_doubles(srcconfig)
+pp.remove_doubles()
 # verwijder de dubbele
-changes = list_changes(srcconfig)
+pp.list_changes()
 # bepaalde veranderingen (allemaal nieuwe records)
-handle_changes(srcconfig)
+pp.handle_changes()
 # handel de nieuwe af
 ```
 
