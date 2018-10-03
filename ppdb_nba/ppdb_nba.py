@@ -217,7 +217,7 @@ class ppdbNBA():
             count += 1
 
         logger.debug(
-            '[{elapsed} seconds] Filtered {doubles} records with more than one entry in the source data'.format(
+            '[{elapsed:.2f} seconds] Filtered {doubles} records with more than one entry in the source data'.format(
                 doubles=count, elapsed=(timer() - lap)))
 
     @db_session
@@ -257,7 +257,7 @@ class ppdbNBA():
                             'WHERE {source}_current.hash is null'.format(source=source_base)
             neworupdates = self.db.select(leftdiffquery)
             logger.debug(
-                'Left full outer join on "{source}" [{elapsed:.2f} seconds]'.format(source=source_base, elapsed=(timer() - lap)))
+                '[{elapsed:.2f} seconds] Left full outer join on "{source}"'.format(source=source_base, elapsed=(timer() - lap)))
             lap = timer()
 
             rightdiffquery = 'SELECT {source}_current.hash FROM {source}_import ' \
@@ -290,7 +290,7 @@ class ppdbNBA():
                         self.changes['delete'].append(uid)
 
             if (len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete'])):
-                logger.info(' [{elapsed:.2f} seconds] identified {new} new, {update} updated and {delete} removed'.format(new=len(self.changes['new']),
+                logger.info('[{elapsed:.2f} seconds] identified {new} new, {update} updated and {delete} removed'.format(new=len(self.changes['new']),
                                                                                       update=len(self.changes['update']),
                                                                                       delete=len(self.changes['delete']),
                                                                                       elapsed=(timer() - lap)
