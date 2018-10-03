@@ -18,7 +18,7 @@ def import_incremental(pp, args):
     logger.info("[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(elapsed=(timer()-start), source=args.source, file=file))
 
 def import_to_current(pp,config):
-    logger.info("Fill current table '%s' with data" % (config.get('table') + '_current'))
+    logger.info("Fill current table '%s' with data" % (pp.source_config.get('table') + '_current'))
     pp.import_data(pp.source_config.get('table') + '_current', args.files[0])
 
 def main():
