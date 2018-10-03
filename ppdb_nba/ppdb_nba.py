@@ -19,8 +19,6 @@ from .schema import *
 logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
-stopwatch = timer()
-
 
 class ppdbNBA():
     """

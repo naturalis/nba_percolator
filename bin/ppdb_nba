@@ -1,53 +1,57 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
 from ppdb_nba import ppdbNBA
+from timeit import default_timer as timer
 import logging
 logging.basicConfig(format = u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 
-def import_incremental(args,config):
+def import_incremental(pp, args):
     file = args.file[0]
-    logger.info("Starting incremental importing of {file}".format(file=file))
-    ppdb_nba.import_data(config.get('table') + '_import', args.files[0])
-    ppdb_nba.remove_doubles(config)
-    ppdb_nba.handle_changes(config)
 
-def import_to_current(args,config):
+    start = timer()
+    logger.info("START incremental importing of {source}: {file}".format(source=args.source, file=file))
+    pp.import_data(table=config.get('table') + '_import', datafile=args.files[0])
+    pp.remove_doubles()
+    pp.handle_changes()
+    logger.info("[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(elapsed=(timer()-start), source=args.source, file=file))
+
+def import_to_current(pp,config):
     logger.info("Fill current table '%s' with data" % (config.get('table') + '_current'))
-    ppdb_nba.import_data(config.get('table') + '_current', args.files[0])
+    pp.import_data(config.get('table') + '_current', args.files[0])
 
 def main():
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
-                                           '\n\nPreprocessing data to create incremental updates or posting it directly'
-                                           '\nto elastic search')
+                                           '\n\nPreprocessing data to create incremental updates')
 
-    parser.add_argument('--source', action='store', help='Name of the data source')
+    parser.add_argument('--source', action='store', help='Name of the data source', required=True)
+    parser.add_argument('--config', action='store', help='Config file', default="config.yml")
     parser.add_argument('--current', action='store_true', help='Import data directly to current table (default is normal incremental import)')
     parser.add_argument('--debug', action='store_true', help='Set debugging level logging')
     parser.add_argument('files', help='One json data file', nargs=1, default=[])
     args = parser.parse_args()
 
+    pp = ppdbNBA(config=args.config,source=args.source)
+
     if (args.debug):
         logger.setLevel(logging.DEBUG)
 
-    if (not ppdb_nba.ppdb_config) :
+    if (not pp.config) :
         logger.fatal("Configuratie ontbreekt")
         exit(2)
 
-    srcconfig = ppdb_nba.ppdb_config.get('sources').get(args.source, False)
-
-    if not srcconfig:
-        print('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
-        sources = ppdb_nba.ppdb_config.get('sources', None)
+    if not pp.source_config:
+        logger.fatal('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
+        sources = pp.config.get('sources', [])
         if (sources) :
             print("\n - ".join(sources))
         exit(2)
 
     if (args.current):
-        import_to_current(args, srcconfig)
+        import_to_current(pp, args)
     else:
-        import_incremental(args, srcconfig)
+        import_incremental(pp, args)
 
 if __name__ == "__main__":
     main()
