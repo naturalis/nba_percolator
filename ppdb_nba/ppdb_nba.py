@@ -180,12 +180,7 @@ class ppdbNBA():
             logger.debug(
                 '[{elapsed:.2f} seconds] Set index on indentifications in "{table}"'.format(table=table,
                                                                                       elapsed=(timer() - lap)))
-            lap = timer()
-        # zet json record index voor scientificNameGroup
 
-        logger.debug(
-            '[{elapsed:.2f} seconds] Imported data "{datafile}" into "{table}"'.format(datafile=datafile, table=table,
-                                                                                  elapsed=(timer() - lap)))
 
     @db_session
     def remove_doubles(self):
