@@ -61,6 +61,8 @@ class ppdbNBA():
 
         if (self.source_config.get('es', False)):
             self.es = self.connect_to_elastic()
+        else:
+            self.es = False
 
         self.connect_to_database()
 
