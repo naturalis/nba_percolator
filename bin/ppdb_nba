@@ -12,14 +12,14 @@ def import_incremental(pp, args):
 
     start = timer()
     logger.info("START incremental importing of {source}: {file}".format(source=args.source, file=file))
-    pp.import_data(table=config.get('table') + '_import', datafile=args.files[0])
+    pp.import_data(table=pp.source_config.get('table') + '_import', datafile=args.files[0])
     pp.remove_doubles()
     pp.handle_changes()
     logger.info("[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(elapsed=(timer()-start), source=args.source, file=file))
 
 def import_to_current(pp,config):
     logger.info("Fill current table '%s' with data" % (config.get('table') + '_current'))
-    pp.import_data(config.get('table') + '_current', args.files[0])
+    pp.import_data(pp.source_config.get('table') + '_current', args.files[0])
 
 def main():
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
