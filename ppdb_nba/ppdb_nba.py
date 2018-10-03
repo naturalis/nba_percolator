@@ -54,7 +54,7 @@ class ppdbNBA():
             msg = 'Sources part missing in config'
             sys.exit(msg)
         if (self.config.get('sources').get(source)):
-            self.source_config = self.config.get('sources').get('source')
+            self.source_config = self.config.get('sources').get(source)
         else:
             msg = 'Source "%s" does not exist in config file' % (source)
             sys.exit(msg)
