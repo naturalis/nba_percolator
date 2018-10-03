@@ -17,7 +17,7 @@ def import_incremental(pp, args):
     pp.handle_changes()
     logger.info("[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(elapsed=(timer()-start), source=args.source, file=file))
 
-def import_to_current(pp,config):
+def import_to_current(pp,args):
     logger.info("Fill current table '%s' with data" % (pp.source_config.get('table') + '_current'))
     pp.import_data(pp.source_config.get('table') + '_current', args.files[0])
 
