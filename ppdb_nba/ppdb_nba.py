@@ -10,26 +10,29 @@ import os
 import sys
 import time
 from timeit import default_timer as timer
-
 import yaml
 from elasticsearch import Elasticsearch
-
 from pony.orm import db_session
 from .schema import *
 
-logging.basicConfig(format = u'%(asctime)s - %(levelname)s - %(message)s')
+# Setup logging
+logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 stopwatch = timer()
 
 
 class ppdbNBA():
+    """
+    Preprocessor class containing all the functions needed for importing the data and
+    create incremental insert, update or delete files.
+    """
 
     def __init__(self, config, source):
         """
         Inlezen van de config.yml file waarin alle bronnen en hun specifieke wensen in moeten worden vermeld.
         """
-        if (isintance(config,str)):
+        if isinstance(config, str):
             # config is string, read the config file
             try:
                 with open(config, 'r') as ymlfile:
@@ -38,29 +41,28 @@ class ppdbNBA():
                 msg = '"config.yml" with configuration options of sources is missing'
                 logger.fatal(msg)
                 sys.exit(msg)
-        elif (isintance(config, dict)):
+        elif isinstance(config, dict):
             # config is dictionary
             self.config = config
-        else :
+        else:
             # do not accept any other type
             msg = 'Config parameter should be dictionary or filename'
             logger.fatal(msg)
             sys.exit(msg)
 
-        if (not self.config.get('sources', False)) :
+        if (not self.config.get('sources', False)):
             msg = 'Sources part missing in config'
             sys.exit(msg)
         if (self.config.get('sources').get(source)):
             self.source_config = self.config.get('sources').get('source')
-        else :
+        else:
             msg = 'Source "%s" does not exist in config file' % (source)
             sys.exit(msg)
 
-        if (self.source_config.get('es',False)):
+        if (self.source_config.get('es', False)):
             self.es = self.connect_to_elastic()
 
         self.connect_to_database()
-
 
     def connect_to_elastic(self):
         # Verbinden met Elastic search
@@ -72,10 +74,10 @@ class ppdbNBA():
             logger.fatal(msg)
             sys.exit(msg)
 
-
     def connect_to_database(self):
         # Contact maken met postgres database
-        self.db = db
+        global ppdb
+        self.db = ppdb
 
         try:
             self.db.bind(
@@ -96,7 +98,6 @@ class ppdbNBA():
             msg = 'Creating tables needed for preprocessing failed'
             logger.fatal(msg)
             sys.exit(msg)
-
 
     def open_deltafile(self, action='new', index='unknown'):
         """
@@ -131,26 +132,29 @@ class ppdbNBA():
         self.db.execute("TRUNCATE public.{table}".format(table=table))
         logger.debug('Truncated table "{table}"'.format(table=table))
 
-
     @db_session
     def import_data(self, table='', datafile='', enriched=False):
         """
-        Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
+        Importeer data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
         """
         start = timer()
         # todo: check if table exists
         # todo: check if data file exists and is readable
         self.db.execute("TRUNCATE public.{table}".format(table=table))
-        # gooi de tabel leeg
+
+        # gooi de tabel leeg, drop indexes
         self.db.execute("ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex".format(table=table))
         self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__jsonid".format(table=table))
         self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__hash".format(table=table))
         self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__gin".format(table=table))
+
         # verwijder de indexes
         self.db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
 
-        #db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
-        self.db.execute("COPY public.{table} (rec) FROM '{datafile}' CSV QUOTE e'\x01' DELIMITER e'\x02'".format(table=table, datafile=datafile))
+        # db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
+        self.db.execute(
+            "COPY public.{table} (rec) FROM '{datafile}' CSV QUOTE e'\x01' DELIMITER e'\x02'".format(table=table,
+                                                                                                     datafile=datafile))
 
         # import alle data
         #
@@ -160,22 +164,28 @@ class ppdbNBA():
         #
         self.db.execute("UPDATE {table} SET hash=md5(rec::text)".format(table=table))
         # zet de hash
-        self.db.execute("CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(table=table))
+        self.db.execute(
+            "CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(
+                table=table))
         # zet hashing index
         if (enriched):
-            self.db.execute("CREATE INDEX idx_{table}__gin ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(table=table))
+            self.db.execute(
+                "CREATE INDEX idx_{table}__gin ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
+                    table=table))
         # zet json record index voor scientificNameGroup
 
         elapsed = "%0.2f" % (timer() - start)
-        logger.debug('Imported data "{datafile}" into "{table} [{elapsed} seconds]'.format(datafile=datafile, table=table, elapsed=elapsed))
-
+        logger.debug(
+            'Imported data "{datafile}" into "{table} [{elapsed} seconds]'.format(datafile=datafile, table=table,
+                                                                                  elapsed=elapsed))
 
     @db_session
     def remove_doubles(self):
         """ Bepaalde bronnen bevatte dubbele records, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
         start = timer()
-        self.db.execute("CREATE INDEX idx_{source}_import__jsonid ON public.{source}_import((rec->>'{idfield}'))".format(
-            source=self.source_config.get('table'), idfield=self.source_config.get('id')))
+        self.db.execute(
+            "CREATE INDEX idx_{source}_import__jsonid ON public.{source}_import((rec->>'{idfield}'))".format(
+                source=self.source_config.get('table'), idfield=self.source_config.get('id')))
         elapsed = "%0.2f" % (timer() - start)
         logger.debug('Index [{elapsed} seconds]'.format(elapsed=elapsed))
         doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
@@ -187,13 +197,15 @@ class ppdbNBA():
         count = 0
         for double in doubles:
             for importid in double.importids[:-1]:
-                deletequery = "DELETE FROM {source}_import WHERE id = {importid}".format(source=self.source_config.get('table'),
-                                                                                         importid=importid)
-                db.execute(deletequery)
+                deletequery = "DELETE FROM {source}_import WHERE id = {importid}".format(
+                    source=self.source_config.get('table'),
+                    importid=importid)
+                self.db.execute(deletequery)
             count += 1
         elapsed = "%0.2f" % (timer() - start)
-        logger.debug('Filtered {doubles} records with more than one entry in the source data [{elapsed} seconds]'.format(doubles=count, elapsed=elapsed))
-
+        logger.debug(
+            'Filtered {doubles} records with more than one entry in the source data [{elapsed} seconds]'.format(
+                doubles=count, elapsed=elapsed))
 
     @db_session
     def list_changes(self):
@@ -258,12 +270,13 @@ class ppdbNBA():
 
             if (len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete'])):
                 logger.info('{new} new, {update} updated and {delete} removed'.format(new=len(self.changes['new']),
-                                                                                      update=len(self.changes['update']),
-                                                                                      delete=len(self.changes['delete'])))
+                                                                                      update=len(
+                                                                                          self.changes['update']),
+                                                                                      delete=len(
+                                                                                          self.changes['delete'])))
             else:
                 logger.info('No changes')
         return self.changes
-
 
     @db_session
     def handle_new(self):
@@ -275,29 +288,30 @@ class ppdbNBA():
         importtable = globals()[table.capitalize() + '_import']
         currenttable = globals()[table.capitalize() + '_current']
 
-        fp = self.open_deltafile('new', self.source_config.get('table')) if not self.source_config.get('elastic') else False
+        fp = self.open_deltafile('new', self.source_config.get('table')) if not self.source_config.get(
+            'elastic') else False
         # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
         for change in self.changes['new']:
             importrec = importtable.select(lambda p: p.rec[idfield] == change).get()
             if (importrec):
                 insertquery = "insert into {table}_current (rec, hash, datum) " \
-                              "select rec, hash, datum from {table}_import where id={id}".format(table=self.source_config.get('table'),
-                                                                                                 id=importrec.id)
+                              "select rec, hash, datum from {table}_import where id={id}".format(
+                    table=self.source_config.get('table'),
+                    id=importrec.id)
                 if (fp):
                     json.dump(importrec.rec, fp)
                     fp.write('\n')
 
-                if (self.es) :
+                if (self.es):
                     logger.debug("New record [{id}] posted to NBA".format(id=importrec.rec[idfield]))
                     self.es.index(index=self.source_config.get('index'),
-                             doc_type=self.source_config.get('doctype', 'unknown'),
-                             body=importrec.rec, id=importrec.rec[idfield])
+                                  doc_type=self.source_config.get('doctype', 'unknown'),
+                                  body=importrec.rec, id=importrec.rec[idfield])
                 self.db.execute(insertquery)
                 logger.info("New record [{id}] inserted".format(id=importrec.rec[idfield]))
         if (fp):
             fp.close()
-
 
     @db_session
     def handle_updates(self):
@@ -310,7 +324,8 @@ class ppdbNBA():
         importtable = globals()[table.capitalize() + '_import']
         currenttable = globals()[table.capitalize() + '_current']
 
-        fp = self.open_deltafile('update', self.source_config.get('table')) if not self.source_config.get('elastic') else False
+        fp = self.open_deltafile('update', self.source_config.get('table')) if not self.source_config.get(
+            'elastic') else False
         # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
         for change in self.changes['update']:
@@ -326,12 +341,12 @@ class ppdbNBA():
                     json.dump(newrec.rec, fp)
                     fp.write('\n')
 
-                if (self.es) :
+                if (self.es):
                     logger.debug("Updated record [{id}] to NBA".format(id=newrec.rec[idfield]))
                     self.es.index(index=self.source_config.get('index'),
-                             doc_type=self.source_config.get('doctype', 'unknown'),
-                             body=newrec.rec,
-                             id=newrec.rec[idfield])
+                                  doc_type=self.source_config.get('doctype', 'unknown'),
+                                  body=newrec.rec,
+                                  id=newrec.rec[idfield])
 
                 if (enriches):
                     for source in enriches:
@@ -344,7 +359,6 @@ class ppdbNBA():
         if (fp):
             fp.close()
 
-
     @db_session
     def handle_deletes(self):
         """
@@ -355,7 +369,8 @@ class ppdbNBA():
         currenttable = globals()[table.capitalize() + '_current']
         enriches = self.source_config.get('enriches', None)
 
-        fp = self.open_deltafile('delete', self.source_config.get('table')) if not self.source_config.get('elastic') else False
+        fp = self.open_deltafile('delete', self.source_config.get('table')) if not self.source_config.get(
+            'elastic') else False
         # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
         for change in self.changes['delete']:
@@ -365,12 +380,12 @@ class ppdbNBA():
                 if (fp):
                     fp.write('{deleteid}\n'.format(deleteid=deleteid))
 
-                if (self.es) :
+                if (self.es):
                     # delete from elastic search index
                     self.es.delete(index=self.source_config.get('index'),
-                              doc_type=self.source_config.get('doctype', 'unknown'),
-                              id=oldrec.rec[idfield],
-                              ignore=[400, 404])
+                                   doc_type=self.source_config.get('doctype', 'unknown'),
+                                   id=oldrec.rec[idfield],
+                                   ignore=[400, 404])
                     logger.debug("Delete record [{id}] from NBA".format(id=deleteid))
 
                 if (enriches):
@@ -384,17 +399,29 @@ class ppdbNBA():
             fp.close()
 
     def list_impacted(self, scientificnamegroup):
+        """
+        Zoekt uit welke gerelateerde records opnieuw verrijkt moeten worden.
+
+        :param scientificnamegroup:
+        :return bool:
+        """
         table = self.source_config.get('table')
         currenttable = globals()[table.capitalize() + '_current']
 
-        jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (scientificnamegroup)
+        jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (
+            scientificnamegroup)
         items = currenttable.select(lambda p: raw_sql(jsonsql))
 
         if (len(items)):
-            logger.info("Found {number} records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
+            logger.info(
+                "Found {number} records in {source} with scientificNameGroup={namegroup}".format(number=len(items),
+                                                                                                 source=table.capitalize(),
+                                                                                                 namegroup=scientificnamegroup))
             return items
-        else :
-            logger.error("Found no records in {source} with scientificNameGroup={namegroup}".format(number=len(items), source=table.capitalize(), namegroup=scientificnamegroup))
+        else:
+            logger.error("Found no records in {source} with scientificNameGroup={namegroup}".format(number=len(items),
+                                                                                                    source=table.capitalize(),
+                                                                                                    namegroup=scientificnamegroup))
             logger.debug(items.get_sql())
             return False
 
@@ -406,14 +433,13 @@ class ppdbNBA():
             scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
 
         if (scientificnamegroup):
-            impactedrecords = list_impacted(self.source_config, scientificnamegroup)
+            impactedrecords = self.list_impacted(self.source_config, scientificnamegroup)
             if (impactedrecords):
                 fp = self.open_deltafile('enrich', self.source_config.get('table'))
                 for impactedrec in impactedrecords:
                     json.dump(impactedrec.rec, fp)
                     fp.write('\n')
                 fp.close()
-
 
     @db_session
     def handle_changes(self):
@@ -430,4 +456,4 @@ class ppdbNBA():
             if (len(self.changes['delete'])):
                 self.handle_deletes()
 
-        return changes
+        return

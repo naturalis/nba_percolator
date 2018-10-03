@@ -6,7 +6,7 @@ een import in de NBA documentstore plaatsvind.
 from datetime import datetime
 from pony.orm import Database, Optional, Json, Required, raw_sql
 
-db = Database()
+ppdb = Database()
 
 class Nsrtaxa_import(db.Entity):
     rec = Optional(Json)
