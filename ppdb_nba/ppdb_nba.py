@@ -153,18 +153,19 @@ class ppdbNBA():
         lap = timer()
 
         # db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
+        # import alle data
         self.db.execute(
             "COPY public.{table} (rec) FROM '{datafile}' CSV QUOTE e'\x01' DELIMITER e'\x02'".format(table=table,
                                                                                                      datafile=datafile))
         logger.debug('[{elapsed:.2f} seconds] Import data "{datafile}" into "{table}'.format(datafile=datafile, table=table, elapsed=(timer() - lap)))
         lap = timer()
 
-        # import alle data
+        # zet de hash
         self.db.execute("UPDATE {table} SET hash=md5(rec::text)".format(table=table))
         logger.debug('[{elapsed:.2f} seconds] Set hashing on "{table}"'.format(table=table, elapsed=(timer() - lap)))
         lap = timer()
 
-        # zet de hash
+        # zet de hashing index
         self.db.execute(
             "CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(
                 table=table))
@@ -172,7 +173,13 @@ class ppdbNBA():
             '[{elapsed:.2f} seconds] Set hashing index on "{table}"'.format(table=table, elapsed=(timer() - lap)))
         lap = timer()
 
-        # zet hashing index
+        # zet de jsonid index
+        lap = timer()
+        self.db.execute(
+            "CREATE INDEX idx_{source}_import__jsonid ON public.{source}_import((rec->>'{idfield}'))".format(
+                source=self.source_config.get('table'), idfield=self.source_config.get('id')))
+        logger.debug('[{elapsed:.2f} seconds] Set index on jsonid '.format(elapsed=(timer() - lap)))
+
         if (enriched):
             self.db.execute(
                 "CREATE INDEX idx_{table}__gin ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
@@ -185,11 +192,6 @@ class ppdbNBA():
     @db_session
     def remove_doubles(self):
         """ Bepaalde bronnen bevatte dubbele records, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
-        lap = timer()
-        self.db.execute(
-            "CREATE INDEX idx_{source}_import__jsonid ON public.{source}_import((rec->>'{idfield}'))".format(
-                source=self.source_config.get('table'), idfield=self.source_config.get('id')))
-        logger.debug('[{elapsed:.2f} seconds] Set index on jsonid '.format(elapsed=(timer() - lap)))
         lap = timer()
 
         doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
