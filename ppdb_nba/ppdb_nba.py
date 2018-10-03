@@ -139,9 +139,8 @@ class ppdbNBA():
         """
         Importeer data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
         """
-        start = timer()
-        # todo: check if table exists
-        # todo: check if data file exists and is readable
+        lap = timer()
+
         self.db.execute("TRUNCATE public.{table}".format(table=table))
 
         # gooi de tabel leeg, drop indexes
@@ -152,50 +151,62 @@ class ppdbNBA():
 
         # verwijder de indexes
         self.db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
+        logger.debug('[{elapsed:.2f} seconds] Reset "{table}" for import'.format(table=table, elapsed=(timer() - lap)))
+        lap = timer()
 
         # db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
         self.db.execute(
             "COPY public.{table} (rec) FROM '{datafile}' CSV QUOTE e'\x01' DELIMITER e'\x02'".format(table=table,
                                                                                                      datafile=datafile))
+        logger.debug('[{elapsed:.2f} seconds] Import data "{datafile}" into "{table}'.format(datafile=datafile, table=table, elapsed=(timer() - lap)))
+        lap = timer()
 
         # import alle data
-        #
-        # @todo: In bijvoorbeeld de xenocanto waarnemingen zitten velden met quotes in de tekst. Die zijn zo
-        # gecodeerd: "dit is \"een\" voorbeeld". Dit accepteert het COPY statement niet. Die verwacht dubbele
-        # backslashes.  Hier moet iets op bedacht worden.
-        #
         self.db.execute("UPDATE {table} SET hash=md5(rec::text)".format(table=table))
+        logger.debug('[{elapsed:.2f} seconds] Set hashing on "{table}"'.format(table=table, elapsed=(timer() - lap)))
+        lap = timer()
+
         # zet de hash
         self.db.execute(
             "CREATE INDEX idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(
                 table=table))
+        logger.debug(
+            '[{elapsed:.2f} seconds] Set hashing index on "{table}"'.format(table=table, elapsed=(timer() - lap)))
+        lap = timer()
+
         # zet hashing index
         if (enriched):
             self.db.execute(
                 "CREATE INDEX idx_{table}__gin ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
                     table=table))
+            logger.debug(
+                '[{elapsed:.2f} seconds] Set index on indentifications in "{table}"'.format(table=table,
+                                                                                      elapsed=(timer() - lap)))
+            lap = timer()
         # zet json record index voor scientificNameGroup
 
-        elapsed = "%0.2f" % (timer() - start)
         logger.debug(
-            'Imported data "{datafile}" into "{table} [{elapsed} seconds]'.format(datafile=datafile, table=table,
-                                                                                  elapsed=elapsed))
+            '[{elapsed:.2f} seconds] Imported data "{datafile}" into "{table}"'.format(datafile=datafile, table=table,
+                                                                                  elapsed=(timer() - lap)))
 
     @db_session
     def remove_doubles(self):
         """ Bepaalde bronnen bevatte dubbele records, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
-        start = timer()
+        lap = timer()
         self.db.execute(
             "CREATE INDEX idx_{source}_import__jsonid ON public.{source}_import((rec->>'{idfield}'))".format(
                 source=self.source_config.get('table'), idfield=self.source_config.get('id')))
-        elapsed = "%0.2f" % (timer() - start)
-        logger.debug('Index [{elapsed} seconds]'.format(elapsed=elapsed))
+        logger.debug('[{elapsed:.2f} seconds] Set index on jsonid '.format(elapsed=(timer() - lap)))
+        lap = timer()
+
         doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
                       "FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
-            source=self.source_config.get('table'), idfield=self.source_config.get('id'))
+                      source=self.source_config.get('table'),
+                      idfield=self.source_config.get('id'))
         doubles = self.db.select(doublequery)
-        elapsed = "%0.2f" % (timer() - start)
-        logger.debug('Find doubles [{elapsed} seconds]'.format(elapsed=elapsed))
+        logger.debug('[{elapsed:.2f} seconds] Find doubles'.format(elapsed=(timer() - lap)))
+        lap = timer()
+
         count = 0
         for double in doubles:
             for importid in double.importids[:-1]:
@@ -204,10 +215,10 @@ class ppdbNBA():
                     importid=importid)
                 self.db.execute(deletequery)
             count += 1
-        elapsed = "%0.2f" % (timer() - start)
+
         logger.debug(
-            'Filtered {doubles} records with more than one entry in the source data [{elapsed} seconds]'.format(
-                doubles=count, elapsed=elapsed))
+            '[{elapsed} seconds] Filtered {doubles} records with more than one entry in the source data'.format(
+                doubles=count, elapsed=(timer() - lap)))
 
     @db_session
     def list_changes(self):
@@ -234,6 +245,8 @@ class ppdbNBA():
         ```
 
         """
+        lap = timer()
+
         self.changes = {'new': [], 'update': [], 'delete': []}
         source_base = self.source_config.get('table')
         idfield = self.source_config.get('id')
@@ -243,11 +256,17 @@ class ppdbNBA():
                             'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                             'WHERE {source}_current.hash is null'.format(source=source_base)
             neworupdates = self.db.select(leftdiffquery)
+            logger.debug(
+                'Left full outer join on "{source}" [{elapsed:.2f} seconds]'.format(source=source_base, elapsed=(timer() - lap)))
+            lap = timer()
 
             rightdiffquery = 'SELECT {source}_current.hash FROM {source}_import ' \
                              'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                              'WHERE {source}_import.hash is null'.format(source=source_base)
             updateordeletes = self.db.select(rightdiffquery)
+            logger.debug(
+                '[{elapsed:.2f} seconds] Right full outer join on "{source}"'.format(source=source_base, elapsed=(timer() - lap)))
+            lap = timer()
 
             importtable = globals()[source_base.capitalize() + '_import']
             currenttable = globals()[source_base.capitalize() + '_current']
@@ -271,11 +290,12 @@ class ppdbNBA():
                         self.changes['delete'].append(uid)
 
             if (len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete'])):
-                logger.info('{new} new, {update} updated and {delete} removed'.format(new=len(self.changes['new']),
-                                                                                      update=len(
-                                                                                          self.changes['update']),
-                                                                                      delete=len(
-                                                                                          self.changes['delete'])))
+                logger.info(' [{elapsed:.2f} seconds] identified {new} new, {update} updated and {delete} removed'.format(new=len(self.changes['new']),
+                                                                                      update=len(self.changes['update']),
+                                                                                      delete=len(self.changes['delete']),
+                                                                                      elapsed=(timer() - lap)
+                                                                                                 ))
+
             else:
                 logger.info('No changes')
         return self.changes
