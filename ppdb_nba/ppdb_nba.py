@@ -176,7 +176,7 @@ class ppdbNBA():
         # zet de jsonid index
         lap = timer()
         self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_{source}_import__jsonid ON public.{table}((rec->>'{idfield}'))".format(
+            "CREATE INDEX IF NOT EXISTS idx_{table}__jsonid ON public.{table}((rec->>'{idfield}'))".format(
                 table=table, idfield=self.source_config.get('id')))
         logger.debug('[{elapsed:.2f} seconds] Set index on jsonid '.format(elapsed=(timer() - lap)))
 
