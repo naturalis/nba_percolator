@@ -1,6 +1,6 @@
 <h1 id="ppdb_nba">ppdb_nba</h1>
 
-Dit is de NBA preprocessing database module.
+Dit is de NBA preprocessing database class.
 
 Hierin zitten alle functies en database afhankelijkheden waarmee import data
 kan worden gefilterd alvorens een import in de NBA documentstore plaatsvind.
@@ -10,6 +10,20 @@ kan worden gefilterd alvorens een import in de NBA documentstore plaatsvind.
 Installeren kan het beste via pip. Dit is een python3 module.
 
 `pip install -e git+https://github.com/jandevires71/ppdb_nba.git#egg=ppdb_nba`
+
+Vervolgens wordt de module `ppdb_nba` en het commando `ppdb_nba` toegevoegd
+aan je executable path. De aanroep is meestal:
+
+```
+ppdb_nba --current --source [bron] /pad/naar/jsonlinesfile.txt
+```
+
+En om de class te gebruiken:
+
+```python
+from ppdb_nba import ppdbNBA
+
+```
 
 <h2 id="ppdb_nba.ppdb_nba.open_deltafile">open_deltafile</h2>
 
