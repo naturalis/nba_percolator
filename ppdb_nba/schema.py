@@ -6,135 +6,135 @@ een import in de NBA documentstore plaatsvind.
 from datetime import datetime
 from pony.orm import Database, Optional, Json, Required, raw_sql
 
-db = Database()
+ppdb = Database()
 
-class Nsrtaxa_import(db.Entity):
+class Nsrtaxa_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Nsrtaxa_current(db.Entity):
+class Nsrtaxa_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Nsrmedia_import(db.Entity):
+class Nsrmedia_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Nsrmedia_current(db.Entity):
+class Nsrmedia_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Crsspecimen_import(db.Entity):
+class Crsspecimen_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Crsspecimen_current(db.Entity):
+class Crsspecimen_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Crsmedia_import(db.Entity):
+class Crsmedia_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Crsmedia_current(db.Entity):
+class Crsmedia_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Brahmsspecimen_import(db.Entity):
+class Brahmsspecimen_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Brahmsspecimen_current(db.Entity):
+class Brahmsspecimen_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Brahmsmedia_import(db.Entity):
+class Brahmsmedia_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Brahmsmedia_current(db.Entity):
+class Brahmsmedia_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Xenocantospecimen_import(db.Entity):
+class Xenocantospecimen_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Xenocantospecimen_current(db.Entity):
+class Xenocantospecimen_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Xenocantomedia_import(db.Entity):
+class Xenocantomedia_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Xenocantomedia_current(db.Entity):
+class Xenocantomedia_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Coltaxa_import(db.Entity):
+class Coltaxa_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Coltaxa_current(db.Entity):
+class Coltaxa_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Waarnemingspecimen_import(db.Entity):
+class Waarnemingspecimen_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Waarnemingspecimen_current(db.Entity):
+class Waarnemingspecimen_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Waarnemingmedia_current(db.Entity):
+class Waarnemingmedia_current(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
 
-class Waarnemingmedia_import(db.Entity):
+class Waarnemingmedia_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
