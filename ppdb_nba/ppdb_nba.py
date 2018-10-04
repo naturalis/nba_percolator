@@ -363,7 +363,7 @@ class ppdbNBA():
         # Schrijf de data naar incrementele file
 
         lap = timer()
-        for change, dbids in self.changes['update']:
+        for change, dbids in self.changes['update'].items():
             newrec = importtable.get(dbids[0])
             updatequery = "UPDATE {table}_current SET (rec, hash, datum) = " \
                           "(SELECT rec, hash, datum FROM {table}_import " \
@@ -411,7 +411,7 @@ class ppdbNBA():
         # Schrijf de data naar incrementele file
 
         lap = timer()
-        for change, dbids in self.changes['delete']:
+        for change, dbids in self.changes['delete'].items():
             oldrec = currenttable.get(dbids[0])
             if (oldrec):
                 deleteid = oldrec.rec[idfield]
