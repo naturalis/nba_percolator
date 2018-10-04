@@ -395,7 +395,7 @@ class ppdbNBA():
             )
             lap = timer()
 
-            logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
+            logger.info("Record [{id}] updated".format(id=importrec.rec[idfield]))
         if (fp):
             fp.close()
 
