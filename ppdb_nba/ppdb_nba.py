@@ -358,23 +358,25 @@ class ppdbNBA():
         idfield = self.source_config.get('id')
         enriches = self.source_config.get('enriches', None)
         importtable = globals()[table.capitalize() + '_import']
+        currenttable = globals()[table.capitalize() + '_import']
 
         fp = self.open_deltafile('update', self.source_config.get('table'))
         # Schrijf de data naar incrementele file
 
         lap = timer()
         for change, dbids in self.changes['update'].items():
-            newrec = importtable.get(dbids[0])
+            importrec = importtable[dbids[0]]
+            oldrec = currenttable[dbids[0]]
             updatequery = "UPDATE {table}_current SET (rec, hash, datum) = " \
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
                           "WHERE {table}_current.id={currentid}".format(
                               table=table,
                               currentid=dbids[1],
-                              importid=newrec.id
+                              importid=importrec.id
                           )
             if (fp):
-                json.dump(newrec.rec, fp)
+                json.dump(importrec.rec, fp)
                 fp.write('\n')
 
             if (enriches):
@@ -412,7 +414,7 @@ class ppdbNBA():
 
         lap = timer()
         for change, dbids in self.changes['delete'].items():
-            oldrec = currenttable.get(dbids[0])
+            oldrec = currenttable[dbids[0]]
             if (oldrec):
                 deleteid = oldrec.rec[idfield]
                 if (fp):
