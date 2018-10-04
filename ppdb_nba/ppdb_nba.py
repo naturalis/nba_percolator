@@ -11,7 +11,6 @@ import sys
 import time
 from timeit import default_timer as timer
 import yaml
-from elasticsearch import Elasticsearch
 from pony.orm import db_session
 from .schema import *
 
@@ -57,26 +56,14 @@ class ppdbNBA():
             msg = 'Source "%s" does not exist in config file' % (source)
             sys.exit(msg)
 
-        if (self.source_config.get('es', False)):
-            self.es = self.connect_to_elastic()
-        else:
-            self.es = False
-
         self.connect_to_database()
 
-    def connect_to_elastic(self):
-        # Verbinden met Elastic search
-        try:
-            es = Elasticsearch(hosts=self.config['elastic']['host'])
-            return es
-        except:
-            msg = 'Cannot connect to elastic search server'
-            logger.fatal(msg)
-            sys.exit(msg)
-
     def connect_to_database(self):
-        # Contact maken met postgres database
+        """
+         Contact maken met postgres database
+        """
         global ppdb
+
         self.db = ppdb
 
         try:
@@ -105,7 +92,11 @@ class ppdbNBA():
         Open een delta bestand met records of id's om weg te schrijven.
         """
         destpath = self.config.get('deltapath', '/tmp')
-        filename = "{index}-{ts}-{action}.json".format(index=index, ts=time.strftime('%Y%m%d%H%M%S'), action=action)
+        filename = "{index}-{ts}-{action}.json".format(
+            index=index,
+            ts=time.strftime('%Y%m%d%H%M%S'),
+            action=action
+        )
         filepath = os.path.join(destpath, filename)
 
         try:
@@ -117,15 +108,6 @@ class ppdbNBA():
         logger.debug(filepath + ' opened')
 
         return fp
-
-    def kill_index(self):
-        """
-        Verwijder de index uit elastic search.
-        """
-        if (self.source_config):
-            index = self.source_config.get('index', 'specimen')
-            self.es.indices.delete(index=index, ignore=[400, 404])
-            logger.info('Elastic search index "{index}" removed'.format(index=index))
 
     @db_session
     def clear_data(self, table=''):
@@ -156,14 +138,25 @@ class ppdbNBA():
         # db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
         # import alle data
         self.db.execute(
-            "COPY public.{table} (rec) FROM '{datafile}' CSV QUOTE e'\x01' DELIMITER e'\x02'".format(table=table,
-                                                                                                     datafile=datafile))
-        logger.debug('[{elapsed:.2f} seconds] Import data "{datafile}" into "{table}'.format(datafile=datafile, table=table, elapsed=(timer() - lap)))
+            "COPY public.{table} (rec) FROM '{datafile}' "
+            "CSV QUOTE e'\x01' DELIMITER e'\x02'".format(
+                table=table,
+                datafile=datafile
+            )
+        )
+        logger.debug(
+            '[{elapsed:.2f} seconds] Import data "{datafile}" into "{table}"'.format(
+                datafile=datafile,
+                table=table,
+                elapsed=(timer() - lap)
+            )
+        )
         lap = timer()
 
         # zet de hash
         self.db.execute("UPDATE {table} SET hash=md5(rec::text)".format(table=table))
-        logger.debug('[{elapsed:.2f} seconds] Set hashing on "{table}"'.format(table=table, elapsed=(timer() - lap)))
+        logger.debug(
+            '[{elapsed:.2f} seconds] Set hashing on "{table}"'.format(table=table, elapsed=(timer() - lap)))
         lap = timer()
 
         # zet de hashing index
@@ -312,9 +305,8 @@ class ppdbNBA():
         idfield = self.source_config.get('id')
         importtable = globals()[table.capitalize() + '_import']
 
-        fp = self.open_deltafile('new', self.source_config.get('table')) if not self.source_config.get(
-            'elastic') else False
-        # Geen toegang tot elastic search? Schrijf de data naar incrementele files
+        fp = self.open_deltafile('new', self.source_config.get('table'))
+        # Schrijf de data naar incrementele files
 
         lap = timer()
         for jsonid, dbids in self.changes['new'].items():
@@ -329,13 +321,6 @@ class ppdbNBA():
                 json.dump(importrec.rec, fp)
                 fp.write('\n')
 
-            if (self.es):
-                logger.debug("New record [{id}] posted to NBA".format(id=importrec.rec[idfield]))
-                self.es.index(
-                    index=self.source_config.get('index'),
-                    doc_type=self.source_config.get('doctype', 'unknown'),
-                    body=importrec.rec, id=importrec.rec[idfield]
-                )
             self.db.execute(insertquery)
             logger.debug(
                 '[{elapsed:.2f} seconds] New record inserted in "{source}"'.format(
@@ -357,9 +342,8 @@ class ppdbNBA():
         enriches = self.source_config.get('enriches', None)
         importtable = globals()[table.capitalize() + '_import']
 
-        fp = self.open_deltafile('update', self.source_config.get('table')) if not self.source_config.get(
-            'elastic') else False
-        # Geen toegang tot elastic search? Schrijf de data naar incrementele files
+        fp = self.open_deltafile('update', self.source_config.get('table'))
+        # Schrijf de data naar incrementele file
 
         lap = timer()
         for change, dbids in self.changes['update']:
@@ -375,18 +359,6 @@ class ppdbNBA():
             if (fp):
                 json.dump(newrec.rec, fp)
                 fp.write('\n')
-
-            if (self.es):
-                logger.debug(
-                    'Updated record [{id}] to NBA'.format(
-                    id=newrec.rec[idfield])
-                )
-                self.es.index(
-                    index=self.source_config.get('index'),
-                    doc_type=self.source_config.get('doctype', 'unknown'),
-                    body=newrec.rec,
-                    id=newrec.rec[idfield]
-                )
 
             if (enriches):
                 for source in enriches:
@@ -418,9 +390,8 @@ class ppdbNBA():
         currenttable = globals()[table.capitalize() + '_current']
         enriches = self.source_config.get('enriches', None)
 
-        fp = self.open_deltafile('delete', self.source_config.get('table')) if not self.source_config.get(
-            'elastic') else False
-        # Geen toegang tot elastic search? Schrijf de data naar incrementele files
+        fp = self.open_deltafile('delete', self.source_config.get('table'))
+        # Schrijf de data naar incrementele file
 
         lap = timer()
         for change, dbids in self.changes['delete']:
@@ -429,16 +400,6 @@ class ppdbNBA():
                 deleteid = oldrec.rec[idfield]
                 if (fp):
                     fp.write('{deleteid}\n'.format(deleteid=deleteid))
-
-                if (self.es):
-                    # delete from elastic search index
-                    self.es.delete(
-                        index=self.source_config.get('index'),
-                        doc_type=self.source_config.get('doctype', 'unknown'),
-                        id=oldrec.rec[idfield],
-                        ignore=[400, 404]
-                    )
-                    logger.debug("Delete record [{id}] from NBA".format(id=deleteid))
 
                 if (enriches):
                     for source in enriches:
