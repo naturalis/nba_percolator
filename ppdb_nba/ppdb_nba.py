@@ -167,7 +167,7 @@ class ppdbNBA():
 
         # zet de hashing index
         self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_{table}__hash ON public.{table} USING btree (hash) TABLESPACE pg_default".format(
+            "CREATE INDEX IF NOT EXISTS idx_{table}__hash ON public.{table} USING BTREE(hash)".format(
                 table=table))
         logger.debug(
             '[{elapsed:.2f} seconds] Set hashing index on "{table}"'.format(table=table, elapsed=(timer() - lap)))
@@ -176,7 +176,7 @@ class ppdbNBA():
         # zet de jsonid index
         lap = timer()
         self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_{table}__jsonid ON public.{table}((rec->>'{idfield}'))".format(
+            "CREATE INDEX IF NOT EXISTS idx_{table}__jsonid ON public.{table} USING BTREE(rec->>'{idfield}')".format(
                 table=table, idfield=self.source_config.get('id')))
         logger.debug('[{elapsed:.2f} seconds] Set index on jsonid '.format(elapsed=(timer() - lap)))
 
