@@ -85,7 +85,8 @@ class ppdbNBA():
                 user=self.config['postgres']['user'],
                 password=self.config['postgres']['pass'],
                 host=self.config['postgres']['host'],
-                database=self.config['postgres']['db'])
+                database=self.config['postgres']['db']
+            )
         except:
             msg = 'Cannot connect to postgres database'
             logger.fatal(msg)
@@ -390,8 +391,7 @@ class ppdbNBA():
             if (enriches):
                 for source in enriches:
                     logger.debug(
-                        'Enrich source = {source}'.format(
-                        source=source)
+                        'Enrich source = {source}'.format(source=source)
                     )
                     self.handle_enrichment(source, oldrec)
 
@@ -399,7 +399,8 @@ class ppdbNBA():
             logger.debug(
                 '[{elapsed:.2f} seconds] Updated record in "{source}"'.format(
                     source=table + '_current',
-                    elapsed=(timer() - lap))
+                    elapsed=(timer() - lap)
+                )
             )
             lap = timer()
 
@@ -431,10 +432,12 @@ class ppdbNBA():
 
                 if (self.es):
                     # delete from elastic search index
-                    self.es.delete(index=self.source_config.get('index'),
-                                   doc_type=self.source_config.get('doctype', 'unknown'),
-                                   id=oldrec.rec[idfield],
-                                   ignore=[400, 404])
+                    self.es.delete(
+                        index=self.source_config.get('index'),
+                        doc_type=self.source_config.get('doctype', 'unknown'),
+                        id=oldrec.rec[idfield],
+                        ignore=[400, 404]
+                    )
                     logger.debug("Delete record [{id}] from NBA".format(id=deleteid))
 
                 if (enriches):
@@ -446,7 +449,8 @@ class ppdbNBA():
                 logger.debug(
                     '[{elapsed:.2f} seconds] Deleted record in "{source}"'.format(
                         source=table + '_current',
-                        elapsed=(timer() - lap))
+                        elapsed=(timer() - lap)
+                    )
                 )
                 lap = timer()
 
@@ -470,14 +474,19 @@ class ppdbNBA():
 
         if (len(items)):
             logger.info(
-                "Found {number} records in {source} with scientificNameGroup={namegroup}".format(number=len(items),
-                                                                                                 source=table.capitalize(),
-                                                                                                 namegroup=scientificnamegroup))
+                "Found {number} records in {source} with scientificNameGroup={namegroup}".format(
+                    number=len(items),
+                    source=table.capitalize(),
+                    namegroup=scientificnamegroup)
+            )
             return items
         else:
-            logger.error("Found no records in {source} with scientificNameGroup={namegroup}".format(number=len(items),
-                                                                                                    source=table.capitalize(),
-                                                                                                    namegroup=scientificnamegroup))
+            logger.error(
+                "Found no records in {source} with scientificNameGroup={namegroup}".format(
+                    number=len(items),
+                    source=table.capitalize(),
+                    namegroup=scientificnamegroup)
+            )
             logger.debug(items.get_sql())
             return False
 
