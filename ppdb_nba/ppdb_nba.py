@@ -275,19 +275,20 @@ class ppdbNBA():
             for result in neworupdates:
                 r = importtable.get(hash=result[1])
                 if (r.rec):
-                    self.changes['new'][r.rec[idfield]].append(r.id)
+                    uuid = r.rec[idfield]
+                    self.changes['new'][uuid] = [r.id]
 
             # updates or deletes
             for result in updateordeletes:
                 r = currenttable.get(hash=result[1])
                 if (r.rec):
-                    uid = r.rec[idfield]
-                    if self.changes['new'].get(uid, False):
-                        self.changes['update'][uid] = self.changes['new'].get(uid)
-                        self.changes['update'][uid].append(r.id)
-                        del self.changes['new'][uid]
+                    uuid = r.rec[idfield]
+                    if self.changes['new'].get(uuid, False):
+                        self.changes['update'][uuid] = self.changes['new'].get(uid)
+                        self.changes['update'][uuid].append(r.id)
+                        del self.changes['new'][uuid]
                     else :
-                        self.changes['delete'][uid].append(r.id)
+                        self.changes['delete'][uuid] = [r.id]
 
             if (len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete'])):
                 logger.info(
