@@ -1,7 +1,5 @@
 # The ppdb_nba config file lists all the sources and the meta info
 # needed for importing data.
-elastic:                            # Elastic search config
-    host: es
 postgres:                           # Postgres database config
     host: postgres
     user: postgres
@@ -25,7 +23,6 @@ sources:                            # List with sources
         index: specimen
         doctype: Specimen
         enrich: yes
-        elastic: yes
         incremental: no
         path: /data/xenocanto-specimen
     brahms-specimen:
@@ -34,7 +31,6 @@ sources:                            # List with sources
         index: specimen
         doctype: Specimen
         enrich: yes
-        elastic: no
         incremental: no
         path: /data/brahms-specimen
     brahms-media:
