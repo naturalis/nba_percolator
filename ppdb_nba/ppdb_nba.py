@@ -124,7 +124,7 @@ class ppdbNBA():
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
 
-        # gooi de tabel leeg, drop indexes
+        # gooi de tabel leeg, weg met de indexes
         self.db.execute("ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex".format(table=table))
         self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__jsonid".format(table=table))
         self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__hash".format(table=table))
@@ -161,7 +161,8 @@ class ppdbNBA():
 
         # zet de hashing index
         self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_{table}__hash ON public.{table} USING BTREE(hash)".format(
+            "CREATE INDEX IF NOT EXISTS idx_{table}__hash "
+            "ON public.{table} USING BTREE(hash)".format(
                 table=table))
         logger.debug(
             '[{elapsed:.2f} seconds] Set hashing index on "{table}"'.format(table=table, elapsed=(timer() - lap)))
@@ -170,17 +171,29 @@ class ppdbNBA():
         # zet de jsonid index
         lap = timer()
         self.db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_{table}__jsonid ON public.{table} USING BTREE(({table}.rec->>'{idfield}'))".format(
-                table=table, idfield=self.source_config.get('id')))
-        logger.debug('[{elapsed:.2f} seconds] Set index on jsonid '.format(elapsed=(timer() - lap)))
+            "CREATE INDEX IF NOT EXISTS idx_{table}__jsonid "
+            "ON public.{table} USING BTREE(({table}.rec->>'{idfield}'))".format(
+                table=table,
+                idfield=self.source_config.get('id')
+            )
+        )
+        logger.debug(
+            '[{elapsed:.2f} seconds] Set index on jsonid '.format(
+                elapsed=(timer() - lap)
+            )
+        )
 
         if (enriched):
             self.db.execute(
-                "CREATE INDEX IF NOT EXISTS idx_{table}__gin ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
-                    table=table))
+                "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
+                "ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
+                    table=table)
+            )
             logger.debug(
-                '[{elapsed:.2f} seconds] Set index on indentifications in "{table}"'.format(table=table,
-                                                                                      elapsed=(timer() - lap)))
+                '[{elapsed:.2f} seconds] Set index on indentifications in "{table}"'.format(
+                    table=table,
+                    elapsed=(timer() - lap))
+            )
 
 
     @db_session
@@ -191,7 +204,8 @@ class ppdbNBA():
         doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
                       "FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
                       source=self.source_config.get('table'),
-                      idfield=self.source_config.get('id'))
+                      idfield=self.source_config.get('id')
+        )
         doubles = self.db.select(doublequery)
         logger.debug('[{elapsed:.2f} seconds] Find doubles'.format(elapsed=(timer() - lap)))
         lap = timer()
@@ -207,7 +221,9 @@ class ppdbNBA():
 
         logger.debug(
             '[{elapsed:.2f} seconds] Filtered {doubles} records with more than one entry in the source data'.format(
-                doubles=count, elapsed=(timer() - lap)))
+                doubles=count,
+                elapsed=(timer() - lap))
+        )
 
     @db_session
     def list_changes(self):
@@ -277,7 +293,7 @@ class ppdbNBA():
                 if (r.rec):
                     uuid = r.rec[idfield]
                     if self.changes['new'].get(uuid, False):
-                        self.changes['update'][uuid] = self.changes['new'].get(uid)
+                        self.changes['update'][uuid] = self.changes['new'].get(uuid)
                         self.changes['update'][uuid].append(r.id)
                         del self.changes['new'][uuid]
                     else :
@@ -431,7 +447,8 @@ class ppdbNBA():
         currenttable = globals()[table.capitalize() + '_current']
 
         jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (
-            scientificnamegroup)
+            scientificnamegroup
+        )
         items = currenttable.select(lambda p: raw_sql(jsonsql))
 
         if (len(items)):
