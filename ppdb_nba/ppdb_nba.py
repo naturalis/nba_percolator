@@ -202,7 +202,8 @@ class ppdbNBA():
         lap = timer()
 
         doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
-                      "FROM {source}_import GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
+                      "FROM {source}_import " \
+                      "GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
                       source=self.source_config.get('table'),
                       idfield=self.source_config.get('id')
         )
@@ -261,7 +262,8 @@ class ppdbNBA():
 
         lap = timer()
         if (len(source_base)):
-            leftdiffquery = 'SELECT {source}_import.id, {source}_import.hash FROM {source}_import ' \
+            leftdiffquery = 'SELECT {source}_import.id, {source}_import.hash ' \
+                            'FROM {source}_import ' \
                             'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                             'WHERE {source}_current.hash is null'.format(source=source_base)
             neworupdates = self.db.select(leftdiffquery)
@@ -269,7 +271,8 @@ class ppdbNBA():
                 '[{elapsed:.2f} seconds] Left full outer join on "{source}"'.format(source=source_base, elapsed=(timer() - lap)))
             lap = timer()
 
-            rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash FROM {source}_import ' \
+            rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash ' \
+                             'FROM {source}_import ' \
                              'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                              'WHERE {source}_import.hash is null'.format(source=source_base)
             updateordeletes = self.db.select(rightdiffquery)
@@ -311,6 +314,7 @@ class ppdbNBA():
 
             else:
                 logger.info('No changes')
+
         return self.changes
 
     @db_session
@@ -329,8 +333,8 @@ class ppdbNBA():
         for jsonid, dbids in self.changes['new'].items():
             importid = dbids[0]
             importrec = importtable[importid]
-            insertquery = "insert into {table}_current (rec, hash, datum) " \
-                          "select rec, hash, datum from {table}_import where id={id}".format(
+            insertquery = "INSERT INTO {table}_current (rec, hash, datum) " \
+                          "SELECT rec, hash, datum FROM {table}_import where id={id}".format(
                 table=self.source_config.get('table'),
                 id=importid
             )
@@ -499,6 +503,7 @@ class ppdbNBA():
         if (len(self.changes['update'])):
             self.handle_updates()
         if (not self.source_config.get('incremental')):
+            # Alleen deletes afhandelen als de bron complete sets levert
             if (len(self.changes['delete'])):
                 self.handle_deletes()
 
