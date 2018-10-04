@@ -229,25 +229,29 @@ class ppdbNBA():
 
         ```
             changes = {
-                'new': [
-                    '3732672@BRAHMS',
-                    '1369617@BRAHMS',
-                    '2455323@BRAHMS'
-                ],
-                'update': [],
-                'delete': []
+                'new': {
+                    '3732672@BRAHMS' : [12345],
+                    '1369617@BRAHMS' : [45678],
+                    '2455323@BRAHMS' : [99999]
+                },
+                'update': {
+                    '3732673@BRAHMS' : [12345,67676]
+                },
+                'delete': {
+                    '3732674@BRAHMS' : [55555]
+                }
             }
         ```
 
         """
-        lap = timer()
 
-        self.changes = {'new': [], 'update': [], 'delete': []}
+        self.changes = {'new': {}, 'update': {}, 'delete': {}}
         source_base = self.source_config.get('table')
         idfield = self.source_config.get('id')
 
+        lap = timer()
         if (len(source_base)):
-            leftdiffquery = 'SELECT {source}_import.hash FROM {source}_import ' \
+            leftdiffquery = 'SELECT {source}_import.id, {source}_import.hash FROM {source}_import ' \
                             'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                             'WHERE {source}_current.hash is null'.format(source=source_base)
             neworupdates = self.db.select(leftdiffquery)
@@ -255,7 +259,7 @@ class ppdbNBA():
                 '[{elapsed:.2f} seconds] Left full outer join on "{source}"'.format(source=source_base, elapsed=(timer() - lap)))
             lap = timer()
 
-            rightdiffquery = 'SELECT {source}_current.hash FROM {source}_import ' \
+            rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash FROM {source}_import ' \
                              'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                              'WHERE {source}_import.hash is null'.format(source=source_base)
             updateordeletes = self.db.select(rightdiffquery)
@@ -268,28 +272,31 @@ class ppdbNBA():
 
             # new or update
             for result in neworupdates:
-                r = importtable.get(hash=result)
+                r = importtable.get(hash=result[1])
                 if (r.rec):
-                    self.changes['new'].append(r.rec[idfield])
+                    self.changes['new'][r.rec[idfield]].append(r.id)
 
             # updates or deletes
             for result in updateordeletes:
-                r = currenttable.get(hash=result)
+                r = currenttable.get(hash=result[1])
                 if (r.rec):
                     uid = r.rec[idfield]
-                    try:
-                        self.changes['new'].index(uid)
-                        self.changes['new'].remove(uid)
-                        self.changes['update'].append(uid)
-                    except:
-                        self.changes['delete'].append(uid)
+                    if self.changes['new'].get(uid, False):
+                        self.changes['update'][uid] = self.changes['new'].get(uid)
+                        self.changes['update'][uid].append(r.id)
+                        del self.changes['new'][uid]
+                    else :
+                        self.changes['delete'][uid].append(r.id)
 
             if (len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete'])):
-                logger.info('[{elapsed:.2f} seconds] identified {new} new, {update} updated and {delete} removed'.format(new=len(self.changes['new']),
-                                                                                      update=len(self.changes['update']),
-                                                                                      delete=len(self.changes['delete']),
-                                                                                      elapsed=(timer() - lap)
-                                                                                                 ))
+                logger.info(
+                    '[{elapsed:.2f} seconds] identified {new} new, {update} updated and {delete} removed'.format(
+                        new=len(self.changes['new']),
+                        update=len(self.changes['update']),
+                        delete=len(self.changes['delete']),
+                        elapsed=(timer() - lap)
+                    )
+                )
 
             else:
                 logger.info('No changes')
@@ -303,30 +310,39 @@ class ppdbNBA():
         table = self.source_config.get('table')
         idfield = self.source_config.get('id')
         importtable = globals()[table.capitalize() + '_import']
-        currenttable = globals()[table.capitalize() + '_current']
 
         fp = self.open_deltafile('new', self.source_config.get('table')) if not self.source_config.get(
             'elastic') else False
         # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
-        for change in self.changes['new']:
-            importrec = importtable.select(lambda p: p.rec[idfield] == change).get()
-            if (importrec):
-                insertquery = "insert into {table}_current (rec, hash, datum) " \
-                              "select rec, hash, datum from {table}_import where id={id}".format(
-                    table=self.source_config.get('table'),
-                    id=importrec.id)
-                if (fp):
-                    json.dump(importrec.rec, fp)
-                    fp.write('\n')
+        lap = timer()
+        for jsonid, dbids in self.changes['new'].items():
+            importid = dbids[0]
+            importrec = importtable[importid]
+            insertquery = "insert into {table}_current (rec, hash, datum) " \
+                          "select rec, hash, datum from {table}_import where id={id}".format(
+                table=self.source_config.get('table'),
+                id=importid
+            )
+            if (fp):
+                json.dump(importrec.rec, fp)
+                fp.write('\n')
 
-                if (self.es):
-                    logger.debug("New record [{id}] posted to NBA".format(id=importrec.rec[idfield]))
-                    self.es.index(index=self.source_config.get('index'),
-                                  doc_type=self.source_config.get('doctype', 'unknown'),
-                                  body=importrec.rec, id=importrec.rec[idfield])
-                self.db.execute(insertquery)
-                logger.info("New record [{id}] inserted".format(id=importrec.rec[idfield]))
+            if (self.es):
+                logger.debug("New record [{id}] posted to NBA".format(id=importrec.rec[idfield]))
+                self.es.index(
+                    index=self.source_config.get('index'),
+                    doc_type=self.source_config.get('doctype', 'unknown'),
+                    body=importrec.rec, id=importrec.rec[idfield]
+                )
+            self.db.execute(insertquery)
+            logger.debug(
+                '[{elapsed:.2f} seconds] New record inserted in "{source}"'.format(
+                source=table + '_current',
+                elapsed=(timer() - lap))
+            )
+            lap = timer()
+            logger.info("New record [{id}] inserted".format(id=importrec.rec[idfield]))
         if (fp):
             fp.close()
 
@@ -339,40 +355,55 @@ class ppdbNBA():
         idfield = self.source_config.get('id')
         enriches = self.source_config.get('enriches', None)
         importtable = globals()[table.capitalize() + '_import']
-        currenttable = globals()[table.capitalize() + '_current']
 
         fp = self.open_deltafile('update', self.source_config.get('table')) if not self.source_config.get(
             'elastic') else False
         # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
-        for change in self.changes['update']:
-            newrec = importtable.select(lambda p: p.rec[idfield] == change).get()
-            oldrec = currenttable.select(lambda p: p.rec[idfield] == change).get()
-            if (newrec and oldrec):
-                updatequery = "update {table}_current set (rec, hash, datum) = " \
-                              "(select rec, hash, datum from {table}_import where {table}_import.id={importid}) " \
-                              "where {table}_current.id={currentid}".format(table=table,
-                                                                            currentid=oldrec.id,
-                                                                            importid=newrec.id)
-                if (fp):
-                    json.dump(newrec.rec, fp)
-                    fp.write('\n')
+        lap = timer()
+        for change, dbids in self.changes['update']:
+            newrec = importtable.get(dbids[0])
+            updatequery = "UPDATE {table}_current SET (rec, hash, datum) = " \
+                          "(SELECT rec, hash, datum FROM {table}_import " \
+                          "WHERE {table}_import.id={importid}) " \
+                          "WHERE {table}_current.id={currentid}".format(
+                              table=table,
+                              currentid=dbids[1],
+                              importid=newrec.id
+                          )
+            if (fp):
+                json.dump(newrec.rec, fp)
+                fp.write('\n')
 
-                if (self.es):
-                    logger.debug("Updated record [{id}] to NBA".format(id=newrec.rec[idfield]))
-                    self.es.index(index=self.source_config.get('index'),
-                                  doc_type=self.source_config.get('doctype', 'unknown'),
-                                  body=newrec.rec,
-                                  id=newrec.rec[idfield])
+            if (self.es):
+                logger.debug(
+                    'Updated record [{id}] to NBA'.format(
+                    id=newrec.rec[idfield])
+                )
+                self.es.index(
+                    index=self.source_config.get('index'),
+                    doc_type=self.source_config.get('doctype', 'unknown'),
+                    body=newrec.rec,
+                    id=newrec.rec[idfield]
+                )
 
-                if (enriches):
-                    for source in enriches:
-                        logger.debug('Enrich source = {source}'.format(source=source))
-                        self.handle_enrichment(source, oldrec)
+            if (enriches):
+                for source in enriches:
+                    logger.debug(
+                        'Enrich source = {source}'.format(
+                        source=source)
+                    )
+                    self.handle_enrichment(source, oldrec)
 
-                self.db.execute(updatequery)
+            self.db.execute(updatequery)
+            logger.debug(
+                '[{elapsed:.2f} seconds] Updated record in "{source}"'.format(
+                    source=table + '_current',
+                    elapsed=(timer() - lap))
+            )
+            lap = timer()
 
-                logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
+            logger.info("Record [{id}] updated".format(id=newrec.rec[idfield]))
         if (fp):
             fp.close()
 
@@ -390,8 +421,9 @@ class ppdbNBA():
             'elastic') else False
         # Geen toegang tot elastic search? Schrijf de data naar incrementele files
 
-        for change in self.changes['delete']:
-            oldrec = currenttable.select(lambda p: p.rec[idfield] == change).get()
+        lap = timer()
+        for change, dbids in self.changes['delete']:
+            oldrec = currenttable.get(dbids[0])
             if (oldrec):
                 deleteid = oldrec.rec[idfield]
                 if (fp):
@@ -411,6 +443,13 @@ class ppdbNBA():
                         self.handle_enrichment(source, oldrec)
 
                 oldrec.delete()
+                logger.debug(
+                    '[{elapsed:.2f} seconds] Deleted record in "{source}"'.format(
+                        source=table + '_current',
+                        elapsed=(timer() - lap))
+                )
+                lap = timer()
+
                 logger.info("Record [{deleteid}] deleted".format(deleteid=deleteid))
         if (fp):
             fp.close()
