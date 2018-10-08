@@ -160,7 +160,7 @@ class ppdbNBA():
                 )
             )
         except Exception as err:
-            logger.fatal('Import of "{datafile}" into "{table}" failed: {error}'.format(table=table,datafile=datafile, error=str(err)))
+            logger.fatal('Import of "{datafile}" into "{table}" failed:\n\n{error}'.format(table=table,datafile=datafile, error=str(err)))
             raise
 
         logger.debug(
