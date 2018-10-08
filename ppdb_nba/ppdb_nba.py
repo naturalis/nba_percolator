@@ -151,13 +151,18 @@ class ppdbNBA():
 
         # db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
         # import alle data
-        self.db.execute(
-            "COPY public.{table} (rec) FROM '{datafile}' "
-            "CSV QUOTE e'\x01' DELIMITER e'\x02'".format(
-                table=table,
-                datafile=datafile
+        try:
+            self.db.execute(
+                "COPY public.{table} (rec) FROM '{datafile}' "
+                "CSV QUOTE e'\x01' DELIMITER e'\x02'".format(
+                    table=table,
+                    datafile=datafile
+                )
             )
-        )
+        except Exception as err:
+            logger.fatal('Import of "{datafile}" into "{table}" failed: {error}'.format(table=table,datafile=datafile, error=str(err)))
+            raise
+
         logger.debug(
             '[{elapsed:.2f} seconds] Import data "{datafile}" into "{table}"'.format(
                 datafile=datafile,

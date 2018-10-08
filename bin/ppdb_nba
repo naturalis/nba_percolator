@@ -18,7 +18,10 @@ def import_incremental(pp, args):
 
     start = timer()
     logger.info("START incremental importing of {source}: {file}".format(source=args.source, file=file))
-    pp.import_data(table=pp.source_config.get('table') + '_import', datafile=file)
+    try:
+        pp.import_data(table=pp.source_config.get('table') + '_import', datafile=file)
+    except Exception:
+        exit(2)
     pp.remove_doubles()
     pp.handle_changes()
     logger.info("[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(elapsed=(timer()-start), source=args.source, file=file))
