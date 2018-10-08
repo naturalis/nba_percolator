@@ -9,7 +9,7 @@ kan worden gefilterd alvorens een import in de NBA documentstore plaatsvind.
 
 Installeren kan het beste via pip. Dit is een python3 module.
 
-`pip install -e git+https://github.com/jandevires71/ppdb_nba.git#egg=ppdb_nba`
+`pip install -e git+https://github.com/naturalis/ppdb_nba.git#egg=ppdb_nba`
 
 Vervolgens wordt de module `ppdb_nba` en het commando `ppdb_nba` toegevoegd
 aan je executable path. De aanroep is meestal:
@@ -38,14 +38,6 @@ pp.open_deltafile(action='new', index='unknown')
 ```
 
 Open een delta bestand met records of id's om weg te schrijven.
-
-<h2 id="ppdb_nba.ppdb_nba.kill_index">ppdbNBA.kill_index</h2>
-
-```python
-pp.kill_index()
-```
-
-Verwijdert de index uit elastic search.
 
 <h2 id="ppdb_nba.ppdb_nba.clear_data">ppdbNBA.clear_data</h2>
 
@@ -82,17 +74,21 @@ Een hash die aanwezig is in de bestaande data, maar ontbreekt in de nieuwe data 
 verwijderd record. Maar dit is alleen te bepalen bij analyse van complete datasets. Een changes
 dictionary ziet er over het algemeen zo uit.
 
-```
-    changes = {
-        'new': [
-            '3732672@BRAHMS',
-            '1369617@BRAHMS',
-            '2455323@BRAHMS'
-        ],
-        'update': [],
-        'delete': []
-    }
-```
+    ```
+        changes = {
+            'new': {
+                '3732672@BRAHMS' : [12345],
+                '1369617@BRAHMS' : [45678],
+                '2455323@BRAHMS' : [99999]
+            },
+            'update': {
+                '3732673@BRAHMS' : [12345,67676]
+            },
+            'delete': {
+                '3732674@BRAHMS' : [55555]
+            }
+        }
+    ```
 
 
 <h2 id="ppdb_nba.ppdb_nba.handle_new">ppdbNBA.handle_new</h2>
@@ -147,7 +143,7 @@ pp.import_data(table=pp.source_config.get('table') + "_import", datafile='/data/
 pp.remove_doubles()
 # verwijder de dubbele
 pp.list_changes()
-# bepaalde veranderingen (allemaal nieuwe records)
+# bepaal de veranderingen (allemaal nieuwe records)
 pp.handle_changes()
 # handel de nieuwe af
 ```

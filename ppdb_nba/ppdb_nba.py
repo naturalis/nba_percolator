@@ -109,6 +109,20 @@ class ppdbNBA():
 
         return fp
 
+    def lock_datafile(self,datafile=''):
+        destpath = self.config.get('deltapath', '/tmp')
+        lockfile = os.path.basename(datafile) + '.lock'
+        filepath = os.path.join(destpath, lockfile)
+        if (os.path.isfile(filepath)) :
+            # Lock file already exists
+            return False
+        else :
+            with open(filepath, 'a'):
+                os.utime(filepath, None)
+            return True
+
+
+
     @db_session
     def clear_data(self, table=''):
         """ Verwijder data uit tabel. """
@@ -120,6 +134,7 @@ class ppdbNBA():
         """
         Importeer data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
         """
+        if (not self.lock_datafile(datafile)) :
         lap = timer()
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))

@@ -10,9 +10,15 @@ logger.setLevel(logging.INFO)
 def import_incremental(pp, args):
     file = args.files[0]
 
+    if (not args.force and not pp.lock_datafile(file)):
+        msg = "Lockfile gevonden. Import van '{file}' al bezig of uitgevoerd in een ander proces?".format(file=file)
+        logger.fatal(msg)
+        print("Toch importeren? Roep opnieuw aan met --force")
+        exit(2)
+
     start = timer()
     logger.info("START incremental importing of {source}: {file}".format(source=args.source, file=file))
-    pp.import_data(table=pp.source_config.get('table') + '_import', datafile=args.files[0])
+    pp.import_data(table=pp.source_config.get('table') + '_import', datafile=file)
     pp.remove_doubles()
     pp.handle_changes()
     logger.info("[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(elapsed=(timer()-start), source=args.source, file=file))
@@ -28,6 +34,7 @@ def main():
     parser.add_argument('--source', action='store', help='Name of the data source', required=True)
     parser.add_argument('--config', action='store', help='Config file', default="config.yml")
     parser.add_argument('--current', action='store_true', help='Import data directly to current table (default is normal incremental import)')
+    parser.add_argument('--force', action='store_true', help='Negeer lockfiles, zodat import verder gaat')
     parser.add_argument('--debug', action='store_true', help='Set debugging level logging')
     parser.add_argument('files', help='One json data file', nargs=1, default=[])
     args = parser.parse_args()
