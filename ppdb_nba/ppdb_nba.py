@@ -134,7 +134,6 @@ class ppdbNBA():
         """
         Importeer data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
         """
-        if (not self.lock_datafile(datafile)) :
         lap = timer()
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
