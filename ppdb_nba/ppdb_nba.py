@@ -525,14 +525,14 @@ class ppdbNBA():
         if (fp):
             fp.close()
 
-    def list_impacted(self, scientificnamegroup):
+    def list_impacted(self, source_config, scientificnamegroup):
         """
         Zoekt uit welke gerelateerde records opnieuw verrijkt moeten worden.
 
         :param scientificnamegroup:
         :return bool:
         """
-        table = self.source_config.get('table')
+        table = source_config.get('table')
         currenttable = globals()[table.capitalize() + '_current']
 
         jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (
