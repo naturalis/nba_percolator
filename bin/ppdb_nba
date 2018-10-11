@@ -30,6 +30,10 @@ def import_to_current(pp,args):
     logger.info("Fill current table '%s' with data" % (pp.source_config.get('table') + '_current'))
     pp.import_data(pp.source_config.get('table') + '_current', args.files[0])
 
+def import_deleted(pp,args):
+    logger.info("Import deleted ids for source %s" % (pp.source_config.get('table')))
+    pp.import_deleted(args.files[0])
+
 def main():
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
                                            '\n\nPreprocessing data to create incremental updates')
@@ -37,29 +41,33 @@ def main():
     parser.add_argument('--source', action='store', help='Name of the data source', required=True)
     parser.add_argument('--config', action='store', help='Config file', default="config.yml")
     parser.add_argument('--current', action='store_true', help='Import data directly to current table (default is normal incremental import)')
-    parser.add_argument('--force', action='store_true', help='Negeer lockfiles, zodat import verder gaat')
+    parser.add_argument('--delete', action='store_true', help='Handle permanent deletes (default is normal incremental import)')
+    parser.add_argument('--force', action='store_true', help='Ignore lockfiles, to force the import')
     parser.add_argument('--debug', action='store_true', help='Set debugging level logging')
     parser.add_argument('files', help='One json data file', nargs=1, default=[])
     args = parser.parse_args()
 
     pp = ppdbNBA(config=args.config,source=args.source)
 
+
     if (args.debug):
         logger.setLevel(logging.DEBUG)
 
     if (not pp.config) :
         logger.fatal("Configuratie ontbreekt")
-        exit(2)
+        exit(1)
 
     if not pp.source_config:
         logger.fatal('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
         sources = pp.config.get('sources', [])
         if (sources) :
             print("\n - ".join(sources))
-        exit(2)
+        exit(1)
 
     if (args.current):
         import_to_current(pp, args)
+    elif (args.deleted):
+        import_deleted(pp, args)
     else:
         import_incremental(pp, args)
 

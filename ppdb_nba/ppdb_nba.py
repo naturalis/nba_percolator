@@ -130,6 +130,46 @@ class ppdbNBA():
         logger.debug('Truncated table "{table}"'.format(table=table))
 
     @db_session
+    def import_deleted(self, filename=''):
+
+        table = self.source_config.get('table')
+        currenttable = globals()[table.capitalize() + '_current']
+        enriches = self.source_config.get('enriches', None)
+        lap = timer()
+
+        delids = []
+        try :
+            with open(file=filename, 'r') as f:
+                delids = f.read().splitlines()
+        except:
+            msg = '"{filename}" cannot be read'.format(filename=filename)
+            logger.fatal(msg)
+            sys.exit(msg)
+
+        for id in delids:
+            fp = self.open_deltafile('delete', table)
+            if (fp):
+                fp.write('{id}\n'.format(deleteid=id))
+            oldrec = currenttable[id]
+            if (oldrec):
+                if (enriches):
+                    for source in enriches:
+                        logger.debug('Enrich source = {source}'.format(source=source))
+                        self.handle_enrichment(source, oldrec)
+
+                oldrec.delete()
+                logger.debug(
+                    '[{elapsed:.2f} seconds] Permanently deleted record in "{source}"'.format(
+                        source=table + '_current',
+                        elapsed=(timer() - lap)
+                    )
+                )
+                lap = timer()
+
+        if (fp):
+            fp.close()
+
+    @db_session
     def import_data(self, table='', datafile='', enriched=False):
         """
         Importeer data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
@@ -425,14 +465,14 @@ class ppdbNBA():
     @db_session
     def handle_deletes(self):
         """
-        Afhandelen van alle deletes.
+        Afhandelen van temporarily deletes.
         """
         table = self.source_config.get('table')
         idfield = self.source_config.get('id')
         currenttable = globals()[table.capitalize() + '_current']
         enriches = self.source_config.get('enriches', None)
 
-        fp = self.open_deltafile('delete', self.source_config.get('table'))
+        fp = self.open_deltafile('tempdelete', self.source_config.get('table'))
         # Schrijf de data naar incrementele file
 
         lap = timer()
@@ -450,7 +490,7 @@ class ppdbNBA():
 
                 oldrec.delete()
                 logger.debug(
-                    '[{elapsed:.2f} seconds] Deleted record in "{source}"'.format(
+                    '[{elapsed:.2f} seconds] Temporarily deleted record in "{source}"'.format(
                         source=table + '_current',
                         elapsed=(timer() - lap)
                     )
@@ -522,7 +562,7 @@ class ppdbNBA():
         if (len(self.changes['update'])):
             self.handle_updates()
         if (not self.source_config.get('incremental')):
-            # Alleen deletes afhandelen als de bron complete sets levert
+            # Alleen incrementele deletes afhandelen als de bron complete sets levert
             if (len(self.changes['delete'])):
                 self.handle_deletes()
 
