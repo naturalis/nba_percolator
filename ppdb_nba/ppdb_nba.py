@@ -134,6 +134,7 @@ class ppdbNBA():
 
         table = self.source_config.get('table')
         currenttable = globals()[table.capitalize() + '_current']
+        idfield = self.source_config.get('id','id')
         enriches = self.source_config.get('enriches', None)
         lap = timer()
 
@@ -150,11 +151,12 @@ class ppdbNBA():
             fp = self.open_deltafile('delete', table)
             if (fp):
                 fp.write('{id}\n'.format(deleteid=id))
-            oldrec = currenttable[id]
+            oldrec = currenttable.select(lambda p: p.rec[idfield] == id).get()
             if (oldrec):
                 if (enriches):
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
+
                         self.handle_enrichment(source, oldrec)
 
                 oldrec.delete()
@@ -489,6 +491,7 @@ class ppdbNBA():
                         self.handle_enrichment(source, oldrec)
 
                 oldrec.delete()
+
                 logger.debug(
                     '[{elapsed:.2f} seconds] Temporarily deleted record in "{source}"'.format(
                         source=table + '_current',
@@ -535,20 +538,22 @@ class ppdbNBA():
             return False
 
     @db_session
-    def handle_enrichment(self, rec):
+    def handle_enrichment(self, source, rec):
         scientificnamegroup = None
+        source_config = self.config.get(source)
 
         if (rec.rec.get('acceptedName')):
             scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
 
         if (scientificnamegroup):
-            impactedrecords = self.list_impacted(self.source_config, scientificnamegroup)
+            impactedrecords = self.list_impacted(source_config, scientificnamegroup)
             if (impactedrecords):
-                fp = self.open_deltafile('enrich', self.source_config.get('table'))
-                for impactedrec in impactedrecords:
-                    json.dump(impactedrec.rec, fp)
-                    fp.write('\n')
-                fp.close()
+                fp = self.open_deltafile('enrich', source_config.get('table'))
+                if (fp):
+                    for impactedrec in impactedrecords:
+                        json.dump(impactedrec.rec, fp)
+                        fp.write('\n')
+                    fp.close()
 
     @db_session
     def handle_changes(self):
