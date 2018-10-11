@@ -147,8 +147,10 @@ class ppdbNBA():
             logger.fatal(msg)
             sys.exit(msg)
 
+        fp = None
         for id in delids:
-            fp = self.open_deltafile('delete', table)
+            if (not fp):
+                fp = self.open_deltafile('delete', table)
             if (fp):
                 fp.write('{deleteid}\n'.format(deleteid=id))
             oldrec = currenttable.select(lambda p: p.rec[idfield] == id).get()
