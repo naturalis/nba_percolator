@@ -150,7 +150,7 @@ class ppdbNBA():
         for id in delids:
             fp = self.open_deltafile('delete', table)
             if (fp):
-                fp.write('{id}\n'.format(deleteid=id))
+                fp.write('{deleteid}\n'.format(deleteid=id))
             oldrec = currenttable.select(lambda p: p.rec[idfield] == id).get()
             if (oldrec):
                 if (enriches):
