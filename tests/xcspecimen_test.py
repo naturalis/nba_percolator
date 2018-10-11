@@ -1,6 +1,6 @@
 import unittest
-from time import sleep
-from ppdb_nba import *
+from ppdb_nba import ppdbNBA
+import logging
 
 class XcspecimenTestCase(unittest.TestCase):
 

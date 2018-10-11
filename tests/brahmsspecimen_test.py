@@ -1,5 +1,6 @@
 import unittest
 from ppdb_nba import ppdbNBA
+import logging
 
 class BrahmsspecimenTestCase(unittest.TestCase):
 
