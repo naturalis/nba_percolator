@@ -578,7 +578,7 @@ class ppdbNBA():
                     for impactedrec in impactedrecords:
                         json.dump(impactedrec.rec, fp)
                         fp.write('\n')
-                        impactid=impactedrec[idfield]
+                        impactid=impactedrec.rec[idfield]
                         logger.debug(
                             '[{elapsed:.2f} seconds] Record "{recordid}" of "{source}" needs to be enriched'.format(
                                 source=source,
