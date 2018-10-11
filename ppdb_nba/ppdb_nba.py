@@ -32,7 +32,7 @@ class ppdbNBA():
         if isinstance(config, str):
             # config is string, read the config file
             try:
-                with open(config, 'r') as ymlfile:
+                with open(file=config, mode='r') as ymlfile:
                     self.config = yaml.load(ymlfile)
             except:
                 msg = '"config.yml" with configuration options of sources is missing'
@@ -117,7 +117,7 @@ class ppdbNBA():
             # Lock file already exists
             return False
         else :
-            with open(filepath, 'a'):
+            with open(file=filepath, mode='a'):
                 os.utime(filepath, None)
             return True
 
@@ -140,7 +140,7 @@ class ppdbNBA():
 
         delids = []
         try :
-            with open(file=filename, 'r') as f:
+            with open(file=filename, mode='r') as f:
                 delids = f.read().splitlines()
         except:
             msg = '"{filename}" cannot be read'.format(filename=filename)
