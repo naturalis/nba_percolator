@@ -150,7 +150,7 @@ class ppdbNBA():
         fp = None
         for id in delids:
             if (not fp):
-                fp = self.open_deltafile('delete', table)
+                fp = self.open_deltafile('kill', table)
             if (fp):
                 fp.write('{deleteid}\n'.format(deleteid=id))
             oldrec = currenttable.select(lambda p: p.rec[idfield] == id).get()
@@ -163,7 +163,7 @@ class ppdbNBA():
 
                 oldrec.delete()
                 logger.debug(
-                    '[{elapsed:.2f} seconds] Permanently deleted record in "{source}"'.format(
+                    '[{elapsed:.2f} seconds] Permanently deleted (kill) record in "{source}"'.format(
                         source=table + '_current',
                         elapsed=(timer() - lap)
                     )
