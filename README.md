@@ -22,13 +22,31 @@ Meer opties zijn te vinden bij aanroep met --help
 
 ```
 ppdb_nba --help
+
+usage: ppdb_nba --source sourcename /path/file1
+
+Preprocessing data to create incremental updates
+
+positional arguments:
+  files            One json data file
+
+optional arguments:
+  -h, --help       show this help message and exit
+  --source SOURCE  Name of the data source
+  --config CONFIG  Config file
+  --current        Import data directly to current table (default is normal
+                   incremental import)
+  --delete         Handle permanent deletes (default is normal incremental
+                   import)
+  --force          Ignore lockfiles, to force the import
+  --debug          Set debugging level logging
 ```
 
 En om de class te gebruiken:
 
 ```python
 from ppdb_nba import ppdbNBA
-pp = ppdbNBA(config='config.yml',source='/pad/naar/jsonlinesfile.json')
+pp = ppdbNBA(config='config.yml',source='naam-van-de-bron')
 ```
 
 <h2 id="ppdb_nba.ppdb_nba.open_deltafile">ppdbNBA.open_deltafile</h2>
@@ -123,6 +141,15 @@ pp.handle_changes()
 ```
 
 Afhandelen van alle veranderingen.
+
+## ppdbNBA.import_deleted(filename='')
+
+```python
+pp.import_deleted('/path/to/listofdeleteids.txt')
+```
+
+Handelt alle deletes af, dit zijn de geforceerde deletes of van bronnen die
+geen volledige dumps leveren.
 
 
 ## Voorbeelden

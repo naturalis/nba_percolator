@@ -495,7 +495,7 @@ class ppdbNBA():
         currenttable = globals()[table.capitalize() + '_current']
         enriches = self.source_config.get('enriches', None)
 
-        fp = self.open_deltafile('tempdelete', self.source_config.get('table'))
+        fp = self.open_deltafile('delete', self.source_config.get('table'))
         # Schrijf de data naar incrementele file
 
         lap = timer()

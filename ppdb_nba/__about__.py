@@ -7,7 +7,7 @@ __license__ = 'LGPL'
 __copyright__ = 'Copyright 2018 Naturalis Biodiversity Center'
 __version__ = '0.0.1'
 __version_info__ = tuple(int(i) for i in __version__.split('.') if i.isdigit())
-__url__ = 'https://github.com/jandevires71/ppdb_nba'
+__url__ = 'https://github.com/naturalis/ppdb_nba'
 
 __all__ = (
     '__package_name__', '__title__', '__author__', '__author_email__',

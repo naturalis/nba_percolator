@@ -5,94 +5,103 @@ from ppdb_nba import *
 class XcspecimenTestCase(unittest.TestCase):
 
     source = 'xenocanto-specimen'
-    config = {'table': 'xenocantospecimen',
-             'id': 'id',
-             'index': 'specimen_test',
-             'doctype': 'Specimen',
-             'enrich': True,
-             'elastic': True,
-             'incremental': False,
-             'path': '/data/xenocanto-specimen'
+    config = {
+        'deltapath' : '/data/incremental',
+        'sources' :
+        {
+            'xenocanto-specimen' :
+            {
+                 'table': 'xenocantospecimen',
+                 'id': 'id',
+                 'enrich': True,
+                 'incremental': False,
+                 'path': '/data/xenocanto-specimen'
+            }
+        },
+        'postgres' :
+        {
+                'host' : 'postgres',
+                'user' : 'postgres',
+                'pass' : 'postgres',
+                'db'   : 'ppdb'
+        }
     }
 
     def __init__(self, *args, **kwargs):
         super(XcspecimenTestCase, self).__init__(*args, **kwargs)
         logger = logging.getLogger('ppdb_nba')
         logger.setLevel(logging.ERROR)
+        self.pp = ppdbNBA(config=self.config, source=self.source)
 
     def setUp(self):
-        clear_data(table=self.config.get('table') + "_current")
-        kill_index(self.config)
+        self.clear_data(table=self.config.get('table') + "_current")
 
         # Vul de basis tabel
-        import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/1-base.json')
+        self.import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/1-base.json')
 
-        # Importeer in elastic search
-        changes = handle_changes(self.config)
+        changes = self.pp.list_changes()
+
+        self.pp.handle_changes()
+
 
     def test_same(self):
         # Vul de basis tabel
-        import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/2-same.json')
-        changes = handle_changes(self.config)
+        self.pp.import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/2-same.json')
+
+        changes = self.pp.list_changes()
 
         # Test of er geen verschillen zijn
         self.assertEqual(len(changes['new']), 0)
         self.assertEqual(len(changes['delete']), 0)
         self.assertEqual(len(changes['update']), 0)
 
-        sleep(2)
-        res = es.search(index=self.config.get('index'), body={"query" : {"match_all" : {}}})
-        self.assertEqual(res['hits']['total'], 100)
+        self.pp.handle_changes()
 
     def test_new(self):
-        import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/3-new.json')
-        changes = handle_changes(self.config)
+        self.pp.import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/3-new.json')
+
+        changes = self.pp.list_changes()
 
         # Test of er m aantal nieuwe records zijn
         self.assertEqual(len(changes['new']), 100)
         self.assertEqual(len(changes['delete']), 0)
         self.assertEqual(len(changes['update']), 0)
 
-        sleep(2)
-        res = es.search(index=self.config.get('index'), body={"query" : {"match_all" : {}}})
-        self.assertEqual(res['hits']['total'], 200)
+        self.pp.handle_changes()
 
     def test_updates(self):
-        import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/4-updates.json')
-        changes = handle_changes(self.config)
+        self.pp.import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/4-updates.json')
+
+        changes = self.pp.list_changes()
 
         # Test of er n aantal records zijn
         self.assertEqual(len(changes['delete']), 0)
         self.assertEqual(len(changes['update']), 10)
 
-        sleep(2)
-        res = es.search(index=self.config.get('index'), body={"query" : {"match_all" : {}}})
-        self.assertEqual(res['hits']['total'], 100)
+        self.pp.handle_changes()
 
     def test_updatesnew(self):
-        import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/5-updatesnew.json')
-        changes = handle_changes(self.config)
+        self.pp.import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/5-updatesnew.json')
+
+        changes = self.pp.list_changes()
 
         # Test of er n aantal records zijn
         self.assertEqual(len(changes['new']), 10)
         self.assertEqual(len(changes['update']), 10)
 
-        sleep(2)
-        res = es.search(index=self.config.get('index'), body={"query" : {"match_all" : {}}})
-        self.assertEqual(res['hits']['total'], 110)
+        self.pp.handle_changes()
 
     def test_deletes(self):
-        import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/6-deletes.json')
-        changes = handle_changes(self.config)
+        self.pp.import_data(table=self.config.get('table') + "_import", datafile=self.config.get('path') + '/6-deletes.json')
+
+        changes = self.pp.list_changes()
 
         # Test of er n aantal records zijn
         self.assertEqual(len(changes['new']), 0)
         self.assertEqual(len(changes['delete']), 10)
         self.assertEqual(len(changes['update']), 0)
 
-        sleep(2)
-        res = es.search(index=self.config.get('index'), body={"query" : {"match_all" : {}}})
-        self.assertEqual(res['hits']['total'], 90)
+        self.pp.handle_changes(self.config)
 
 
 if __name__ == '__main__':

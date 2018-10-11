@@ -14,7 +14,7 @@ sources:                            # List with sources
         index: taxon                # What destination index in ES
         enrich: no                  # Should it be enriched
         path: /data/nsr-taxa        # Path where the source data is found
-        enriches:                   # Which sources are impacted by this source
+        enriches:                   # Which sources are impacted
             - brahms-specimen
             - crs-specimen
     xenocanto-specimen:

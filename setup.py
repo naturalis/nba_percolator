@@ -5,7 +5,7 @@ setuptools.setup(
       version='0.1',
       scripts=['bin/ppdb_nba'],
       description='Pre-processing database for NBA',
-      url='https://github.com/jandevires71/ppdb_nba',
+      url='https://github.com/naturalis/ppdb_nba',
       author='Joep Vermaat',
       author_email='joep.vermaat@naturalis.nl',
       packages=['ppdb_nba'],
