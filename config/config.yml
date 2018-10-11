@@ -6,11 +6,6 @@ postgres:                           # Postgres database config
     pass: postgres
     db: ppdb
 deltapath: /data/incremental        # The path where all delta files are written
-logging:
-    type: logstash
-    host: logstash
-    level: DEBUG
-    port: 5000
 sources:                            # List with sources
     nsr-taxa:                       # NSR taxonomy
         table: nsrtaxa              # Prefix_ of table
