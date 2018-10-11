@@ -561,9 +561,7 @@ class ppdbNBA():
     @db_session
     def handle_enrichment(self, source, rec):
         scientificnamegroup = None
-        print(self.config)
-        source_config = self.config.get(source)
-        print(source_config)
+        source_config = self.config.get('sources').get(source)
 
         if (rec.rec.get('acceptedName')):
             scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
