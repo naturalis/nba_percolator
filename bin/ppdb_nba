@@ -66,7 +66,7 @@ def main():
 
     if (args.current):
         import_to_current(pp, args)
-    elif (args.deleted):
+    elif (args.delete):
         import_deleted(pp, args)
     else:
         import_incremental(pp, args)
