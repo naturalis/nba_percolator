@@ -163,9 +163,10 @@ class ppdbNBA():
 
                 oldrec.delete()
                 logger.debug(
-                    '[{elapsed:.2f} seconds] Permanently deleted (kill) record in "{source}"'.format(
+                    '[{elapsed:.2f} seconds] Permanently deleted (kill) record "{recordid}" in "{source}"'.format(
                         source=table + '_current',
-                        elapsed=(timer() - lap)
+                        elapsed=(timer() - lap),
+                        recordid=id
                     )
                 )
                 lap = timer()
@@ -226,7 +227,8 @@ class ppdbNBA():
         self.db.execute(
             "CREATE INDEX IF NOT EXISTS idx_{table}__hash "
             "ON public.{table} USING BTREE(hash)".format(
-                table=table))
+                table=table)
+        )
         logger.debug(
             '[{elapsed:.2f} seconds] Set hashing index on "{table}"'.format(table=table, elapsed=(timer() - lap)))
         lap = timer()
@@ -366,17 +368,33 @@ class ppdbNBA():
                         self.changes['delete'][uuid] = [r.id]
 
             if (len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete'])):
+                if len(self.changes['new']):
+                    logger.info(
+                        '[{elapsed:.2f} seconds] {new} inserted'.format(
+                            new=len(self.changes['new']),
+                            elapsed=(timer() - lap)
+                        )
+                    )
+                if len(self.changes['update']):
+                    logger.info(
+                        '[{elapsed:.2f} seconds] {update} updated'.format(
+                            update=len(self.changes['update']),
+                            elapsed=(timer() - lap)
+                        )
+                    )
+                if len(self.changes['delete']):
+                    logger.info(
+                        '[{elapsed:.2f} seconds] {delete} removed'.format(
+                            delete=len(self.changes['delete']),
+                            elapsed=(timer() - lap)
+                        )
+                    )
+            else:
                 logger.info(
-                    '[{elapsed:.2f} seconds] identified {new} new, {update} updated and {delete} removed'.format(
-                        new=len(self.changes['new']),
-                        update=len(self.changes['update']),
-                        delete=len(self.changes['delete']),
+                    '[{elapsed:.2f} seconds] No changes'.format(
                         elapsed=(timer() - lap)
                     )
                 )
-
-            else:
-                logger.info('No changes')
 
         return self.changes
 
@@ -407,12 +425,13 @@ class ppdbNBA():
 
             self.db.execute(insertquery)
             logger.debug(
-                '[{elapsed:.2f} seconds] New record inserted in "{source}"'.format(
-                source=table + '_current',
-                elapsed=(timer() - lap))
+                '[{elapsed:.2f} seconds] New record "{recordid}" inserted in "{source}"'.format(
+                    elapsed=(timer() - lap),
+                    source=table + '_current',
+                    recordid=importrec.rec[idfield]
+                )
             )
             lap = timer()
-            logger.info("New record [{id}] inserted".format(id=importrec.rec[idfield]))
         if (fp):
             fp.close()
 
@@ -455,14 +474,14 @@ class ppdbNBA():
 
             self.db.execute(updatequery)
             logger.debug(
-                '[{elapsed:.2f} seconds] Updated record in "{source}"'.format(
+                '[{elapsed:.2f} seconds] Updated record "{recordid}" in "{source}"'.format(
                     source=table + '_current',
-                    elapsed=(timer() - lap)
+                    elapsed=(timer() - lap),
+                    recordid=importrec.rec[idfield]
                 )
             )
             lap = timer()
 
-            logger.info("Record [{id}] updated".format(id=importrec.rec[idfield]))
         if (fp):
             fp.close()
 
