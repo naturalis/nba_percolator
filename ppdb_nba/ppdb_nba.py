@@ -514,9 +514,10 @@ class ppdbNBA():
                 oldrec.delete()
 
                 logger.debug(
-                    '[{elapsed:.2f} seconds] Temporarily deleted record in "{source}"'.format(
+                    '[{elapsed:.2f} seconds] Temporarily deleted record "{deleteid}" in "{source}"'.format(
                         source=table + '_current',
-                        elapsed=(timer() - lap)
+                        elapsed=(timer() - lap),
+                        deleteid=deleteid
                     )
                 )
                 lap = timer()
@@ -562,6 +563,9 @@ class ppdbNBA():
     def handle_enrichment(self, source, rec):
         scientificnamegroup = None
         source_config = self.config.get('sources').get(source)
+        idfield = source_config.get('id')
+
+        lap = timer()
 
         if (rec.rec.get('acceptedName')):
             scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
@@ -574,6 +578,15 @@ class ppdbNBA():
                     for impactedrec in impactedrecords:
                         json.dump(impactedrec.rec, fp)
                         fp.write('\n')
+                        impactid=impactedrec[idfield]
+                        logger.debug(
+                            '[{elapsed:.2f} seconds] Record "{recordid}" of "{source}" needs to be enriched'.format(
+                                source=source,
+                                elapsed=(timer() - lap),
+                                recordid=impactid
+                            )
+                        )
+                        lap = timer()
                     fp.close()
 
     @db_session
