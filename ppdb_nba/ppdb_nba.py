@@ -11,6 +11,7 @@ import sys
 import time
 from timeit import default_timer as timer
 import yaml
+from elasticsearch import Elasticsearch
 from pony.orm import db_session
 from .schema import *
 
@@ -56,7 +57,20 @@ class ppdbNBA():
             msg = 'Source "%s" does not exist in config file' % (source)
             sys.exit(msg)
 
+        self.es = self.connect_to_elastic()
         self.connect_to_database()
+
+        self.jobid = ''
+
+    def connect_to_elastic(self):
+        # Verbinden met Elastic search
+        try:
+            es = Elasticsearch(hosts=self.config['elastic']['host'])
+            return es
+        except:
+            msg = 'Cannot connect to elastic search server'
+            logger.fatal(msg)
+            sys.exit(msg)
 
     def connect_to_database(self):
         """
@@ -121,6 +135,24 @@ class ppdbNBA():
                 os.utime(filepath, None)
             return True
 
+    def log_change(self, state='unknown', recid='', comment=''):
+        rec = {
+            '@timestamp' : datetime.now().isoformat(),
+            'state' : state,
+            'ppd_timestamp' : datetime.now().isoformat(),
+            'comment' : comment
+        }
+
+        try:
+            self.es.index(
+                index=self.jobid.lower(),
+                id=recid,
+                doc_type='logging',
+                body=json.dumps(rec)
+            )
+        except:
+            logger.error(self, 'Failed to log to elastic search')
+
 
 
     @db_session
@@ -180,6 +212,8 @@ class ppdbNBA():
         Importeer data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
         """
         lap = timer()
+
+        self.jobid = datafile.split('/')[-1]
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
 
@@ -424,6 +458,11 @@ class ppdbNBA():
                 fp.write('\n')
 
             self.db.execute(insertquery)
+
+            self.log_change(
+                state='new',
+                recid=importid
+            )
             logger.debug(
                 '[{elapsed:.2f} seconds] New record "{recordid}" inserted in "{source}"'.format(
                     elapsed=(timer() - lap),
@@ -480,6 +519,10 @@ class ppdbNBA():
                     recordid=importrec.rec[idfield]
                 )
             )
+            self.log_change(
+                state='update',
+                recid=importrec.rec[idfield],
+            )
             lap = timer()
 
         if (fp):
@@ -512,6 +555,11 @@ class ppdbNBA():
                         self.handle_enrichment(source, oldrec)
 
                 oldrec.delete()
+
+                self.log_change(
+                    state='delete',
+                    recid=deleteid
+                )
 
                 logger.debug(
                     '[{elapsed:.2f} seconds] Temporarily deleted record "{deleteid}" in "{source}"'.format(
@@ -585,6 +633,10 @@ class ppdbNBA():
                                 elapsed=(timer() - lap),
                                 recordid=impactid
                             )
+                        )
+                        self.log_change(
+                            state='enrich',
+                            recid=impactid
                         )
                         lap = timer()
                     fp.close()
