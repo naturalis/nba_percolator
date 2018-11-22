@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Dit is de NBA preprocessing database module.
+"""NBA preprocessing database module
 
 Hierin zitten alle functies en database afhankelijkheden waarmee import data 
-kan worden gefilterd alvorens een import in de NBA documentstore plaatsvind.
+kan worden gefilterd alvorens een import in de NBA documentstore plaatsvindt.
 """
 import json
 import logging
@@ -111,22 +111,41 @@ class ppdbNBA():
             logger.fatal(msg)
             sys.exit(msg)
 
-    def handle_job(self, jobfile=''):
-        files = []
+    def parse_job(self, jobfile=''):
+        """
+        Parses a json job file, and tries to retrieve the validated file names
+        then processes them one by one.
+
+        :rtype: object
+        """
+        files = {}
         with open(jobfile) as json_data:
             jobrec = json.load(json_data)
+            # Get the name of the supplier
+            self.supplier = jobrec.get('data_supplier')
+
             if jobrec.get('validator'):
                 for key in jobrec.get('validator').keys():
                     export = jobrec.get('validator').get(key)
                     for validfile in export.get('results').get('outfiles').get('valid'):
-                        files.append(validfile.split('/')[-1])
+                        source = self.supplier + '-' + key
+                        if source not in files:
+                            files[source] = []
+                        files[source].append(validfile.split('/')[-1])
+        return files
+
+    def handle_job(self, jobfile=''):
+        files = self.parse_job(jobfile)
+
         print(files)
+
+
 
     def open_deltafile(self, action='new', index='unknown'):
         """
         Open een delta bestand met records of id's om weg te schrijven.
         """
-        destpath = self.config.get('deltapath', '/tmp')
+        destpath = self.config.get('paths').get('delta', '/tmp')
         filename = "{index}-{ts}-{action}.json".format(
             index=index,
             ts=time.strftime('%Y%m%d%H%M%S'),
@@ -145,7 +164,7 @@ class ppdbNBA():
         return fp
 
     def lock_datafile(self,datafile=''):
-        destpath = self.config.get('deltapath', '/tmp')
+        destpath = self.config.get('paths').get('delta', '/tmp')
         lockfile = os.path.basename(datafile) + '.lock'
         filepath = os.path.join(destpath, lockfile)
         if (os.path.isfile(filepath)) :
@@ -327,7 +346,7 @@ class ppdbNBA():
 
     @db_session
     def remove_doubles(self):
-        """ Bepaalde bronnen bevatte dubbele records, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
+        """ Bepaalde bronnen kunnen dubbele records bevatten, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
         lap = timer()
 
         doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
