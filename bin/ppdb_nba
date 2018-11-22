@@ -55,7 +55,7 @@ def main():
     parser.add_argument('--delete', action='store_true', help='Handle permanent deletes (default is normal incremental import)')
     parser.add_argument('--force', action='store_true', help='Ignore lockfiles, to force the import')
     parser.add_argument('--debug', action='store_true', help='Set debugging level logging')
-    parser.add_argument('files', help='One json data file', default=[])
+    parser.add_argument('files', help='One json data file', nargs=0, default=[])
     args = parser.parse_args()
 
     pp = ppdbNBA(config=args.config,source=args.source)
