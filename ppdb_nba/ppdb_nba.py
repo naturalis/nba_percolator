@@ -143,7 +143,6 @@ class ppdbNBA():
 
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
         processed_path = self.config.get('paths').get('processed', '/tmp')
-        failed_path = self.config.get('paths').get('failed', '/tmp')
 
         for source,filenames in files.items():
             for filename in filenames:
