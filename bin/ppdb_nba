@@ -70,13 +70,6 @@ def main():
         logger.fatal("Configuratie ontbreekt")
         exit(1)
 
-    if not pp.source_config:
-        logger.fatal('Bron "{source}" bestaat niet, kies een van de onderstaande bronnen'.format(source=source))
-        sources = pp.config.get('sources', [])
-        if (sources) :
-            print("\n - ".join(sources))
-        exit(1)
-
     if (args.current):
         import_to_current(pp, args)
     elif (args.delete):
