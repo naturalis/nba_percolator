@@ -74,6 +74,11 @@ class ppdbNBA():
             sys.exit(msg)
 
     def connect_to_elastic(self):
+        """
+        Connect to elastic search for logging
+
+        :return:
+        """
         # Verbinden met Elastic search
         try:
             es = Elasticsearch(hosts=self.config['elastic']['host'])
@@ -85,7 +90,7 @@ class ppdbNBA():
 
     def connect_to_database(self):
         """
-         Contact maken met postgres database
+         Connect to postgres database
         """
         global ppdb
 
@@ -114,7 +119,7 @@ class ppdbNBA():
 
     def parse_job(self, jobfile=''):
         """
-        Parses a json job file, and tries to retrieve the validated file names
+        Parse a json job file, and tries to retrieve the validated file names
         then returns a dictionary of sources with a list of files.
 
         :rtype: object
@@ -128,6 +133,7 @@ class ppdbNBA():
             # Get the date of the job
             self.jobdate = jobrec.get('date')
 
+            # Parse the validator part, get the outfiles
             if jobrec.get('validator'):
                 for key in jobrec.get('validator').keys():
                     export = jobrec.get('validator').get(key)
@@ -139,16 +145,24 @@ class ppdbNBA():
         return files
 
     def handle_job(self, jobfile=''):
+        """
+        Handle the job
+
+        :param jobfile:
+        :return:
+        """
         filename = jobfile.split('/')[-1]
         self.jobid = filename.rstrip('.json')
 
         files = self.parse_job(jobfile)
 
+        # set the lockfile, write the filename of the active job
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
         with open(os.path.join(incoming_path, '.lock'),'w') as lockfile:
             lockfile.write(filename)
         processed_path = self.config.get('paths').get('processed', '/tmp')
 
+        # import each file
         for source,filenames in files.items():
             for filename in filenames:
                 self.set_source(source.lower())
@@ -158,14 +172,17 @@ class ppdbNBA():
                 try:
                     self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
                 except Exception:
+                    # import fails? remove the lock, return false
                     logger.error("Import of '{file}' into '{source}' failed".format(file=filepath,source=source.lower()))
                     os.remove(os.path.join(incoming_path, '.lock'))
                     return False
 
+                # import succesful, move the data file
                 shutil.move(filepath,destpath)
                 self.remove_doubles()
                 self.handle_changes()
 
+        # everything, okay and finished, remove the lock
         os.remove(os.path.join(incoming_path, '.lock'))
 
         return True
