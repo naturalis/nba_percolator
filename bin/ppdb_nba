@@ -2,7 +2,7 @@
 from argparse import ArgumentParser
 from ppdb_nba import ppdbNBA
 from timeit import default_timer as timer
-import os, logging, glob
+import os, logging, glob, shutil
 
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
@@ -19,9 +19,21 @@ def scan_jobs(pp, args):
 
     if (len(jobs) > 0):
         job = jobs.pop()
-        logger.info("Going to do: {job}".format(job=job))
-        pp.handle_job(job)
+        logger.info("STARTING: {job}".format(job=job))
+        if pp.handle_job(job):
+            logger.info("SUCCESS: {job} completed".format(job=job))
+            shutil.move(
+                os.path.join(pp.config.get('paths').get('jobs'),job),
+                os.path.join(pp.config.get('paths').get('done'),job)
+            )
+        else:
+            logger.info("ERROR: {job} failed".format(job=job))
+            shutil.move(
+                os.path.join(pp.config.get('paths').get('jobs'),job),
+                os.path.join(pp.config.get('paths').get('failed'),job)
+            )
     else :
+        logger.info('No jobs - nothing to do')
         return False
 
 def import_incremental(pp, args):

@@ -151,25 +151,17 @@ class ppdbNBA():
                 filepath = os.path.join(incoming_path, filename)
                 destpath = os.path.join(processed_path, filename)
 
+                try:
+                    self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
+                except Exception:
+                    logger.error("Import of '{file}' into '{source}' failed".format(file=filepath,source=source.lower()))
+                    return False
 
-                print(source.lower() + '=' + filepath)
                 shutil.move(filepath,destpath)
+                self.remove_doubles()
+                self.handle_changes()
 
-
-            #try:
-            #    self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
-            #except Exception:
-            #    # log that the import fails
-            #    # move the file to failed
-            #    exit(2)
-            #self.remove_doubles()
-            #self.handle_changes()
-
-
-
-
-
-
+        return True
 
     def open_deltafile(self, action='new', index='unknown'):
         """
