@@ -10,14 +10,14 @@ logger.setLevel(logging.INFO)
 def scan_jobs(pp, args):
     jobspath = pp.config.get('paths').get('jobs', os.getcwd() + "/jobs")
     locks = glob.glob(jobspath + '/.lock')
-    if (len(locks) > 0):
+    if len(locks) > 0:
         logger.info('Lockfile found, ppdb_nba is still busy importing')
         return False
 
     jobs = glob.glob(jobspath + '/*.json')
     jobs.sort(key=os.path.getmtime)
 
-    if (len(jobs) > 0):
+    if len(jobs) > 0:
         job = jobs.pop()
         logger.info("STARTING: {job}".format(job=job))
         if pp.handle_job(job):
@@ -40,10 +40,10 @@ def import_incremental(pp, args):
     file = args.files[0]
 
     pp.set_source(args.source)
-    if (not args.force and not pp.lock_datafile(file)):
+    if not args.force and not pp.lock_datafile(file):
         msg = "Lockfile gevonden. Import van '{file}' al bezig of uitgevoerd in een ander proces?".format(file=file)
         logger.fatal(msg)
-        print("Toch importeren? Roep opnieuw aan met --force")
+        print('Toch importeren? Roep opnieuw aan met --force')
         exit(2)
 
     start = timer()
