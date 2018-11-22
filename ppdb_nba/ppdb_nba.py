@@ -139,6 +139,9 @@ class ppdbNBA():
         return files
 
     def handle_job(self, jobfile=''):
+        filename = jobfile.split('/')[-1]
+        self.jobid = filename.rstrip('.json')
+
         files = self.parse_job(jobfile)
 
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
