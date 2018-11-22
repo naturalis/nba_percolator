@@ -145,6 +145,8 @@ class ppdbNBA():
         files = self.parse_job(jobfile)
 
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
+        with open(os.path.join(incoming_path, '.lock')) as lockfile:
+            lockfile.write(jobfile)
         processed_path = self.config.get('paths').get('processed', '/tmp')
 
         for source,filenames in files.items():
@@ -157,11 +159,14 @@ class ppdbNBA():
                     self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
                 except Exception:
                     logger.error("Import of '{file}' into '{source}' failed".format(file=filepath,source=source.lower()))
+                    os.remove(os.path.join(incoming_path, '.lock'))
                     return False
 
                 shutil.move(filepath,destpath)
                 self.remove_doubles()
                 self.handle_changes()
+
+        os.remove(os.path.join(incoming_path, '.lock'))
 
         return True
 

@@ -23,14 +23,14 @@ def scan_jobs(pp, args):
         if pp.handle_job(job):
             logger.info("SUCCESS: {job} completed".format(job=job))
             shutil.move(
-                os.path.join(pp.config.get('paths').get('jobs'),job),
-                os.path.join(pp.config.get('paths').get('done'),job)
+                job,
+                os.path.join(pp.config.get('paths').get('done'),job.split('/')[-1])
             )
         else:
             logger.error("{job} failed".format(job=job))
             shutil.move(
-                os.path.join(pp.config.get('paths').get('jobs'),job),
-                os.path.join(pp.config.get('paths').get('failed'),job)
+                job,
+                os.path.join(pp.config.get('paths').get('failed'),job.split('/'))
             )
     else :
         logger.info('No jobs - nothing to do')
