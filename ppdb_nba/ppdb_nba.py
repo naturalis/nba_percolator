@@ -142,11 +142,12 @@ class ppdbNBA():
 
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
 
-        for source,filename in files.items():
-            self.set_source(source.lower())
-            filepath = incoming_path + '/' + filename
+        for source,filenames in files.items():
+            for filename in filenames:
+                self.set_source(source.lower())
+                filepath = incoming_path + '/' + filename
 
-            print(source.lower() + '=' + filepath)
+                print(source.lower() + '=' + filepath)
 
             #try:
             #    self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
