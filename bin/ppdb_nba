@@ -21,6 +21,7 @@ def handle_job(pp, args):
 def import_incremental(pp, args):
     file = args.files[0]
 
+    pp.set_source(args.source)
     if (not args.force and not pp.lock_datafile(file)):
         msg = "Lockfile gevonden. Import van '{file}' al bezig of uitgevoerd in een ander proces?".format(file=file)
         logger.fatal(msg)
@@ -39,10 +40,12 @@ def import_incremental(pp, args):
 
 def import_to_current(pp,args):
     logger.info("Fill current table '%s' with data" % (pp.source_config.get('table') + '_current'))
+    pp.set_source(args.source)
     pp.import_data(pp.source_config.get('table') + '_current', args.files[0])
 
 def import_deleted(pp,args):
     logger.info("Import deleted ids for source %s" % (pp.source_config.get('table')))
+    pp.set_source(args.source)
     pp.import_deleted(args.files[0])
 
 def main():
@@ -58,8 +61,7 @@ def main():
     parser.add_argument('files', help='One json data file', nargs='*', default=[])
     args = parser.parse_args()
 
-    pp = ppdbNBA(config=args.config,source=args.source)
-
+    pp = ppdbNBA(config=args.config)
 
     if (args.debug):
         logger.setLevel(logging.DEBUG)

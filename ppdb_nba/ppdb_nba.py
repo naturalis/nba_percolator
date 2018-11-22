@@ -26,7 +26,7 @@ class ppdbNBA():
     create incremental insert, update or delete files.
     """
 
-    def __init__(self, config, source):
+    def __init__(self, config):
         """
         Inlezen van de config.yml file waarin alle bronnen en hun specifieke wensen in moeten worden vermeld.
         """
@@ -51,16 +51,19 @@ class ppdbNBA():
         if (not self.config.get('sources', False)):
             msg = 'Sources part missing in config'
             sys.exit(msg)
-        if (self.config.get('sources').get(source)):
-            self.source_config = self.config.get('sources').get(source)
-        else:
-            msg = 'Source "%s" does not exist in config file' % (source)
-            sys.exit(msg)
+
 
         self.es = self.connect_to_elastic()
         self.connect_to_database()
 
         self.jobid = ''
+
+    def set_source(self, source):
+        if (self.config.get('sources').get(source)):
+            self.source_config = self.config.get('sources').get(source)
+        else:
+            msg = 'Source "%s" does not exist in config file' % (source)
+            sys.exit(msg)
 
     def connect_to_elastic(self):
         # Verbinden met Elastic search
