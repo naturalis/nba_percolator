@@ -140,7 +140,7 @@ class ppdbNBA():
     def handle_job(self, jobfile=''):
         files = self.parse_job(jobfile)
 
-        incoming_path = self.config.get('path').get('incoming', '/tmp')
+        incoming_path = self.config.get('paths').get('incoming', '/tmp')
 
         for source,filename in files.items():
             self.set_source(source.lower())
