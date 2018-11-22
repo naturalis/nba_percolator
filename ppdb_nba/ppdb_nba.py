@@ -125,7 +125,7 @@ class ppdbNBA():
             self.supplier = jobrec.get('data_supplier')
 
             # Get the date of the job
-            self.jobdate = jobrec.date
+            self.jobdate = jobrec.get('date')
 
             if jobrec.get('validator'):
                 for key in jobrec.get('validator').keys():
