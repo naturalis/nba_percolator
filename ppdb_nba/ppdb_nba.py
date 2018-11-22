@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import glob
+import shutil
 import sys
 import time
 from timeit import default_timer as timer
@@ -141,13 +142,19 @@ class ppdbNBA():
         files = self.parse_job(jobfile)
 
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
+        processed_path = self.config.get('paths').get('processed', '/tmp')
+        failed_path = self.config.get('paths').get('failed', '/tmp')
 
         for source,filenames in files.items():
             for filename in filenames:
                 self.set_source(source.lower())
-                filepath = incoming_path + '/' + filename
+                filepath = os.path.join(incoming_path, filename)
+                destpath = os.path.join(processed_path, filename)
+
 
                 print(source.lower() + '=' + filepath)
+                shutil(filepath,destpath)
+
 
             #try:
             #    self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
