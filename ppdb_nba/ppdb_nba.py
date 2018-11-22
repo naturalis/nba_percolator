@@ -7,6 +7,7 @@ kan worden gefilterd alvorens een import in de NBA documentstore plaatsvind.
 import json
 import logging
 import os
+import glob
 import sys
 import time
 from timeit import default_timer as timer
@@ -59,6 +60,12 @@ class ppdbNBA():
         self.jobid = ''
 
     def set_source(self, source):
+        """
+        Setting the data source of the import (and it's source config)
+
+        :param source:
+        """
+
         if (self.config.get('sources').get(source)):
             self.source_config = self.config.get('sources').get(source)
         else:
@@ -103,6 +110,17 @@ class ppdbNBA():
             msg = 'Creating tables needed for preprocessing failed'
             logger.fatal(msg)
             sys.exit(msg)
+
+    def handle_job(self, jobfile=''):
+        files = []
+        with open(jobfile) as json_data:
+            jobrec = json.load(json_data)
+            if jobrec.get('validator'):
+                for key in jobrec.get('validator').keys():
+                    export = jobrec.get('validator').get(key)
+                    for validfile in export.get('results').get('outfiles').get('valid'):
+                        files.append(validfile.split('/')[-1])
+        print(files)
 
     def open_deltafile(self, action='new', index='unknown'):
         """

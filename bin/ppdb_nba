@@ -7,11 +7,11 @@ import os, logging, glob
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 
-def handle_job(pp, args):
+def scan_jobs(pp, args):
     jobspath = pp.config.get('paths').get('jobs', os.getcwd() + "/jobs")
     locks = glob.glob(jobspath + '/.lock')
     if (len(locks) > 0):
-        logger.info('ppdb_nba already importing')
+        logger.info('Lockfile found, ppdb_nba is still busy importing')
         return False
 
     jobs = glob.glob(jobspath + '/*.json')
@@ -20,6 +20,7 @@ def handle_job(pp, args):
     if (len(jobs) > 0):
         job = jobs.pop()
         logger.info("Going to do: {job}".format(job=job))
+        pp.handle_job(job)
     else :
         return False
 
@@ -82,7 +83,7 @@ def main():
     elif (len(args.files)>0):
         import_incremental(pp, args)
     else:
-        handle_job(pp, args)
+        scan_jobs(pp, args)
 
 if __name__ == "__main__":
     main()
