@@ -114,7 +114,7 @@ class ppdbNBA():
     def parse_job(self, jobfile=''):
         """
         Parses a json job file, and tries to retrieve the validated file names
-        then processes them one by one.
+        then returns a dictionary of sources with a list of files.
 
         :rtype: object
         """
@@ -123,6 +123,9 @@ class ppdbNBA():
             jobrec = json.load(json_data)
             # Get the name of the supplier
             self.supplier = jobrec.get('data_supplier')
+
+            # Get the date of the job
+            self.jobdate = jobrec.date
 
             if jobrec.get('validator'):
                 for key in jobrec.get('validator').keys():
@@ -137,7 +140,26 @@ class ppdbNBA():
     def handle_job(self, jobfile=''):
         files = self.parse_job(jobfile)
 
-        print(files)
+        incoming_path = self.config.get('path').get('incoming', '/tmp')
+
+        for source,filename in files.items():
+            self.set_source(source.lower())
+            filepath = incoming_path + '/' + filename
+
+            print(source.lower() + '=' + filepath)
+
+            #try:
+            #    self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
+            #except Exception:
+            #    # log that the import fails
+            #    # move the file to failed
+            #    exit(2)
+            #self.remove_doubles()
+            #self.handle_changes()
+
+
+
+
 
 
 
