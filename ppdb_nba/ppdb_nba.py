@@ -145,7 +145,7 @@ class ppdbNBA():
         files = self.parse_job(jobfile)
 
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
-        with open(os.path.join(incoming_path, '.lock')) as lockfile:
+        with open(os.path.join(incoming_path, '.lock'),'w') as lockfile:
             lockfile.write(jobfile)
         processed_path = self.config.get('paths').get('processed', '/tmp')
 
