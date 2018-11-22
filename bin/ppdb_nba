@@ -12,6 +12,7 @@ def scan_jobs(pp, args):
     locks = glob.glob(jobspath + '/.lock')
     if len(locks) > 0:
         logger.info('Lockfile found, ppdb_nba is still busy importing')
+
         return False
 
     jobs = glob.glob(jobspath + '/*.json')
