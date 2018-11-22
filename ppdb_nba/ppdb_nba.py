@@ -136,6 +136,14 @@ class ppdbNBA():
             return True
 
     def log_change(self, state='unknown', recid='', comment=''):
+        """
+        Logging of the state change of a record
+
+        :param state:
+        :param recid:
+        :param comment:
+        :return:
+        """
         rec = {
             '@timestamp' : datetime.now().isoformat(),
             'state' : state,
@@ -213,6 +221,7 @@ class ppdbNBA():
         """
         lap = timer()
 
+        # Use the name of the filename as a job id
         self.jobid = datafile.split('/')[-1]
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
@@ -461,7 +470,7 @@ class ppdbNBA():
 
             self.log_change(
                 state='new',
-                recid=importid
+                recid=importrec.rec[idfield]
             )
             logger.debug(
                 '[{elapsed:.2f} seconds] New record "{recordid}" inserted in "{source}"'.format(

@@ -2,10 +2,21 @@
 from argparse import ArgumentParser
 from ppdb_nba import ppdbNBA
 from timeit import default_timer as timer
-import logging
+import os, logging, glob
 
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
+
+def handle_job(pp, args):
+    jobspath = pp.config.get('paths').get('jobs', os.getcwd() + "/jobs")
+    jobs = glob.glob(jobspath + '/*.json')
+    jobs.sort(key=os.path.getmtime)
+
+    if (len(jobs) > 0):
+        job = jobs.pop()
+        logger.info("Going to do: {job}".format(job=job))
+    else :
+        return False
 
 def import_incremental(pp, args):
     file = args.files[0]
@@ -68,8 +79,10 @@ def main():
         import_to_current(pp, args)
     elif (args.delete):
         import_deleted(pp, args)
-    else:
+    elif (len(args.files)>0):
         import_incremental(pp, args)
+    else:
+        handle_job(pp, args)
 
 if __name__ == "__main__":
     main()
