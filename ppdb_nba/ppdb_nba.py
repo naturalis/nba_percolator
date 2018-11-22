@@ -153,7 +153,7 @@ class ppdbNBA():
 
 
                 print(source.lower() + '=' + filepath)
-                shutil(filepath,destpath)
+                shutil.move(filepath,destpath)
 
 
             #try:
