@@ -3,9 +3,17 @@
 postgres:                           # Postgres database config
     host: postgres
     user: postgres
-    pass: postgres
+    pass: xxxxxxxxxx
     db: ppdb
-deltapath: /data/incremental        # The path where all delta files are written
+elastic:
+    host: elasticcsearch
+paths:
+    incoming: /shared-data/incoming
+    processed: /shared-data/processed
+    jobs: /shared-data/jobs
+    failed: /shared-data/failed
+    done: /shared-data/done
+    delta: /shared-data/incremental        # The path where all delta files are written
 sources:                            # List with sources
     nsr-taxa:                       # NSR taxonomy
         table: nsrtaxa              # Prefix_ of table
@@ -13,49 +21,49 @@ sources:                            # List with sources
         incremental: no             # Is the source data incremental
         index: taxon                # What destination index in ES
         enrich: no                  # Should it be enriched
-        path: /data/nsr-taxa        # Path where the source data is found
         enriches:                   # Which sources are impacted
             - brahms-specimen
             - crs-specimen
-    xenocanto-specimen:
+    xc-specimen:
         table: xenocantospecimen
         id: id
         index: specimen
         doctype: Specimen
         enrich: yes
         incremental: no
-        path: /data/xenocanto-specimen
+    xc-multimedia:
+        table: xenocantomedia
+        id: id
+        index: xcmedia
+        doctype: media
+        enrich: yes
+        incremental: no
     brahms-specimen:
         table: brahmsspecimen
-        id: assemblageID 
+        id: id 
         index: specimen
         doctype: Specimen
         enrich: yes
         incremental: no
-        path: /data/brahms-specimen
-    brahms-media:
+    brahms-multimedia:
         table: brahmsmedia
-        id: assemblageID 
+        id: id 
         enrich: yes
         incremental: no
-        path: /data/brahms-media
     crs-specimen:
         table: crsspecimen
-        id: assemblageID 
+        id: id 
         index: specimen
         doctype: Specimen
         enrich: yes
         incremental: no
-        path: /data/crs-specimen
-    crs-media:
+    crs-multimedia:
         table: crsmedia
-        id: assemblageID 
+        id: id 
         enrich: yes
         incremental: no
-        path: /data/crs-media
     waarneming-specimen:
         table: waarnemingspecimen
         id: id 
         enrich: no
         incremental: yes
-        path: /data/waarneming-specimen
