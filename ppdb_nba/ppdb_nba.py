@@ -96,6 +96,7 @@ class ppdbNBA():
 
         self.db = ppdb
 
+        logger.debug('Connecting to database')
         try:
             self.db.bind(
                 provider='postgres',
@@ -109,6 +110,9 @@ class ppdbNBA():
             logger.fatal(msg)
             sys.exit(msg)
 
+        logger.debug('Connected to database')
+
+        logger.debug('Generating mapping')
         # Tabel definities met pony db
         try:
             self.db.generate_mapping(create_tables=True)
@@ -116,6 +120,7 @@ class ppdbNBA():
             msg = 'Creating tables needed for preprocessing failed'
             logger.fatal(msg)
             sys.exit(msg)
+        logger.debug('Mapping generated')
 
     def lock(self, jobfile):
         jobs_path = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
