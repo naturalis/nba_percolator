@@ -15,9 +15,11 @@ def scan_jobs(pp, args):
     :param args:
     :return:
     """
+    logger.debug('starting scan jobs')
     if pp.islocked():
         logger.info('Stopping, lockfile found, ppdb_nba still busy importing')
         return False
+    logger.debug('continue scan jobs')
 
     jobspath = pp.config.get('paths').get('jobs')
 
