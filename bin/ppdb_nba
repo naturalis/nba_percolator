@@ -92,13 +92,12 @@ def main():
     parser.add_argument('files', help='One json data file', nargs='*', default=[])
     args = parser.parse_args()
 
-    logger.debug('starting the percolator')
-
-
-    pp = ppdbNBA(config=args.config)
-
     if (args.debug):
         logger.setLevel(logging.DEBUG)
+
+    logger.debug('starting the percolator')
+
+    pp = ppdbNBA(config=args.config)
 
     if (not pp.config) :
         logger.fatal("Configuratie ontbreekt")
