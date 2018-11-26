@@ -22,6 +22,7 @@ logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 
+
 class ppdbNBA():
     """
     Preprocessor class containing all functions needed for importing the data and
@@ -53,7 +54,6 @@ class ppdbNBA():
         if (not self.config.get('sources', False)):
             msg = 'Sources part missing in config'
             sys.exit(msg)
-
 
         self.es = self.connect_to_elastic()
         self.connect_to_database()
@@ -110,8 +110,6 @@ class ppdbNBA():
             logger.fatal(msg)
             sys.exit(msg)
 
-        logger.debug('Connected to database')
-
     def generate_mapping(self):
         """
         Generate mapping
@@ -123,14 +121,13 @@ class ppdbNBA():
             msg = 'Creating tables needed for preprocessing failed'
             logger.fatal(msg)
             sys.exit(msg)
-        logger.debug('Mapping generated')
 
     def lock(self, jobfile):
         jobs_path = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
-        with open(os.path.join(jobs_path, '.lock'),'w') as fp:
+        with open(os.path.join(jobs_path, '.lock'), 'w') as fp:
             lockrec = {
-                'job' : jobfile,
-                'pid' : os.getpid()
+                'job': jobfile,
+                'pid': os.getpid()
             }
             json.dump(lockrec, fp)
 
@@ -139,7 +136,7 @@ class ppdbNBA():
         Remove the lock
         """
         jobspath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
-        locks = glob.glob(os.path.join(jobspath,'.lock'))
+        locks = glob.glob(os.path.join(jobspath, '.lock'))
         lock = locks.pop()
 
         os.remove(lock)
@@ -163,15 +160,18 @@ class ppdbNBA():
             # check of the process in the lockfile is still running, kill signal=0
             # this does not kill the process, just checks if the process is there
             try:
-                os.kill(lockinfo['pid'],0)
-                logger.info('Preprocessor still processing (PID={pid}), handling job file "{job}"'.format(pid=lockinfo['pid'], job=lockinfo['job']))
+                os.kill(lockinfo['pid'], 0)
+                logger.info(
+                    'Preprocessor still processing (PID={pid}), handling job file "{job}"'.format(pid=lockinfo['pid'],
+                                                                                                  job=lockinfo['job']))
                 return True
             except:
                 # Exception means the process is no longer running, but the lockfile is still there
                 failedpath = self.config.get('paths').get('failed', os.path.join(os.getcwd(), "failed"))
                 shutil.move(lockinfo['job'], failedpath)
 
-                logger.error('Preprocessor failed in the last run, job file "{job}" moved to failed'.format(job=lockinfo['job']))
+                logger.error(
+                    'Preprocessor failed in the last run, job file "{job}" moved to failed'.format(job=lockinfo['job']))
                 os.remove(lockfile)
 
         return False
@@ -219,7 +219,7 @@ class ppdbNBA():
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
 
         # import each file
-        for source,filenames in files.items():
+        for source, filenames in files.items():
             for filename in filenames:
                 self.set_source(source.lower())
                 filepath = os.path.join(incoming_path, filename)
@@ -228,7 +228,8 @@ class ppdbNBA():
                     self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
                 except Exception:
                     # import fails? remove the lock, return false
-                    logger.error("Import of '{file}' into '{source}' failed".format(file=filepath,source=source.lower()))
+                    logger.error(
+                        "Import of '{file}' into '{source}' failed".format(file=filepath, source=source.lower()))
                     return False
 
                 # import successful, move the data file
@@ -264,7 +265,7 @@ class ppdbNBA():
 
         return fp
 
-    def lock_datafile(self,datafile=''):
+    def lock_datafile(self, datafile=''):
         """
         Locking for single datafiles, this is different from the locking of jobs.
         Maybe it should be combined.
@@ -275,10 +276,10 @@ class ppdbNBA():
         destpath = self.config.get('paths').get('delta', '/tmp')
         lockfile = os.path.basename(datafile) + '.lock'
         filepath = os.path.join(destpath, lockfile)
-        if (os.path.isfile(filepath)) :
+        if (os.path.isfile(filepath)):
             # Lock file already exists
             return False
-        else :
+        else:
             with open(file=filepath, mode='a'):
                 os.utime(filepath, None)
             return True
@@ -293,10 +294,10 @@ class ppdbNBA():
         :return:
         """
         rec = {
-            '@timestamp' : datetime.now().isoformat(),
-            'state' : state,
-            'ppd_timestamp' : datetime.now().isoformat(),
-            'comment' : comment
+            '@timestamp': datetime.now().isoformat(),
+            'state': state,
+            'ppd_timestamp': datetime.now().isoformat(),
+            'comment': comment
         }
 
         try:
@@ -308,8 +309,6 @@ class ppdbNBA():
             )
         except:
             logger.error(self, 'Failed to log to elastic search')
-
-
 
     @db_session
     def clear_data(self, table=''):
@@ -324,12 +323,12 @@ class ppdbNBA():
 
         table = self.source_config.get('table')
         currenttable = globals()[table.capitalize() + '_current']
-        idfield = self.source_config.get('id','id')
+        idfield = self.source_config.get('id', 'id')
         enriches = self.source_config.get('enriches', None)
         lap = timer()
 
         delids = []
-        try :
+        try:
             with open(file=filename, mode='r') as f:
                 delids = f.read().splitlines()
         except:
@@ -398,7 +397,9 @@ class ppdbNBA():
                 )
             )
         except Exception as err:
-            logger.fatal('Import of "{datafile}" into "{table}" failed:\n\n{error}'.format(table=table,datafile=datafile, error=str(err)))
+            logger.fatal(
+                'Import of "{datafile}" into "{table}" failed:\n\n{error}'.format(table=table, datafile=datafile,
+                                                                                  error=str(err)))
             raise
 
         logger.debug(
@@ -453,7 +454,6 @@ class ppdbNBA():
                     elapsed=(timer() - lap))
             )
 
-
     @db_session
     def remove_doubles(self):
         """ Bepaalde bronnen kunnen dubbele records bevatten, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
@@ -462,8 +462,8 @@ class ppdbNBA():
         doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
                       "FROM {source}_import " \
                       "GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
-                      source=self.source_config.get('table'),
-                      idfield=self.source_config.get('id')
+            source=self.source_config.get('table'),
+            idfield=self.source_config.get('id')
         )
         doubles = self.db.select(doublequery)
         logger.debug('[{elapsed:.2f} seconds] Find doubles'.format(elapsed=(timer() - lap)))
@@ -526,7 +526,8 @@ class ppdbNBA():
                             'WHERE {source}_current.hash is null'.format(source=source_base)
             neworupdates = self.db.select(leftdiffquery)
             logger.debug(
-                '[{elapsed:.2f} seconds] Left full outer join on "{source}"'.format(source=source_base, elapsed=(timer() - lap)))
+                '[{elapsed:.2f} seconds] Left full outer join on "{source}"'.format(source=source_base,
+                                                                                    elapsed=(timer() - lap)))
             lap = timer()
 
             rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash ' \
@@ -535,7 +536,8 @@ class ppdbNBA():
                              'WHERE {source}_import.hash is null'.format(source=source_base)
             updateordeletes = self.db.select(rightdiffquery)
             logger.debug(
-                '[{elapsed:.2f} seconds] Right full outer join on "{source}"'.format(source=source_base, elapsed=(timer() - lap)))
+                '[{elapsed:.2f} seconds] Right full outer join on "{source}"'.format(source=source_base,
+                                                                                     elapsed=(timer() - lap)))
             lap = timer()
 
             importtable = globals()[source_base.capitalize() + '_import']
@@ -557,7 +559,7 @@ class ppdbNBA():
                         self.changes['update'][uuid] = self.changes['new'].get(uuid)
                         self.changes['update'][uuid].append(r.id)
                         del self.changes['new'][uuid]
-                    else :
+                    else:
                         self.changes['delete'][uuid] = [r.id]
 
             if (len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete'])):
@@ -655,10 +657,10 @@ class ppdbNBA():
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
                           "WHERE {table}_current.id={currentid}".format(
-                              table=table,
-                              currentid=dbids[1],
-                              importid=importrec.id
-                          )
+                table=table,
+                currentid=dbids[1],
+                importid=importrec.id
+            )
             if (fp):
                 json.dump(importrec.rec, fp)
                 fp.write('\n')
@@ -785,7 +787,7 @@ class ppdbNBA():
                     for impactedrec in impactedrecords:
                         json.dump(impactedrec.rec, fp)
                         fp.write('\n')
-                        impactid=impactedrec.rec[idfield]
+                        impactid = impactedrec.rec[idfield]
                         logger.debug(
                             '[{elapsed:.2f} seconds] Record "{recordid}" of "{source}" needs to be enriched'.format(
                                 source=source,

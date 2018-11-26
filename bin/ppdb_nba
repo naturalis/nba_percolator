@@ -16,11 +16,9 @@ def scan_jobs(pp, args):
     :param args:
     :return:
     """
-    logger.debug('starting scan jobs')
     if pp.islocked():
         logger.info('Stopping, lockfile found, ppdb_nba still busy importing')
         return False
-    logger.debug('continue scan jobs')
 
     jobspath = pp.config.get('paths').get('jobs')
 
@@ -31,7 +29,8 @@ def scan_jobs(pp, args):
     if len(jobs) > 0:
         # if there are jobs, pick the first one
         job = jobs.pop()
-        logger.info("STARTING: {job}".format(job=job))
+        logger.info("{job} started".format(job=job))
+
         # handle the job (json) file
         if pp.handle_job(job):
             logger.info("SUCCESS: {job} completed".format(job=job))
@@ -40,7 +39,6 @@ def scan_jobs(pp, args):
                 pp.config.get('paths').get('done')
             )
         else:
-            # not successful move to failed path
             logger.error("{job} failed".format(job=job))
             shutil.move(
                 job,
@@ -104,8 +102,6 @@ def main():
 
     if (args.debug):
         logger.setLevel(logging.DEBUG)
-
-    logger.debug('starting the percolator')
 
     pp = ppdbNBA(config=args.config)
     if args.mapping:
