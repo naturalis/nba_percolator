@@ -7,6 +7,7 @@ import os, logging, glob, shutil
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 
+
 def scan_jobs(pp, args):
     """
     Scan the jobs directory specified in the config.yml in paths.jobs
@@ -45,9 +46,10 @@ def scan_jobs(pp, args):
                 job,
                 pp.config.get('paths').get('failed')
             )
-    else :
+    else:
         logger.info('No jobs - nothing to do')
         return False
+
 
 def import_incremental(pp, args):
     file = args.files[0]
@@ -67,27 +69,35 @@ def import_incremental(pp, args):
         exit(2)
     pp.remove_doubles()
     pp.handle_changes()
-    logger.info("[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(elapsed=(timer()-start), source=args.source, file=file))
+    logger.info(
+        "[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(elapsed=(timer() - start),
+                                                                                       source=args.source, file=file))
 
-def import_to_current(pp,args):
+
+def import_to_current(pp, args):
     logger.info("Fill current table '%s' with data" % (pp.source_config.get('table') + '_current'))
     pp.set_source(args.source)
     pp.import_data(pp.source_config.get('table') + '_current', args.files[0])
 
-def import_deleted(pp,args):
+
+def import_deleted(pp, args):
     logger.info("Import deleted ids for source %s" % (pp.source_config.get('table')))
     pp.set_source(args.source)
     pp.import_deleted(args.files[0])
 
+
 def main():
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
-                                           '\n\nPreprocessing data to create incremental updates')
+                                  '\n\nPreprocessing data to create incremental updates')
 
     parser.add_argument('--source', action='store', help='Name of the data source')
     parser.add_argument('--config', action='store', help='Config file', default="config.yml")
-    parser.add_argument('--current', action='store_true', help='Import data directly to current table (default is normal incremental import)')
-    parser.add_argument('--delete', action='store_true', help='Handle permanent deletes (default is normal incremental import)')
+    parser.add_argument('--current', action='store_true',
+                        help='Import data directly to current table (default is normal incremental import)')
+    parser.add_argument('--delete', action='store_true',
+                        help='Handle permanent deletes (default is normal incremental import)')
     parser.add_argument('--force', action='store_true', help='Ignore lockfiles, to force the import')
+    parser.add_argument('--mapping', action='store_true', help='Generate database tables needed for importing')
     parser.add_argument('--debug', action='store_true', help='Set debugging level logging')
     parser.add_argument('files', help='One json data file', nargs='*', default=[])
     args = parser.parse_args()
@@ -98,19 +108,22 @@ def main():
     logger.debug('starting the percolator')
 
     pp = ppdbNBA(config=args.config)
+    if args.mapping:
+        pp.generate_mapping()
 
-    if (not pp.config) :
+    if not pp.config:
         logger.fatal("Configuratie ontbreekt")
         exit(1)
 
-    if (args.current):
+    if args.current:
         import_to_current(pp, args)
-    elif (args.delete):
+    elif args.delete:
         import_deleted(pp, args)
-    elif (len(args.files)>0):
+    elif len(args.files) > 0:
         import_incremental(pp, args)
     else:
         scan_jobs(pp, args)
+
 
 if __name__ == "__main__":
     main()

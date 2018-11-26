@@ -90,7 +90,7 @@ class ppdbNBA():
 
     def connect_to_database(self):
         """
-         Connect to postgres database
+        Connect to postgres database
         """
         global ppdb
 
@@ -112,8 +112,11 @@ class ppdbNBA():
 
         logger.debug('Connected to database')
 
+    def generate_mapping(self):
+        """
+        Generate mapping
+        """
         logger.debug('Generating mapping')
-        # Tabel definities met pony db
         try:
             self.db.generate_mapping(create_tables=True)
         except:
