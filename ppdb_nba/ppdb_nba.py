@@ -111,13 +111,12 @@ class ppdbNBA():
             logger.fatal(msg)
             sys.exit(msg)
 
-    def generate_mapping(self):
+    def generate_mapping(self, create_tables=False):
         """
         Generate mapping
         """
-        logger.debug('Generating mapping')
         try:
-            self.db.generate_mapping(create_tables=True)
+            self.db.generate_mapping(create_tables=create_tables)
         except:
             msg = 'Creating tables needed for preprocessing failed'
             logger.fatal(msg)

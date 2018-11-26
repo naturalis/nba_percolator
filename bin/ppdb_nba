@@ -95,7 +95,7 @@ def main():
     parser.add_argument('--delete', action='store_true',
                         help='Handle permanent deletes (default is normal incremental import)')
     parser.add_argument('--force', action='store_true', help='Ignore lockfiles, to force the import')
-    parser.add_argument('--mapping', action='store_true', help='Generate database tables needed for importing')
+    parser.add_argument('--createtables', action='store_true', help='Generate database tables needed for importing')
     parser.add_argument('--debug', action='store_true', help='Set debugging level logging')
     parser.add_argument('files', help='One json data file', nargs='*', default=[])
     args = parser.parse_args()
@@ -104,8 +104,7 @@ def main():
         logger.setLevel(logging.DEBUG)
 
     pp = ppdbNBA(config=args.config)
-    if args.mapping:
-        pp.generate_mapping()
+    pp.generate_mapping(create_tables=args.createtables)
 
     if not pp.config:
         logger.fatal("Configuratie ontbreekt")
