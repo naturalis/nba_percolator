@@ -167,8 +167,9 @@ class ppdbNBA():
                 return True
             except:
                 # Exception means the process is no longer running, but the lockfile is still there
+                jobfile = lockinfo['job'].split('/')[-1]
                 failedpath = self.config.get('paths').get('failed', os.path.join(os.getcwd(), "failed"))
-                shutil.move(lockinfo['job'], failedpath)
+                shutil.move(lockinfo['job'], os.path.join(failedpath, jobfile))
 
                 logger.error(
                     'Preprocessor failed in the last run, job file "{job}" moved to failed'.format(job=lockinfo['job']))
@@ -236,7 +237,7 @@ class ppdbNBA():
                     return False
 
                 # import successful, move the data file
-                processed_path = self.config.get('paths').get('processed', '/tmp')
+                processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
                 shutil.move(filepath, processed_path)
                 self.remove_doubles()
                 self.handle_changes()

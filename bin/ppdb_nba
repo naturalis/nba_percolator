@@ -29,20 +29,22 @@ def scan_jobs(pp, args):
     if len(jobs) > 0:
         # if there are jobs, pick the first one
         job = jobs.pop()
+        jobfile = job.split('/')[-1]
         logger.info("{job} started".format(job=job))
+
 
         # handle the job (json) file
         if pp.handle_job(job):
             logger.info("SUCCESS: {job} completed".format(job=job))
             shutil.move(
                 job,
-                pp.config.get('paths').get('done')
+                os.path.join(pp.config.get('paths').get('done'),jobfile)
             )
         else:
             logger.error("{job} failed".format(job=job))
             shutil.move(
                 job,
-                pp.config.get('paths').get('failed')
+                os.path.join(pp.config.get('paths').get('failed'),jobfile)
             )
     else:
         logger.info('No jobs - nothing to do')
@@ -98,6 +100,7 @@ def main():
     parser.add_argument('--createtables', action='store_true', help='Generate database tables needed for importing')
     parser.add_argument('--debug', action='store_true', help='Set debugging level logging')
     parser.add_argument('files', help='One json data file', nargs='*', default=[])
+
     args = parser.parse_args()
 
     if (args.debug):
