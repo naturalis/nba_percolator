@@ -24,13 +24,13 @@ logger.setLevel(logging.INFO)
 
 class ppdbNBA():
     """
-    Preprocessor class containing all the functions needed for importing the data and
+    Preprocessor class containing all functions needed for importing the data and
     create incremental insert, update or delete files.
     """
 
     def __init__(self, config):
         """
-        Inlezen van de config.yml file waarin alle bronnen en hun specifieke wensen in moeten worden vermeld.
+        Inlezen van de config.yml file waarin alle bronnen en specifieke wensen in moeten worden vermeld.
         """
         if isinstance(config, str):
             # config is string, read the config file
@@ -38,7 +38,7 @@ class ppdbNBA():
                 with open(file=config, mode='r') as ymlfile:
                     self.config = yaml.load(ymlfile)
             except:
-                msg = '"config.yml" with configuration options of sources is missing'
+                msg = '"config.yml" with configuration options of sources is missing in working directory'
                 logger.fatal(msg)
                 sys.exit(msg)
         elif isinstance(config, dict):
@@ -206,16 +206,15 @@ class ppdbNBA():
         self.jobid = filename.rstrip('.json')
 
         self.lock(jobfile)
-        files = self.parse_job(jobfile)
 
-        processed_path = self.config.get('paths').get('processed', '/tmp')
+        files = self.parse_job(jobfile)
+        incoming_path = self.config.get('paths').get('incoming', '/tmp')
 
         # import each file
         for source,filenames in files.items():
             for filename in filenames:
                 self.set_source(source.lower())
                 filepath = os.path.join(incoming_path, filename)
-                destpath = os.path.join(processed_path, filename)
 
                 try:
                     self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
@@ -225,7 +224,8 @@ class ppdbNBA():
                     return False
 
                 # import successful, move the data file
-                shutil.move(filepath, destpath)
+                processed_path = self.config.get('paths').get('processed', '/tmp')
+                shutil.move(filepath, processed_path)
                 self.remove_doubles()
                 self.handle_changes()
 
@@ -257,6 +257,13 @@ class ppdbNBA():
         return fp
 
     def lock_datafile(self,datafile=''):
+        """
+        Locking for single datafiles, this is different from the locking of jobs.
+        Maybe it should be combined.
+
+        :param datafile:
+        :return:
+        """
         destpath = self.config.get('paths').get('delta', '/tmp')
         lockfile = os.path.basename(datafile) + '.lock'
         filepath = os.path.join(destpath, lockfile)
@@ -298,7 +305,9 @@ class ppdbNBA():
 
     @db_session
     def clear_data(self, table=''):
-        """ Verwijder data uit tabel. """
+        """
+        Remove data from table.
+        """
         self.db.execute("TRUNCATE public.{table}".format(table=table))
         logger.debug('Truncated table "{table}"'.format(table=table))
 
@@ -344,7 +353,7 @@ class ppdbNBA():
                 )
                 lap = timer()
 
-        if (fp):
+        if fp:
             fp.close()
 
     @db_session
