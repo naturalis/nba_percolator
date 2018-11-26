@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """NBA preprocessing database module
 
 Hierin zitten alle functies en database afhankelijkheden waarmee import data 
@@ -15,6 +14,7 @@ from timeit import default_timer as timer
 import yaml
 from elasticsearch import Elasticsearch
 from pony.orm import db_session
+from dateutil import parser
 from .schema import *
 
 # Setup logging
@@ -31,7 +31,7 @@ class ppdbNBA():
 
     def __init__(self, config):
         """
-        Inlezen van de config.yml file waarin alle bronnen en specifieke wensen in moeten worden vermeld.
+        Reading the config.yml file where all sources, configuration and specifics are listed
         """
         if isinstance(config, str):
             # config is string, read the config file
@@ -67,6 +67,7 @@ class ppdbNBA():
         :param source:
         """
 
+        self.source = source
         if (self.config.get('sources').get(source)):
             self.source_config = self.config.get('sources').get(source)
         else:
@@ -186,11 +187,17 @@ class ppdbNBA():
         files = {}
         with open(jobfile) as json_data:
             jobrec = json.load(json_data)
+            # Get the id of the job
+            self.jobid = jobrec.get('id')
+
             # Get the name of the supplier
             self.supplier = jobrec.get('data_supplier')
 
             # Get the date of the job
-            self.jobdate = jobrec.get('date')
+            rawdate = jobrec.get('date', False)
+            self.jobdate = datetime.now()
+            if rawdate:
+                self.jobdate = parser.parse(rawdate)
 
             # Parse the validator part, get the outfiles
             if jobrec.get('validator'):
@@ -210,9 +217,6 @@ class ppdbNBA():
         :param jobfile:
         :return:
         """
-        filename = jobfile.split('/')[-1]
-        self.jobid = filename.rstrip('.json')
-
         self.lock(jobfile)
 
         files = self.parse_job(jobfile)
@@ -248,11 +252,18 @@ class ppdbNBA():
         Open een delta bestand met records of id's om weg te schrijven.
         """
         destpath = self.config.get('paths').get('delta', '/tmp')
-        filename = "{index}-{ts}-{action}.json".format(
-            index=index,
-            ts=time.strftime('%Y%m%d%H%M%S'),
-            action=action
-        )
+        if not self.jobid:
+            filename = "{ts}-{index}-{action}.json".format(
+                index=index,
+                ts=time.strftime('%Y%m%d%H%M%S'),
+                action=action
+            )
+        else :
+            filename = "{jobid}-{index}-{action}.json".format(
+                jobid=self.jobid,
+                index=index,
+                action=action
+            )
         filepath = os.path.join(destpath, filename)
 
         try:
@@ -276,6 +287,7 @@ class ppdbNBA():
         destpath = self.config.get('paths').get('delta', '/tmp')
         lockfile = os.path.basename(datafile) + '.lock'
         filepath = os.path.join(destpath, lockfile)
+
         if (os.path.isfile(filepath)):
             # Lock file already exists
             return False
@@ -296,7 +308,7 @@ class ppdbNBA():
         rec = {
             '@timestamp': datetime.now().isoformat(),
             'state': state,
-            'ppd_timestamp': datetime.now().isoformat(),
+            'ppd_timestamp': self.jobdate.isoformat(),
             'comment': comment
         }
 
@@ -322,6 +334,7 @@ class ppdbNBA():
     def import_deleted(self, filename=''):
 
         table = self.source_config.get('table')
+        index = self.source_config.get('index', 'noindex')
         currenttable = globals()[table.capitalize() + '_current']
         idfield = self.source_config.get('id', 'id')
         enriches = self.source_config.get('enriches', None)
@@ -339,7 +352,7 @@ class ppdbNBA():
         fp = None
         for id in delids:
             if (not fp):
-                fp = self.open_deltafile('kill', table)
+                fp = self.open_deltafile('kill', index)
             if (fp):
                 fp.write('{deleteid}\n'.format(deleteid=id))
             oldrec = currenttable.select(lambda p: p.rec[idfield] == id).get()
@@ -600,9 +613,10 @@ class ppdbNBA():
         """
         table = self.source_config.get('table')
         idfield = self.source_config.get('id')
+        index = self.source_config.get('index', 'noindex')
         importtable = globals()[table.capitalize() + '_import']
 
-        fp = self.open_deltafile('new', self.source_config.get('table'))
+        fp = self.open_deltafile('new', index)
         # Schrijf de data naar incrementele files
 
         lap = timer()
@@ -645,8 +659,9 @@ class ppdbNBA():
         enriches = self.source_config.get('enriches', None)
         importtable = globals()[table.capitalize() + '_import']
         currenttable = globals()[table.capitalize() + '_import']
+        index = self.source_config.get('index', 'noindex')
 
-        fp = self.open_deltafile('update', self.source_config.get('table'))
+        fp = self.open_deltafile('update', index)
         # Schrijf de data naar incrementele file
 
         lap = timer()
@@ -698,8 +713,9 @@ class ppdbNBA():
         idfield = self.source_config.get('id')
         currenttable = globals()[table.capitalize() + '_current']
         enriches = self.source_config.get('enriches', None)
+        index = self.source_config.get('index', 'noindex')
 
-        fp = self.open_deltafile('delete', self.source_config.get('table'))
+        fp = self.open_deltafile('delete', index)
         # Schrijf de data naar incrementele file
 
         lap = timer()
@@ -773,6 +789,7 @@ class ppdbNBA():
         scientificnamegroup = None
         source_config = self.config.get('sources').get(source)
         idfield = source_config.get('id')
+        index = self.source_config.get('index', 'noindex')
 
         lap = timer()
 
@@ -782,7 +799,7 @@ class ppdbNBA():
         if (scientificnamegroup):
             impactedrecords = self.list_impacted(source_config, scientificnamegroup)
             if (impactedrecords):
-                fp = self.open_deltafile('enrich', source_config.get('table'))
+                fp = self.open_deltafile('enrich', index)
                 if (fp):
                     for impactedrec in impactedrecords:
                         json.dump(impactedrec.rec, fp)
