@@ -2,7 +2,7 @@
 from argparse import ArgumentParser
 from ppdb_nba import ppdbNBA
 from timeit import default_timer as timer
-import os, logging, glob, shutil
+import os, logging, glob, shutil, json
 
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
@@ -15,15 +15,11 @@ def scan_jobs(pp, args):
     :param args:
     :return:
     """
-    jobspath = pp.config.get('paths').get('jobs', os.getcwd() + "/jobs")
-
-    # check if there is a lockfile
-    # @todo: maybe check if a logfile has reached a timeout point?
-    locks = glob.glob(jobspath + '/.lock')
-    if len(locks) > 0:
-        logger.info('Lockfile found, ppdb_nba is still busy importing')
-
+    if pp.islocked():
+        logger.info('Stopping, lockfile found, ppdb_nba still busy importing')
         return False
+
+    jobspath = pp.config.get('paths').get('jobs', os.getcwd() + "/jobs")
 
     # list all the job files, order by mtime
     jobs = glob.glob(jobspath + '/*.json')
@@ -38,14 +34,14 @@ def scan_jobs(pp, args):
             logger.info("SUCCESS: {job} completed".format(job=job))
             shutil.move(
                 job,
-                os.path.join(pp.config.get('paths').get('done'),job.split('/')[-1])
+                pp.config.get('paths').get('done')
             )
         else:
             # not succesful move to failed path
             logger.error("{job} failed".format(job=job))
             shutil.move(
                 job,
-                os.path.join(pp.config.get('paths').get('failed'),job.split('/')[-1])
+                pp.config.get('paths').get('failed')
             )
     else :
         logger.info('No jobs - nothing to do')

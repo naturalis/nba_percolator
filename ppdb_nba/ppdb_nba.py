@@ -117,6 +117,57 @@ class ppdbNBA():
             logger.fatal(msg)
             sys.exit(msg)
 
+    def lock(self, jobfile):
+        jobs_path = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
+        with open(os.path.join(jobs_path, '.lock'),'w') as fp:
+            lockrec = {
+                'job' : jobfile,
+                'pid' : os.getpid()
+            }
+            json.dump(lockrec, fp)
+
+    def unlock(self):
+        """
+        Remove the lock
+        """
+        jobspath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
+        locks = glob.glob(os.path.join(jobspath,'.lock'))
+        lock = locks.pop()
+
+        os.remove(lock)
+
+    def islocked(self):
+        """
+        Check if there is a lockfile and if so parse it. A lockfile is a json record with PID as well as
+        job filepath. If the process is still running then the process is still locked. If not it has
+        failed. If no lock file exists it is no longer locked
+
+        :return:  True = still locked, False = no longer locked
+        """
+        jobspath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
+
+        locks = glob.glob(jobspath + '/.lock')
+        if (len(locks) > 0):
+            lockfile = locks.pop()
+            with open(file=lockfile, mode='r') as fp:
+                lockinfo = json.load(fp)
+
+            # check of the process in the lockfile is still running, kill signal=0
+            # this does not kill the process, just checks if the process is there
+            try:
+                os.kill(lockinfo['pid'],0)
+                logger.info('Preprocessor still processing (PID={pid}), handling job file "{job}"'.format(pid=lockinfo['pid'], job=lockinfo['job']))
+                return True
+            except:
+                # Exception means the process is no longer running, but the lockfile is still there
+                failedpath = self.config.get('paths').get('failed', os.path.join(os.getcwd(), "failed"))
+                shutil.move(lockinfo['job'], failedpath)
+
+                logger.error('Preprocessor failed in the last run, job file "{job}" moved to failed'.format(job=lockinfo['job']))
+                os.remove(lockfile)
+
+        return False
+
     def parse_job(self, jobfile=''):
         """
         Parse a json job file, and tries to retrieve the validated file names
@@ -154,12 +205,9 @@ class ppdbNBA():
         filename = jobfile.split('/')[-1]
         self.jobid = filename.rstrip('.json')
 
+        self.lock(jobfile)
         files = self.parse_job(jobfile)
 
-        # set the lockfile, write the filename of the active job
-        incoming_path = self.config.get('paths').get('incoming', '/tmp')
-        with open(os.path.join(incoming_path, '.lock'),'w') as lockfile:
-            lockfile.write(filename)
         processed_path = self.config.get('paths').get('processed', '/tmp')
 
         # import each file
@@ -174,16 +222,15 @@ class ppdbNBA():
                 except Exception:
                     # import fails? remove the lock, return false
                     logger.error("Import of '{file}' into '{source}' failed".format(file=filepath,source=source.lower()))
-                    os.remove(os.path.join(incoming_path, '.lock'))
                     return False
 
-                # import succesful, move the data file
-                shutil.move(filepath,destpath)
+                # import successful, move the data file
+                shutil.move(filepath, destpath)
                 self.remove_doubles()
                 self.handle_changes()
 
         # everything, okay and finished, remove the lock
-        os.remove(os.path.join(incoming_path, '.lock'))
+        self.unlock()
 
         return True
 
