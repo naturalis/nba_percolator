@@ -305,6 +305,9 @@ class ppdbNBA():
         :param comment:
         :return:
         """
+
+        # @todo: WARNING - PUT http://elasticcsearch:9200/xc-multimedia-20181121-142530--000.json/logging/76697%40XC_snd [status:N/A request:10.012s]
+        # Om een of andere reden mislukt het loggen, recid moet misschien lowercase?
         rec = {
             '@timestamp': datetime.now().isoformat(),
             'state': state,
@@ -384,7 +387,9 @@ class ppdbNBA():
         lap = timer()
 
         # Use the name of the filename as a job id
-        self.jobid = datafile.split('/')[-1]
+        if not self.jobid:
+            filename = datafile.split('/')[-1]
+            self.jobid = filename.replace('.json')
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
 
