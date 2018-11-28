@@ -113,12 +113,15 @@ def main():
         logger.fatal("Configuratie ontbreekt")
         exit(1)
 
-    if args.current:
-        import_to_current(pp, args)
-    elif args.delete:
-        import_deleted(pp, args)
-    elif len(args.files) > 0:
-        import_incremental(pp, args)
+    if len(args.files) > 0:
+        if args.source:
+            pp.set_source(source=args.source)
+        if args.current:
+            import_to_current(pp, args)
+        elif args.delete:
+            import_deleted(pp, args)
+        elif len(args.files) > 0:
+            import_incremental(pp, args)
     else:
         scan_jobs(pp, args)
 
