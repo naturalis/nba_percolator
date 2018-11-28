@@ -389,7 +389,7 @@ class ppdbNBA():
         # Use the name of the filename as a job id
         if not self.jobid:
             filename = datafile.split('/')[-1]
-            self.jobid = filename.replace('.json')
+            self.jobid = filename.replace('.json','')
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
 
