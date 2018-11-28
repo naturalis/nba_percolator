@@ -171,8 +171,12 @@ class ppdbNBA():
                 failedpath = self.config.get('paths').get('failed', os.path.join(os.getcwd(), "failed"))
                 shutil.move(lockinfo['job'], os.path.join(failedpath, jobfile))
 
+                self.log_change(
+                    state='fail'
+                )
                 logger.error(
-                    'Preprocessor failed in the last run, job file "{job}" moved to failed'.format(job=lockinfo['job']))
+                    'Preprocessor failed in the last run, job file "{job}" moved to failed'.format(job=lockinfo['job'])
+                )
                 os.remove(lockfile)
 
         return False
@@ -222,12 +226,20 @@ class ppdbNBA():
         files = self.parse_job(jobfile)
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
 
+        self.log_change(
+            state='start'
+        )
+
         # import each file
         for source, filenames in files.items():
             for filename in filenames:
                 self.set_source(source.lower())
                 filepath = os.path.join(incoming_path, filename)
 
+                self.log_change(
+                    state='import',
+                    comment='{filepath}'.format(filepath=filepath)
+                )
                 try:
                     self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
                 except Exception:
@@ -241,6 +253,10 @@ class ppdbNBA():
                 shutil.move(filepath, processed_path)
                 self.remove_doubles()
                 self.handle_changes()
+
+        self.log_change(
+            state='finish'
+        )
 
         # everything, okay and finished, remove the lock
         self.unlock()
@@ -306,8 +322,6 @@ class ppdbNBA():
         :return:
         """
 
-        # @todo: WARNING - PUT http://elasticcsearch:9200/xc-multimedia-20181121-142530--000.json/logging/76697%40XC_snd [status:N/A request:10.012s]
-        # Om een of andere reden mislukt het loggen, recid moet misschien lowercase?
         rec = {
             '@timestamp': datetime.now().isoformat(),
             'state': state,
