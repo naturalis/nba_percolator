@@ -313,7 +313,7 @@ class ppdbNBA():
                 os.utime(filepath, None)
             return True
 
-    def log_change(self, state='unknown', recid='', comment=''):
+    def log_change(self, state='unknown', recid='ppdb_nba', comment=''):
         """
         Logging of the state change of a record
 
