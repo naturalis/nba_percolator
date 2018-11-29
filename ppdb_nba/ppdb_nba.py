@@ -58,6 +58,8 @@ class ppdbNBA():
         self.es = self.connect_to_elastic()
         self.connect_to_database()
 
+        self.jobdate = datetime.now()
+
         self.jobid = ''
 
     def set_source(self, source):
@@ -199,7 +201,6 @@ class ppdbNBA():
 
             # Get the date of the job
             rawdate = jobrec.get('date', False)
-            self.jobdate = datetime.now()
             if rawdate:
                 self.jobdate = parser.parse(rawdate)
 
