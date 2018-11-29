@@ -7,6 +7,7 @@ postgres:                           # Postgres database config
     db: ppdb
 elastic:
     host: elasticcsearch
+lock-timeout: 30
 paths:
     incoming: /shared-data/incoming
     processed: /shared-data/processed
@@ -22,6 +23,15 @@ sources:                            # List with sources
         index: taxon                # What destination index in ES
         enrich: no                  # Should it be enriched
         enriches:                   # Which sources are impacted
+            - brahms-specimen
+            - crs-specimen
+    col-taxa:
+        table: coltaxa
+        id: id
+        incremental: no
+        index: taxon
+        enrich: no
+        enriches:
             - brahms-specimen
             - crs-specimen
     xc-specimen:
