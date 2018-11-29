@@ -345,6 +345,7 @@ class ppdbNBA():
         """
         Remove data from table.
         """
+
         self.db.execute("TRUNCATE public.{table}".format(table=table))
         logger.debug('Truncated table "{table}"'.format(table=table))
 
@@ -397,7 +398,7 @@ class ppdbNBA():
     @db_session
     def import_data(self, table='', datafile='', enriched=False):
         """
-        Importeer data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
+        Imports data directly to the postgres database.
         """
         lap = timer()
 
@@ -489,7 +490,9 @@ class ppdbNBA():
 
     @db_session
     def remove_doubles(self):
-        """ Bepaalde bronnen kunnen dubbele records bevatten, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd. """
+        """
+        Some sources can contain double records, these should be removed, before checking the hash.
+        """
         lap = timer()
 
         doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
@@ -629,7 +632,7 @@ class ppdbNBA():
     @db_session
     def handle_new(self):
         """
-        Afhandelen van alle nieuwe records.
+        Handle new records
         """
         table = self.source_config.get('table')
         idfield = self.source_config.get('id')
@@ -672,7 +675,7 @@ class ppdbNBA():
     @db_session
     def handle_updates(self):
         """
-        Afhandelen van alle updates.
+        Handles updates
         """
         table = self.source_config.get('table')
         idfield = self.source_config.get('id')
@@ -727,7 +730,7 @@ class ppdbNBA():
     @db_session
     def handle_deletes(self):
         """
-        Afhandelen van temporarily deletes.
+        Handles temporary deletes
         """
         table = self.source_config.get('table')
         idfield = self.source_config.get('id')
@@ -773,7 +776,7 @@ class ppdbNBA():
 
     def list_impacted(self, source_config, scientificnamegroup):
         """
-        Zoekt uit welke gerelateerde records opnieuw verrijkt moeten worden.
+        Looks for impacted records based on scientificnamegroup
 
         :param scientificnamegroup:
         :return bool:
@@ -842,7 +845,7 @@ class ppdbNBA():
     @db_session
     def handle_changes(self):
         """
-        Afhandelen van alle veranderingen.
+        Handles the changes
         """
         self.list_changes()
 
