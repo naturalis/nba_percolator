@@ -396,11 +396,14 @@ class ppdbNBA():
             fp.close()
 
     @db_session
-    def import_data(self, table='', datafile='', enriched=False):
+    def import_data(self, table='', datafile=''):
         """
         Imports data directly to the postgres database.
         """
         lap = timer()
+
+        enriches = self.source_config.get('enriches', False)
+        enrich = self.source_config.get('enrich', False)
 
         # Use the name of the filename as a job id
         if not self.jobid:
@@ -476,7 +479,7 @@ class ppdbNBA():
             )
         )
 
-        if (enriched):
+        if enriched:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
                 "ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
@@ -484,6 +487,18 @@ class ppdbNBA():
             )
             logger.debug(
                 '[{elapsed:.2f} seconds] Set index on indentifications in "{table}"'.format(
+                    table=table,
+                    elapsed=(timer() - lap))
+            )
+        if enrich:
+            self.db.execute(
+                "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
+                "ON public.{table}_current USING gin((rec->'acceptedName'->'scientificNameGroup') jsonb_path_ops)".format(
+                   table=table
+                )
+            )
+            logger.debug(
+                '[{elapsed:.2f} seconds] Set index on scientificNameGroup in "{table}"'.format(
                     table=table,
                     elapsed=(timer() - lap))
             )
