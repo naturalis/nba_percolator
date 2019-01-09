@@ -15,12 +15,14 @@ import yaml
 from elasticsearch import Elasticsearch
 from pony.orm import db_session
 from dateutil import parser
+from diskcache import Cache
 from .schema import *
 
 # Setup logging
 logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
+cache = Cache('tmp')
 
 
 class ppdbNBA():
@@ -380,7 +382,7 @@ class ppdbNBA():
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
 
-                        self.handle_enrichment(source, oldrec)
+                        self.handle_impacted(source, oldrec)
 
                 oldrec.delete()
                 logger.debug(
@@ -716,8 +718,10 @@ class ppdbNBA():
             importrec = importtable[dbids[0]]
             oldrec = currenttable[dbids[0]]
             jsonrec = importrec.rec
+
             if (src_enrich) :
                 jsonrec = self.enrich(jsonrec, src_enrich)
+
             updatequery = "UPDATE {table}_current SET (rec, hash, datum) = " \
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
@@ -735,7 +739,7 @@ class ppdbNBA():
                     logger.debug(
                         'Enrich source = {source}'.format(source=source)
                     )
-                    self.handle_enrichment(source, oldrec)
+                    self.handle_impacted(source, oldrec)
 
             self.db.execute(updatequery)
             logger.debug(
@@ -779,7 +783,7 @@ class ppdbNBA():
                 if (enriches):
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
-                        self.handle_enrichment(source, oldrec)
+                        self.handle_impacted(source, oldrec)
 
                 oldrec.delete()
 
@@ -835,7 +839,11 @@ class ppdbNBA():
             return False
 
     def create_enrichment(self, sciNameGroup, source):
-        # @todo: retrieve enrichment from cache
+        enrichtmentkey = sciNameGroup + '-' + source
+        enrichment = cache.get(enrichtmentkey)
+        if (enrichment):
+            return enrichment
+
         scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
             sciNameGroup
         )
@@ -865,7 +873,8 @@ class ppdbNBA():
             enrichment['sourceSystem'] = {}
             enrichment['sourceSystem']['code'] = taxarec.rec.get('sourceSystem').get('code')
 
-            # @todo: store enrichment in cache
+            cache.set(enrichtmentkey, enrichment, 300)
+
             return enrichment
 
         return False
@@ -887,7 +896,7 @@ class ppdbNBA():
         return rec
 
     @db_session
-    def handle_enrichment(self, source, record):
+    def handle_impacted(self, source, record):
         scientificnamegroup = None
         source_config = self.config.get('sources').get(source)
         src_enrich = source_config.get('src-enrich', False)
