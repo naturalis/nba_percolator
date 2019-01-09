@@ -839,26 +839,20 @@ class ppdbNBA():
         scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
             sciNameGroup
         )
-        print(scisql)
         source_config = self.config.get('sources').get(source, False)
-        print(source_config)
         if not source_config:
             return False
         table = source_config.get('table')
-        print(table)
         if not table:
             return False
 
-        print(table.capitalize() + '_current')
         currenttable = globals().get(table.capitalize() + '_current', False)
         if not currenttable:
             return False
 
         colrec = currenttable.select(lambda p: raw_sql(scisql)).get()
-        print(colrec.rec)
         if colrec.rec.get('vernacularNames'):
             vernacularNames = colrec.rec.get('vernacularNames')
-            print(vernacularNames)
             names = []
             for name in vernacularNames:
                 if (name.get('preferred')):
@@ -867,9 +861,9 @@ class ppdbNBA():
             taxonId = colrec.rec.get('id')
             code = colrec.rec.get('sourceSystem').get('code')
             enrichment = {'vernacularNames': names, 'sourceSystem': {'code': code}, 'taxonId': taxonId}
-            print(enrichment)
+            return enrichment
 
-        return enrichment
+        return False
 
     @db_session
     def enrich_record(self, rec, sources):
