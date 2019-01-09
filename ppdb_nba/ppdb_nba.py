@@ -839,18 +839,23 @@ class ppdbNBA():
         scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
             sciNameGroup
         )
+        print(scisql)
         source_config = self.config.get('sources').get(source, False)
+        print(source_config)
         if not source_config:
             return False
         table = source_config.get('table')
+        print(table)
         if not table:
             return False
 
+        print(table.capitalize() + '_current')
         currenttable = globals().get(table.capitalize() + '_current', False)
         if not currenttable:
             return False
 
         colrec = currenttable.select(lambda p: raw_sql(scisql)).get()
+        print(colrec)
         if colrec:
             vernacularNames = colrec.rec.get('vernacularNames')
             names = []
