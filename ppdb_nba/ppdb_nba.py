@@ -860,8 +860,13 @@ class ppdbNBA():
                 names.append(name)
             taxonId = colrec.rec.get('id')
             code = colrec.rec.get('sourceSystem').get('code')
-            enrichment = {'vernacularNames': names, 'sourceSystem': {'code': code}, 'taxonId': taxonId}
-            return enrichment
+            return {
+                'vernacularNames': names,
+                'sourceSystem': {
+                    'code': code
+                },
+                'taxonId': taxonId
+            }
 
         return False
 
