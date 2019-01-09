@@ -665,7 +665,7 @@ class ppdbNBA():
             importid = dbids[0]
             importrec = importtable[importid]
             jsonrec = importrec.rec
-            if (src_enrich) :
+            if src_enrich:
                 jsonrec = self.enrich_record(jsonrec, src_enrich)
 
             insertquery = "INSERT INTO {table}_current (rec, hash, datum) " \
@@ -834,7 +834,8 @@ class ppdbNBA():
             logger.debug(items.get_sql())
             return False
 
-    def get_enrichment(self, sciNameGroup, source):
+    def create_enrichment(self, sciNameGroup, source):
+        # @todo: retrieve enrichment from cache
         scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
             sciNameGroup
         )
@@ -849,25 +850,26 @@ class ppdbNBA():
         if not currenttable:
             return False
 
-        colrec = currenttable.select(lambda p: raw_sql(scisql)).get()
-        if colrec.rec.get('vernacularNames'):
-            vernacularNames = colrec.rec.get('vernacularNames')
+        taxarec = currenttable.select(lambda p: raw_sql(scisql)).get()
+        if taxarec.rec.get('vernacularNames'):
+            vernacularNames = taxarec.rec.get('vernacularNames')
             enrichment = {}
             enrichment['vernacularNames'] = []
             for name in vernacularNames:
                 if (name.get('preferred')):
                     del name['preferred']
                 enrichment['vernacularNames'].append(name)
-            enrichment['taxonId'] = colrec.rec.get('id')
+            enrichment['taxonId'] = taxarec.rec.get('id')
+            if (taxarec.get('synonyms', False)) :
+                enrichment['synonyms'] = taxarec.get('synonyms')
             enrichment['sourceSystem'] = {}
-            enrichment['sourceSystem']['code'] = colrec.rec.get('sourceSystem').get('code')
-            print(enrichment)
+            enrichment['sourceSystem']['code'] = taxarec.rec.get('sourceSystem').get('code')
 
+            # @todo: store enrichment in cache
             return enrichment
 
         return False
 
-    @db_session
     def enrich_record(self, rec, sources):
         sciNameGroup = False
         if rec.get('identifications', False):
@@ -878,23 +880,24 @@ class ppdbNBA():
                     rec.get('identifications')[index]['taxonomicEnrichments'] = []
 
                     for source in sources:
-                        enrichment = self.get_enrichment(sciNameGroup,source)
+                        enrichment = self.create_enrichment(sciNameGroup,source)
                         if (enrichment):
                             rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichment)
 
         return rec
 
     @db_session
-    def handle_enrichment(self, source, rec):
+    def handle_enrichment(self, source, record):
         scientificnamegroup = None
         source_config = self.config.get('sources').get(source)
+        src_enrich = source_config.get('src-enrich', False)
         idfield = source_config.get('id')
         index = self.source_config.get('index', 'noindex')
 
         lap = timer()
 
-        if (rec.rec.get('acceptedName')):
-            scientificnamegroup = rec.rec.get('acceptedName').get('scientificNameGroup')
+        if (record.rec.get('acceptedName')):
+            scientificnamegroup = record.rec.get('acceptedName').get('scientificNameGroup')
 
         if (scientificnamegroup):
             impactedrecords = self.list_impacted(source_config, scientificnamegroup)
@@ -902,8 +905,13 @@ class ppdbNBA():
                 fp = self.open_deltafile('enrich', index)
                 if (fp):
                     for impactedrec in impactedrecords:
-                        json.dump(impactedrec.rec, fp)
+                        jsonrec = impactedrec.rec
+                        if src_enrich:
+                            jsonrec = self.enrich_record(jsonrec, src_enrich)
+
+                        json.dump(jsonrec, fp)
                         fp.write('\n')
+
                         impactid = impactedrec.rec[idfield]
                         logger.debug(
                             '[{elapsed:.2f} seconds] Record "{recordid}" of "{source}" needs to be enriched'.format(
