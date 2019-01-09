@@ -402,8 +402,8 @@ class ppdbNBA():
         """
         lap = timer()
 
-        enriches = self.source_config.get('enriches', False)
-        enrich = self.source_config.get('enrich', False)
+        src_enrich = self.source_config.get('enriches', False)
+        dst_enrich = self.source_config.get('enrich', False)
 
         # Use the name of the filename as a job id
         if not self.jobid:
@@ -479,7 +479,7 @@ class ppdbNBA():
             )
         )
 
-        if enriched:
+        if src_enrich:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
                 "ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
@@ -490,7 +490,7 @@ class ppdbNBA():
                     table=table,
                     elapsed=(timer() - lap))
             )
-        if enrich:
+        if dst_enrich:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
                 "ON public.{table}_current USING gin((rec->'acceptedName'->'scientificNameGroup') jsonb_path_ops)".format(
