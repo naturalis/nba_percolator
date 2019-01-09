@@ -853,13 +853,17 @@ class ppdbNBA():
         colrec = currenttable.select(lambda p: raw_sql(scisql)).get()
         if colrec.rec.get('vernacularNames'):
             vernacularNames = colrec.rec.get('vernacularNames')
+            print(vernacularNames)
             names = []
             for name in vernacularNames:
                 if (name.get('preferred')):
                     del name['preferred']
                 names.append(name)
+            print(names)
             taxonId = colrec.rec.get('id')
+            print(taxonId)
             code = colrec.rec.get('sourceSystem').get('code')
+            print(code)
             return {
                 'vernacularNames': names,
                 'sourceSystem': {
