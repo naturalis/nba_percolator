@@ -868,8 +868,8 @@ class ppdbNBA():
                     del name['preferred']
                 enrichment['vernacularNames'].append(name)
             enrichment['taxonId'] = taxarec.rec.get('id')
-            if (taxarec.get('synonyms', False)) :
-                enrichment['synonyms'] = taxarec.get('synonyms')
+            if (taxarec.rec.get('synonyms', False)) :
+                enrichment['synonyms'] = taxarec.rec.get('synonyms')
             enrichment['sourceSystem'] = {}
             enrichment['sourceSystem']['code'] = taxarec.rec.get('sourceSystem').get('code')
 
