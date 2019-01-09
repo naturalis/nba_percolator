@@ -834,7 +834,6 @@ class ppdbNBA():
             logger.debug(items.get_sql())
             return False
 
-    @db_session
     def get_enrichment(self, sciNameGroup, source):
         scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
             sciNameGroup
