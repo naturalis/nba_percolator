@@ -1,2 +1,3 @@
 pony
 pyyaml
+diskcache
