@@ -356,7 +356,7 @@ class ppdbNBA():
         index = self.source_config.get('index', 'noindex')
         currenttable = globals()[table.capitalize() + '_current']
         idfield = self.source_config.get('id', 'id')
-        enriches = self.source_config.get('enriches', None)
+        enriches = self.source_config.get('dst-enrich', None)
         lap = timer()
 
         delids = []
@@ -402,8 +402,8 @@ class ppdbNBA():
         """
         lap = timer()
 
-        src_enrich = self.source_config.get('enriches', False)
-        dst_enrich = self.source_config.get('enrich', False)
+        src_enrich = self.source_config.get('src-enrich', False)
+        dst_enrich = self.source_config.get('dst-enrich', False)
 
         # Use the name of the filename as a job id
         if not self.jobid:
@@ -479,7 +479,8 @@ class ppdbNBA():
             )
         )
 
-        if src_enrich:
+        # set an index on identifications, which should be present in enriched data
+        if dst_enrich:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
                 "ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
@@ -490,7 +491,8 @@ class ppdbNBA():
                     table=table,
                     elapsed=(timer() - lap))
             )
-        if dst_enrich:
+        # set an index on scientificNameGroup, which should be present in taxa
+        if src_enrich:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
                 "ON public.{table}_current USING gin((rec->'acceptedName'->'scientificNameGroup') jsonb_path_ops)".format(
@@ -653,6 +655,7 @@ class ppdbNBA():
         idfield = self.source_config.get('id')
         index = self.source_config.get('index', 'noindex')
         importtable = globals()[table.capitalize() + '_import']
+        src_enrich = self.source_config.get('src-enrich', False)
 
         fp = self.open_deltafile('new', index)
         # Schrijf de data naar incrementele files
@@ -661,13 +664,18 @@ class ppdbNBA():
         for jsonid, dbids in self.changes['new'].items():
             importid = dbids[0]
             importrec = importtable[importid]
+            jsonrec = importrec.rec
+            if (src_enrich) :
+                jsonrec = self.enrich_record(jsonrec, src_enrich)
+
             insertquery = "INSERT INTO {table}_current (rec, hash, datum) " \
                           "SELECT rec, hash, datum FROM {table}_import where id={id}".format(
                 table=self.source_config.get('table'),
                 id=importid
             )
+
             if (fp):
-                json.dump(importrec.rec, fp)
+                json.dump(jsonrec, fp)
                 fp.write('\n')
 
             self.db.execute(insertquery)
@@ -694,7 +702,8 @@ class ppdbNBA():
         """
         table = self.source_config.get('table')
         idfield = self.source_config.get('id')
-        enriches = self.source_config.get('enriches', None)
+        dst_enrich = self.source_config.get('dst-enrich', None)
+        src_enrich = self.source_config.get('src-enrich', None)
         importtable = globals()[table.capitalize() + '_import']
         currenttable = globals()[table.capitalize() + '_import']
         index = self.source_config.get('index', 'noindex')
@@ -706,6 +715,9 @@ class ppdbNBA():
         for change, dbids in self.changes['update'].items():
             importrec = importtable[dbids[0]]
             oldrec = currenttable[dbids[0]]
+            jsonrec = importrec.rec
+            if (src_enrich) :
+                jsonrec = self.enrich(jsonrec, src_enrich)
             updatequery = "UPDATE {table}_current SET (rec, hash, datum) = " \
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
@@ -715,11 +727,11 @@ class ppdbNBA():
                 importid=importrec.id
             )
             if (fp):
-                json.dump(importrec.rec, fp)
+                json.dump(jsonrec, fp)
                 fp.write('\n')
 
-            if (enriches):
-                for source in enriches:
+            if (dst_enrich):
+                for source in dst_enrich:
                     logger.debug(
                         'Enrich source = {source}'.format(source=source)
                     )
@@ -821,6 +833,53 @@ class ppdbNBA():
             )
             logger.debug(items.get_sql())
             return False
+
+    @db_session
+    def get_enrichment(self, sciNameGroup, source):
+        scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
+            sciNameGroup
+        )
+        source_config = self.config.get('sources').get(source, False)
+        if not source_config:
+            return False
+        table = source_config.get('table')
+        if not table:
+            return False
+
+        currenttable = globals().get(table.capitalize() + '_current', False)
+        if not currenttable:
+            return False
+
+        colrec = currenttable.select(lambda p: raw_sql(scisql)).get()
+        if colrec:
+            vernacularNames = colrec.rec.get('vernacularNames')
+            names = []
+            for name in vernacularNames:
+                if (name.get('preferred')):
+                    del name['preferred']
+                names.append(name)
+            taxonId = colrec.rec.get('id')
+            code = colrec.rec.get('sourceSystem').get('code')
+            enrichment = {'vernacularNames': names, 'sourceSystem': {'code': code}, 'taxonId': taxonId}
+
+        return enrichment
+
+    @db_session
+    def enrich_record(self, rec, sources):
+        sciNameGroup = False
+        if rec.get('identifications', False):
+            identifications = rec.get('identifications')
+            for index, ident in enumerate(identifications):
+                if ident.get('scientificName') and ident.get('scientificName').get('scientificNameGroup'):
+                    sciNameGroup = ident.get('scientificName').get('scientificNameGroup')
+                    rec.get('identifications')[index]['taxonomicEnrichments'] = []
+
+                    for source in sources:
+                        enrichment = self.get_enrichment(source,sciNameGroup)
+                        if (enrichment):
+                            rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichments)
+
+        return rec
 
     @db_session
     def handle_enrichment(self, source, rec):
