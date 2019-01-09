@@ -877,7 +877,7 @@ class ppdbNBA():
                     for source in sources:
                         enrichment = self.get_enrichment(sciNameGroup,source)
                         if (enrichment):
-                            rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichments)
+                            rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichment)
 
         return rec
 
