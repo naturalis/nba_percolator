@@ -853,7 +853,6 @@ class ppdbNBA():
         colrec = currenttable.select(lambda p: raw_sql(scisql)).get()
         if colrec.rec.get('vernacularNames'):
             vernacularNames = colrec.rec.get('vernacularNames')
-            print(colrec.rec)
             enrichment = {}
             enrichment['vernacularNames'] = []
             for name in vernacularNames:
