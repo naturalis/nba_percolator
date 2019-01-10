@@ -848,7 +848,7 @@ class ppdbNBA():
             )
         )
         enrichtmentkey = sciNameGroup + '-' + source
-        enrichment = cache.get(enrichtmentkey)
+        enrichment = cache.get(enrichtmentkey, False)
         if (enrichment):
             return enrichment
 
@@ -867,6 +867,7 @@ class ppdbNBA():
             return False
 
         taxarec = currenttable.select(lambda p: raw_sql(scisql)).get()
+
         if taxarec and taxarec.rec.get('vernacularNames'):
             vernacularNames = taxarec.rec.get('vernacularNames')
             enrichment = {}
@@ -881,7 +882,7 @@ class ppdbNBA():
             enrichment['sourceSystem'] = {}
             enrichment['sourceSystem']['code'] = taxarec.rec.get('sourceSystem').get('code')
 
-            cache.set(enrichtmentkey, enrichment, 300)
+            cache.set(enrichtmentkey, enrichment)
 
             logger.debug(
                 '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
@@ -891,11 +892,10 @@ class ppdbNBA():
                 )
             )
 
-            return enrichment
 
-        cache.set(enrichtmentkey, False, 300)
+        cache.set(enrichtmentkey, enrichment)
 
-        return False
+        return enrichment
 
     def enrich_record(self, rec, sources):
         sciNameGroup = False
