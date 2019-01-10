@@ -844,7 +844,7 @@ class ppdbNBA():
         enrichment = cache.get(enrichtmentkey)
         if (enrichment != None):
             logger.debug(
-                '[{elapsed:.2f} seconds] Retrieved enrichment for "{scinamegroup}" in "{source}" from cache'.format(
+                '[{elapsed:.2f} seconds] Cached enrichment for "{scinamegroup}" in "{source}"'.format(
                     source=source,
                     elapsed=(timer() - lap),
                     scinamegroup=sciNameGroup
@@ -884,6 +884,14 @@ class ppdbNBA():
 
             logger.debug(
                 '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
+                    source=source,
+                    elapsed=(timer() - lap),
+                    scinamegroup=sciNameGroup
+                )
+            )
+        else :
+            logger.debug(
+                '[{elapsed:.2f} seconds] No enrichment for "{scinamegroup}" in "{source}"'.format(
                     source=source,
                     elapsed=(timer() - lap),
                     scinamegroup=sciNameGroup
