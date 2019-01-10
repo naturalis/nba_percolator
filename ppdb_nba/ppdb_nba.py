@@ -667,8 +667,8 @@ class ppdbNBA():
             importid = dbids[0]
             importrec = importtable[importid]
             jsonrec = importrec.rec
-            if src_enrich:
-                jsonrec = self.enrich_record(jsonrec, src_enrich)
+            #if src_enrich:
+            #    jsonrec = self.enrich_record(jsonrec, src_enrich)
 
             insertquery = "INSERT INTO {table}_current (rec, hash, datum) " \
                           "SELECT rec, hash, datum FROM {table}_import where id={id}".format(
