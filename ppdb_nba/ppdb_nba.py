@@ -841,8 +841,8 @@ class ppdbNBA():
     def create_enrichment(self, sciNameGroup, source):
         lap = timer()
         enrichtmentkey = sciNameGroup + '-' + source
-        enrichment = cache.get(enrichtmentkey, False)
-        if (enrichment):
+        enrichment = cache.get(enrichtmentkey)
+        if (enrichment != None):
             logger.debug(
                 '[{elapsed:.2f} seconds] Retrieved enrichment for "{scinamegroup}" in "{source}" from cache'.format(
                     source=source,
