@@ -889,6 +889,8 @@ class ppdbNBA():
                     scinamegroup=sciNameGroup
                 )
             )
+            cache.set(enrichmentkey, enrichment)
+            return enrichment
         else :
             logger.debug(
                 '[{elapsed:.2f} seconds] No enrichment for "{scinamegroup}" in "{source}"'.format(
@@ -897,10 +899,8 @@ class ppdbNBA():
                     scinamegroup=sciNameGroup
                 )
             )
-
-        cache.set(enrichtmentkey, enrichment)
-
-        return enrichment
+            cache.set(enrichtmentkey, False)
+            return False
 
     def enrich_record(self, rec, sources):
         sciNameGroup = False
