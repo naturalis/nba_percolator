@@ -497,7 +497,7 @@ class ppdbNBA():
         if src_enrich:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
-                "ON public.{table}_current USING gin((rec->'acceptedName'->'scientificNameGroup') jsonb_path_ops)".format(
+                "ON public.{table} USING gin((rec->'acceptedName'->'scientificNameGroup') jsonb_path_ops)".format(
                    table=table
                 )
             )
