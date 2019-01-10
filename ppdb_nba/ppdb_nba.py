@@ -839,9 +839,17 @@ class ppdbNBA():
             return False
 
     def create_enrichment(self, sciNameGroup, source):
+        lap = timer()
         enrichtmentkey = sciNameGroup + '-' + source
         enrichment = cache.get(enrichtmentkey)
         if (enrichment):
+            logger.debug(
+                '[{elapsed:.2f} seconds] Got cached enrichment for "{scinamegroup}" in "{source}"'.format(
+                    source=source,
+                    elapsed=(timer() - lap),
+                    scinamegroup=sciNameGroup
+                )
+            )
             return enrichment
 
         scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
@@ -875,7 +883,17 @@ class ppdbNBA():
 
             cache.set(enrichtmentkey, enrichment, 300)
 
+            logger.debug(
+                '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
+                    source=source,
+                    elapsed=(timer() - lap),
+                    scinamegroup=sciNameGroup
+                )
+            )
+
             return enrichment
+
+        cache.set(enrichtmentkey, False, 300)
 
         return False
 
