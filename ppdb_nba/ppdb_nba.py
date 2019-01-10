@@ -720,7 +720,7 @@ class ppdbNBA():
             jsonrec = importrec.rec
 
             if (src_enrich) :
-                jsonrec = self.enrich(jsonrec, src_enrich)
+                jsonrec = self.enrich_record(jsonrec, src_enrich)
 
             updatequery = "UPDATE {table}_current SET (rec, hash, datum) = " \
                           "(SELECT rec, hash, datum FROM {table}_import " \
