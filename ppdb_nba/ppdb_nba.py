@@ -23,6 +23,7 @@ logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 cache = Cache('tmp')
+cache.clear()
 
 
 class ppdbNBA():
@@ -840,8 +841,8 @@ class ppdbNBA():
 
     def create_enrichment(self, sciNameGroup, source):
         lap = timer()
-        enrichtmentkey = sciNameGroup + '-' + source
-        enrichment = cache.get(enrichtmentkey)
+        enrichmentkey = sciNameGroup + '-' + source
+        enrichment = cache.get(enrichmentkey)
         if (enrichment != None):
             logger.debug(
                 '[{elapsed:.2f} seconds] Cached enrichment for "{scinamegroup}" in "{source}"'.format(
@@ -899,7 +900,7 @@ class ppdbNBA():
                     scinamegroup=sciNameGroup
                 )
             )
-            cache.set(enrichtmentkey, False)
+            cache.set(enrichmentkey, False)
             return False
 
     def enrich_record(self, rec, sources):
