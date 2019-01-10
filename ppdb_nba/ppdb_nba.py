@@ -497,8 +497,8 @@ class ppdbNBA():
         # set an index on scientificNameGroup, which should be present in taxa
         if src_enrich:
             self.db.execute(
-                "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
-                "ON public.{table} USING gin((rec->'acceptedName'->'scientificNameGroup') jsonb_path_ops)".format(
+                "CREATE INDEX IF NOT EXISTS idx_{table}__sciname "
+                "ON public.{table} USING BTREE((rec->'acceptedName'->'scientificNameGroup'))".format(
                    table=table
                 )
             )
