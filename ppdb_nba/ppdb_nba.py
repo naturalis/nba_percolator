@@ -483,7 +483,7 @@ class ppdbNBA():
         )
 
         # set an index on identifications, which should be present in enriched data
-        if dst_enrich:
+        if src_enrich:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
                 "ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
@@ -495,10 +495,10 @@ class ppdbNBA():
                     elapsed=(timer() - lap))
             )
         # set an index on scientificNameGroup, which should be present in taxa
-        if src_enrich:
+        if dst_enrich:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__sciname "
-                "ON public.{table} USING BTREE((rec->'acceptedName'->'scientificNameGroup'))".format(
+                "ON public.{table} USING gin((rec->'acceptedName') jsonb_path_ops)".format(
                    table=table
                 )
             )
