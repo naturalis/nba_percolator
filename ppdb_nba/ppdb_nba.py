@@ -13,7 +13,7 @@ import time
 from timeit import default_timer as timer
 import yaml
 from elasticsearch import Elasticsearch
-from pony.orm import db_session
+from pony.orm import db_session, sql_debugging
 from dateutil import parser
 from diskcache import Cache
 from .schema import *
@@ -867,7 +867,8 @@ class ppdbNBA():
         if not currenttable:
             return False
 
-        taxarec = currenttable.select(lambda p: raw_sql(scisql)).get()
+        with sql_debugging(show_values=True):
+            taxarec = currenttable.select(lambda p: raw_sql(scisql)).get()
 
         if taxarec and taxarec.rec.get('vernacularNames'):
             vernacularNames = taxarec.rec.get('vernacularNames')
