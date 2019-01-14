@@ -13,7 +13,7 @@ import time
 from timeit import default_timer as timer
 import yaml
 from elasticsearch import Elasticsearch
-from pony.orm import db_session, sql_debugging
+from pony.orm import db_session, sql_debugging, set_sql_debug
 from dateutil import parser
 from diskcache import Cache
 from .schema import *
@@ -102,7 +102,7 @@ class ppdbNBA():
 
         self.db = ppdb
 
-        self.db.set_sql_debug(True)
+        set_sql_debug(True)
 
         logger.debug('Connecting to database')
         try:
