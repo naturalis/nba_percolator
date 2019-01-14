@@ -13,7 +13,7 @@ import time
 from timeit import default_timer as timer
 import yaml
 from elasticsearch import Elasticsearch
-from pony.orm import db_session, sql_debugging, set_sql_debug
+from pony.orm import db_session, set_sql_debug
 from dateutil import parser
 from diskcache import Cache
 from .schema import *
@@ -101,8 +101,6 @@ class ppdbNBA():
         global ppdb
 
         self.db = ppdb
-
-        set_sql_debug(True)
 
         logger.debug('Connecting to database')
         try:
@@ -869,10 +867,9 @@ class ppdbNBA():
         if not currenttable:
             return False
 
-        with sql_debugging(show_values=True):
-            taxaqry = currenttable.select(lambda p: raw_sql(scisql))
+        taxaqry = currenttable.select(lambda p: raw_sql(scisql))
 
-        logger.debug(taxaqry.get_sql())
+        #logger.debug(taxaqry.get_sql())
 
         taxarec = taxaqry.get()
 
@@ -926,7 +923,7 @@ class ppdbNBA():
 
         return rec
 
-    @db_session(sql_debug=True)
+    @db_session
     def handle_impacted(self, source, record):
         scientificnamegroup = None
         source_config = self.config.get('sources').get(source)
