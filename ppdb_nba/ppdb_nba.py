@@ -102,6 +102,8 @@ class ppdbNBA():
 
         self.db = ppdb
 
+        self.db.set_sql_debug(True)
+
         logger.debug('Connecting to database')
         try:
             self.db.bind(
