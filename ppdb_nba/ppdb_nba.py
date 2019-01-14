@@ -920,7 +920,7 @@ class ppdbNBA():
 
         return rec
 
-    @db_session
+    @db_session(sql_debug=True)
     def handle_impacted(self, source, record):
         scientificnamegroup = None
         source_config = self.config.get('sources').get(source)
