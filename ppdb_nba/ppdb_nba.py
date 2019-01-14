@@ -872,6 +872,8 @@ class ppdbNBA():
         with sql_debugging(show_values=True):
             taxarec = currenttable.select(lambda p: raw_sql(scisql)).get()
 
+        logger.debug(taxarec.get_sql())
+
         if taxarec and taxarec.rec.get('vernacularNames'):
             vernacularNames = taxarec.rec.get('vernacularNames')
             enrichment = {}
