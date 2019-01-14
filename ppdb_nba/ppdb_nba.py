@@ -870,9 +870,11 @@ class ppdbNBA():
             return False
 
         with sql_debugging(show_values=True):
-            taxarec = currenttable.select(lambda p: raw_sql(scisql)).get()
+            taxaqry = currenttable.select(lambda p: raw_sql(scisql))
 
-        logger.debug(taxarec.get_sql())
+        logger.debug(taxaqry.get_sql())
+
+        taxarec = taxaqry.get()
 
         if taxarec and taxarec.rec.get('vernacularNames'):
             vernacularNames = taxarec.rec.get('vernacularNames')
