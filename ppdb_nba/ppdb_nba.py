@@ -377,7 +377,8 @@ class ppdbNBA():
                 fp = self.open_deltafile('kill', index)
             if (fp):
                 fp.write('{deleteid}\n'.format(deleteid=id))
-            oldrec = currenttable.select(lambda p: p.rec[idfield] == id).get()
+            oldqry = currenttable.select(lambda p: p.rec[idfield] == id)\
+            oldrec = oldqry.get()
             if (oldrec):
                 if (enriches):
                     for source in enriches:
@@ -839,6 +840,35 @@ class ppdbNBA():
             logger.debug(items.get_sql())
             return False
 
+    def create_name_summary(self, vernacularName):
+        fields = [
+            'name',
+            'language'
+        ]
+        summary = {}
+        for field in fields:
+            if vernacularName.get(field):
+                summary[field] = vernacularName.get(field)
+
+        return summary
+
+    def create_scientific_summary(self, scientificName):
+        fields = [
+            'fullScientificName',
+            'taxonomicStatus'
+            'genusOrMonomial',
+            'subgenus',
+            'specificEpithet',
+            'infraspecificEpithet',
+            'authorshipVerbatim'
+        ]
+        summary = {}
+        for field in fields:
+            if scientificName.get(field):
+                summary[field] = scientificName.get(field)
+
+        return summary
+
     def create_enrichment(self, sciNameGroup, source):
         lap = timer()
         enrichmentkey = sciNameGroup + '-' + source
@@ -868,24 +898,31 @@ class ppdbNBA():
             return False
 
         taxaqry = currenttable.select(lambda p: raw_sql(scisql))
+        taxon = taxaqry.get()
 
-        #logger.debug(taxaqry.get_sql())
-
-        taxarec = taxaqry.get()
-
-        if taxarec and taxarec.rec.get('vernacularNames'):
-            vernacularNames = taxarec.rec.get('vernacularNames')
+        if taxon:
+            vernacularNames = taxon.rec.get('vernacularNames')
             enrichment = {}
-            enrichment['vernacularNames'] = []
-            for name in vernacularNames:
-                if (name.get('preferred')):
-                    del name['preferred']
-                enrichment['vernacularNames'].append(name)
-            enrichment['taxonId'] = taxarec.rec.get('id')
-            if (taxarec.rec.get('synonyms', False)) :
-                enrichment['synonyms'] = taxarec.rec.get('synonyms')
-            enrichment['sourceSystem'] = {}
-            enrichment['sourceSystem']['code'] = taxarec.rec.get('sourceSystem').get('code')
+
+            if vernacularNames:
+                enrichment['vernacularNames'] = []
+                for name in vernacularNames:
+                    enrichment['vernacularNames'].append(self.create_name_summary(name))
+
+            enrichment['taxonId'] = taxon.rec.get('id')
+
+            synonyms = taxon.rec.get('synonyms', False)
+            if synonyms:
+                for scientificName in synonyms:
+                    enrichment['synonyms'].append(self.create_scientific_summary(scientificName))
+
+            if (taxon.rec.get('sourceSystem') and taxon.rec.get('sourceSystem').get('code')):
+                enrichment['sourceSystem'] = {}
+                enrichment['sourceSystem']['code'] = taxon.rec.get('sourceSystem').get('code')
+
+                if (taxon.rec.get('sourceSystem').get('code') == 'COL'):
+                    if taxon.rec.get('defaultClassification') :
+                        enrichment['defaultClassification'] = taxon.rec.get('defaultClassification')
 
             logger.debug(
                 '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
