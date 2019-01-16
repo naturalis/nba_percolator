@@ -751,6 +751,7 @@ class ppdbNBA():
 
             if (dst_enrich):
                 for source in dst_enrich:
+                    self.create_enrichment(jsonrec, source)
                     logger.debug(
                         'Enrich source = {source}'.format(source=source)
                     )
@@ -803,6 +804,8 @@ class ppdbNBA():
                 )
 
                 if (enriches):
+                    # @todo: if the oldrec is used for enrichment this
+                    # should be removed from the enrichment cache
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
                         self.handle_impacted(source, oldrec)
@@ -853,6 +856,26 @@ class ppdbNBA():
             logger.debug(items.get_sql())
             return False
 
+    def get_taxon(self, source, sciNameGroup):
+        source_config = self.config.get('sources').get(source, False)
+        if not source_config:
+            return False
+        table = source_config.get('table')
+        if not table:
+            return False
+
+        currenttable = globals().get(table.capitalize() + '_current', False)
+        if not currenttable:
+            return False
+
+        scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
+            sciNameGroup
+        )
+        taxaqry = currenttable.select(lambda p: raw_sql(scisql))
+        taxon = taxaqry.get()
+
+        return taxon
+
     def create_name_summary(self, vernacularName):
         fields = [
             'name',
@@ -882,9 +905,56 @@ class ppdbNBA():
 
         return summary
 
-    def create_enrichment(self, sciNameGroup, source):
+    def create_enrichment(self, rec, source):
+        vernacularNames = rec.get('vernacularNames')
+        sciNameGroup = rec.get('acceptedName').get('scientificNameGroup')
+        enrichment = {}
+
+        if vernacularNames:
+            enrichment['vernacularNames'] = []
+            for name in vernacularNames:
+                enrichment['vernacularNames'].append(self.create_name_summary(name))
+
+        enrichment['taxonId'] = rec.get('id')
+
+        synonyms = rec.get('synonyms', False)
+        if synonyms:
+            enrichment['synonyms'] = []
+            for scientificName in synonyms:
+                enrichment['synonyms'].append(self.create_scientific_summary(scientificName))
+
+        if (rec.get('sourceSystem') and rec.get('sourceSystem').get('code')):
+            enrichment['sourceSystem'] = {}
+            enrichment['sourceSystem']['code'] = rec.get('sourceSystem').get('code')
+
+            if (rec.get('sourceSystem').get('code') == 'COL'):
+                if rec.get('defaultClassification') :
+                    enrichment['defaultClassification'] = rec.get('defaultClassification')
+
+        logger.debug(
+            '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
+                source=source,
+                elapsed=(timer() - lap),
+                scinamegroup=sciNameGroup
+            )
+        )
+        enrichmentkey = '-'.join([sciNameGroup,source])
+        cache.set(enrichmentkey, enrichment)
+
+        return enrichment
+
+    def get_enrichment(self, sciNameGroup, source):
+        """
+        First tries to retrieve the enrichment from cache. When it is not generated
+        a new enrichment is created from a taxon json record and stored in cache
+
+        :param sciNameGroup:
+        :param source:
+        :return:
+        """
         lap = timer()
-        enrichmentkey = sciNameGroup + '-' + source
+        enrichmentkey = '-'.join([sciNameGroup,source])
+
         enrichment = cache.get(enrichmentkey)
         if (enrichment != None):
             logger.debug(
@@ -896,57 +966,10 @@ class ppdbNBA():
             )
             return enrichment
 
-        scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
-            sciNameGroup
-        )
-        source_config = self.config.get('sources').get(source, False)
-        if not source_config:
-            return False
-        table = source_config.get('table')
-        if not table:
-            return False
-
-        currenttable = globals().get(table.capitalize() + '_current', False)
-        if not currenttable:
-            return False
-
-        taxaqry = currenttable.select(lambda p: raw_sql(scisql))
-        taxon = taxaqry.get()
+        taxon = self.get_taxon(source, sciNameGroup)
 
         if taxon:
-            vernacularNames = taxon.rec.get('vernacularNames')
-            enrichment = {}
-
-            if vernacularNames:
-                enrichment['vernacularNames'] = []
-                for name in vernacularNames:
-                    enrichment['vernacularNames'].append(self.create_name_summary(name))
-
-            enrichment['taxonId'] = taxon.rec.get('id')
-
-            synonyms = taxon.rec.get('synonyms', False)
-            if synonyms:
-                enrichment['synonyms'] = []
-                for scientificName in synonyms:
-                    enrichment['synonyms'].append(self.create_scientific_summary(scientificName))
-
-            if (taxon.rec.get('sourceSystem') and taxon.rec.get('sourceSystem').get('code')):
-                enrichment['sourceSystem'] = {}
-                enrichment['sourceSystem']['code'] = taxon.rec.get('sourceSystem').get('code')
-
-                if (taxon.rec.get('sourceSystem').get('code') == 'COL'):
-                    if taxon.rec.get('defaultClassification') :
-                        enrichment['defaultClassification'] = taxon.rec.get('defaultClassification')
-
-            logger.debug(
-                '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
-                    source=source,
-                    elapsed=(timer() - lap),
-                    scinamegroup=sciNameGroup
-                )
-            )
-            cache.set(enrichmentkey, enrichment)
-            return enrichment
+            self.create_enrichment(taxon.rec, source)
         else :
             logger.debug(
                 '[{elapsed:.2f} seconds] No enrichment for "{scinamegroup}" in "{source}"'.format(
@@ -968,7 +991,7 @@ class ppdbNBA():
                     rec.get('identifications')[index]['taxonomicEnrichments'] = []
 
                     for source in sources:
-                        enrichment = self.create_enrichment(sciNameGroup,source)
+                        enrichment = self.get_enrichment(sciNameGroup, source)
                         if (enrichment):
                             rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichment)
 
