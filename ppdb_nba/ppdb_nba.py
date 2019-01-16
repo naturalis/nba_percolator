@@ -377,7 +377,7 @@ class ppdbNBA():
                 fp = self.open_deltafile('kill', index)
             if (fp):
                 fp.write('{deleteid}\n'.format(deleteid=id))
-            oldqry = currenttable.select(lambda p: p.rec[idfield] == id)\
+            oldqry = currenttable.select(lambda p: p.rec[idfield] == id)
             oldrec = oldqry.get()
             if (oldrec):
                 if (enriches):
