@@ -692,7 +692,10 @@ class ppdbNBA():
                 json.dump(jsonrec, fp)
                 fp.write('\n')
 
+            # @todo: Store the json record of the taxon
+            # cache.set(jsonrec.get('id'),jsonrec)
             self.db.execute(insertquery)
+            self.db.commit()
 
             self.log_change(
                 state='new',
@@ -746,6 +749,8 @@ class ppdbNBA():
                 json.dump(jsonrec, fp)
                 fp.write('\n')
 
+            # @todo: Store the json record of the taxon
+            # cache.set(jsonrec.get('id'),jsonrec)
             self.db.execute(updatequery)
             self.db.commit()
 
@@ -795,6 +800,8 @@ class ppdbNBA():
                 if (fp):
                     fp.write('{deleteid}\n'.format(deleteid=deleteid))
 
+                # @todo: Store the json record of the taxon
+                # cache.set(deleteid,False)
                 oldrec.delete()
                 self.db.commit()
 
