@@ -380,13 +380,15 @@ class ppdbNBA():
             oldqry = currenttable.select(lambda p: p.rec[idfield] == id)
             oldrec = oldqry.get()
             if (oldrec):
+                oldrec.delete()
+                self.db.commit()
+
                 if (enriches):
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
 
                         self.handle_impacted(source, oldrec)
 
-                oldrec.delete()
                 logger.debug(
                     '[{elapsed:.2f} seconds] Permanently deleted (kill) record "{recordid}" in "{source}"'.format(
                         source=table + '_current',
@@ -744,6 +746,9 @@ class ppdbNBA():
                 json.dump(jsonrec, fp)
                 fp.write('\n')
 
+            self.db.execute(updatequery)
+            self.db.commit()
+
             if (dst_enrich):
                 for source in dst_enrich:
                     logger.debug(
@@ -751,7 +756,6 @@ class ppdbNBA():
                     )
                     self.handle_impacted(source, oldrec)
 
-            self.db.execute(updatequery)
             logger.debug(
                 '[{elapsed:.2f} seconds] Updated record "{recordid}" in "{source}"'.format(
                     source=table + '_current',
@@ -790,17 +794,18 @@ class ppdbNBA():
                 if (fp):
                     fp.write('{deleteid}\n'.format(deleteid=deleteid))
 
-                if (enriches):
-                    for source in enriches:
-                        logger.debug('Enrich source = {source}'.format(source=source))
-                        self.handle_impacted(source, oldrec)
-
                 oldrec.delete()
+                self.db.commit()
 
                 self.log_change(
                     state='delete',
                     recid=deleteid
                 )
+
+                if (enriches):
+                    for source in enriches:
+                        logger.debug('Enrich source = {source}'.format(source=source))
+                        self.handle_impacted(source, oldrec)
 
                 logger.debug(
                     '[{elapsed:.2f} seconds] Temporarily deleted record "{deleteid}" in "{source}"'.format(
