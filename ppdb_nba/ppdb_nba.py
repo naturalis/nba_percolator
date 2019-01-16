@@ -913,6 +913,7 @@ class ppdbNBA():
 
             synonyms = taxon.rec.get('synonyms', False)
             if synonyms:
+                enrichment['synonyms'] = []
                 for scientificName in synonyms:
                     enrichment['synonyms'].append(self.create_scientific_summary(scientificName))
 
