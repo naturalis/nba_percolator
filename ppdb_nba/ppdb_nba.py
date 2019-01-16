@@ -583,8 +583,11 @@ class ppdbNBA():
                             'WHERE {source}_current.hash is null'.format(source=source_base)
             neworupdates = self.db.select(leftdiffquery)
             logger.debug(
-                '[{elapsed:.2f} seconds] Left full outer join on "{source}"'.format(source=source_base,
-                                                                                    elapsed=(timer() - lap)))
+                '[{elapsed:.2f} seconds] Left full outer join on "{source}": {count}'.format(
+                    source=source_base,
+                    elapsed=(timer() - lap)),
+                    count=neworupdates.count()
+            )
             lap = timer()
 
             rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash ' \
@@ -593,8 +596,11 @@ class ppdbNBA():
                              'WHERE {source}_import.hash is null'.format(source=source_base)
             updateordeletes = self.db.select(rightdiffquery)
             logger.debug(
-                '[{elapsed:.2f} seconds] Right full outer join on "{source}"'.format(source=source_base,
-                                                                                     elapsed=(timer() - lap)))
+                '[{elapsed:.2f} seconds] Right full outer join on "{source}": {count}'.format(
+                    source=source_base,
+                    elapsed=(timer() - lap)),
+                    count=updateordeletes.count()
+            )
             lap = timer()
 
             importtable = globals()[source_base.capitalize() + '_import']

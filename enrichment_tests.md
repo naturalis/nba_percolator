@@ -61,17 +61,6 @@ ppdb_nba --current --debug --source brahms-specimen /shared-data/joepitest/enric
 ppdb_nba --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-1update.json
 ```
 
-Verschillen na eerste run:
-
- 1. NSR vernacularNames bevat in percolator versie ook references (moet weg)
- 2. COL ppdb_nba versie gebruikt taxonId [32919201@COL](https://api.biodiversitydata.nl/v2/taxon/find/32919201@COL) i.p.v. [45441552@COL](https://api.biodiversitydata.nl/v2/taxon/find/45441552@COL) (die laatste ontbreekt in lokale col)
- 3. COL synonyms bevat ook `scientificNameGroup` in ppdb_nba (moet weg?)
- 4. COL defaultClassification ontbreekt in ppdb_nba (moet worden toegevoegd)
- 5. COL synonym waarden worden ge-html encode in ppdb_nba versie (vreemd, uitzoeken)
-
-ad 2. oplossen door nieuwe col taxa dump.
-
-
 
  * Doe een update van meer records
  
@@ -188,6 +177,9 @@ ppdb_nba --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/f
 #### 3. Col taxa update
 
  * Update taxon 'fulica atra'.
+ 
+ Heel langzaam als er maar een geupdate record wordt ingeladen.
+ @todo: uitzoeken hoe bij een niet incrementele update de boel toch snel kan
  
  Resultaat: alle 'fulica atra' records updated inclusief enrichment
  
