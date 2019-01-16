@@ -585,8 +585,9 @@ class ppdbNBA():
             logger.debug(
                 '[{elapsed:.2f} seconds] Left full outer join on "{source}": {count}'.format(
                     source=source_base,
-                    elapsed=(timer() - lap)),
+                    elapsed=(timer() - lap),
                     count=neworupdates.count()
+                )
             )
             lap = timer()
 
@@ -598,8 +599,9 @@ class ppdbNBA():
             logger.debug(
                 '[{elapsed:.2f} seconds] Right full outer join on "{source}": {count}'.format(
                     source=source_base,
-                    elapsed=(timer() - lap)),
+                    elapsed=(timer() - lap),
                     count=updateordeletes.count()
+                )
             )
             lap = timer()
 
