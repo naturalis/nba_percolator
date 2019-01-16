@@ -906,6 +906,7 @@ class ppdbNBA():
         return summary
 
     def create_enrichment(self, rec, source):
+        lap = timer()
         vernacularNames = rec.get('vernacularNames')
         sciNameGroup = rec.get('acceptedName').get('scientificNameGroup')
         enrichment = {}
