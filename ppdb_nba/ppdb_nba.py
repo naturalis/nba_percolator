@@ -855,7 +855,7 @@ class ppdbNBA():
     def create_scientific_summary(self, scientificName):
         fields = [
             'fullScientificName',
-            'taxonomicStatus'
+            'taxonomicStatus',
             'genusOrMonomial',
             'subgenus',
             'specificEpithet',
