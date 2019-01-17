@@ -1,5 +1,5 @@
 import unittest
-from ppdb_nba import ppdbNBA
+from ppdb_nba import ppdb_NBA
 import logging
 
 class XcspecimenTestCase(unittest.TestCase):
@@ -31,7 +31,7 @@ class XcspecimenTestCase(unittest.TestCase):
         super(XcspecimenTestCase, self).__init__(*args, **kwargs)
         logger = logging.getLogger('ppdb_nba')
         logger.setLevel(logging.ERROR)
-        self.pp = ppdbNBA(config=self.config, source=self.source)
+        self.pp = ppdb_NBA(config=self.config, source=self.source)
 
     def setUp(self):
         self.clear_data(table=self.config.get('table') + "_current")

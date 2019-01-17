@@ -1,5 +1,5 @@
 import unittest
-from ppdb_nba import ppdbNBA
+from ppdb_nba import ppdb_NBA
 import logging
 
 class BrahmsspecimenTestCase(unittest.TestCase):
@@ -32,7 +32,7 @@ class BrahmsspecimenTestCase(unittest.TestCase):
         super(BrahmsspecimenTestCase, self).__init__(*args, **kwargs)
         logger = logging.getLogger('ppdb_nba')
         logger.setLevel(logging.ERROR)
-        self.pp = ppdbNBA(config=self.config, source=self.source)
+        self.pp = ppdb_NBA(config=self.config, source=self.source)
 
     def setUp(self):
         self.pp.clear_data(table=self.config.get('table') + "_current")

@@ -1,7 +1,7 @@
-"""NBA preprocessing database module
+"""NBA preprocessing database module - the percolator
 
-Hierin zitten alle functies en database afhankelijkheden waarmee import data 
-kan worden gefilterd alvorens een import in de NBA documentstore plaatsvindt.
+This module contains all the database dependencies and functions used
+for importing new and updated data into the NBA documentstore.
 """
 import json
 import logging
@@ -22,11 +22,13 @@ from .schema import *
 logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
+
+# Caching on disk (diskcache) using sqlite, it is fast
 cache = Cache('tmp')
 cache.clear()
 
 
-class ppdbNBA():
+class ppdb_NBA():
     """
     Preprocessor class containing all functions needed for importing the data and
     create incremental insert, update or delete files.
@@ -34,7 +36,8 @@ class ppdbNBA():
 
     def __init__(self, config):
         """
-        Reading the config.yml file where all sources, configuration and specifics are listed
+        Reading the config.yml file where all sources, configuration and
+        specifics are listed
         """
         if isinstance(config, str):
             # config is string, read the config file
@@ -118,7 +121,7 @@ class ppdbNBA():
 
     def generate_mapping(self, create_tables=False):
         """
-        Generate mapping
+        Generate mapping of the database
         """
         try:
             self.db.generate_mapping(create_tables=create_tables)
@@ -128,6 +131,9 @@ class ppdbNBA():
             sys.exit(msg)
 
     def lock(self, jobfile):
+        """
+        Generates a locking file
+        """
         jobs_path = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
         with open(os.path.join(jobs_path, '.lock'), 'w') as fp:
             lockrec = {
@@ -138,7 +144,7 @@ class ppdbNBA():
 
     def unlock(self):
         """
-        Remove the lock
+        Remove the locking file
         """
         jobspath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
         locks = glob.glob(os.path.join(jobspath, '.lock'))
@@ -148,11 +154,12 @@ class ppdbNBA():
 
     def islocked(self):
         """
-        Check if there is a lockfile and if so parse it. A lockfile is a json record with PID as well as
-        job filepath. If the process is still running then the process is still locked. If not it has
-        failed. If no lock file exists it is no longer locked
+        Check if there is a lockfile and if so, parse it. A lockfile is a
+        json record with PID as well as job filepath. If the process is
+        still running then the process is still locked. If not it has
+        failed. If no lock file exists it is no longer locked.
 
-        :return:  True = still locked, False = no longer locked
+        :return:  True = still locked / False = no longer locked
         """
         jobspath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
 
@@ -171,7 +178,8 @@ class ppdbNBA():
                                                                                                   job=lockinfo['job']))
                 return True
             except:
-                # Exception means the process is no longer running, but the lockfile is still there
+                # Exception means the process is no longer running, but the
+                # lockfile is still there
                 jobfile = lockinfo['job'].split('/')[-1]
                 failedpath = self.config.get('paths').get('failed', os.path.join(os.getcwd(), "failed"))
                 shutil.move(lockinfo['job'], os.path.join(failedpath, jobfile))
@@ -180,7 +188,8 @@ class ppdbNBA():
                     state='fail'
                 )
                 logger.error(
-                    'Preprocessor failed in the last run, job file "{job}" moved to failed'.format(job=lockinfo['job'])
+                    'Preprocessor failed in the last run? '
+                    'Job file "{job}" moved to failed'.format(job=lockinfo['job'])
                 )
                 os.remove(lockfile)
 
@@ -269,7 +278,7 @@ class ppdbNBA():
 
     def open_deltafile(self, action='new', index='unknown'):
         """
-        Open een delta bestand met records of id's om weg te schrijven.
+        Open the delta file for the updated, new or deleted records
         """
         destpath = self.config.get('paths').get('delta', '/tmp')
         if not self.jobid:
@@ -278,7 +287,7 @@ class ppdbNBA():
                 ts=time.strftime('%Y%m%d%H%M%S'),
                 action=action
             )
-        else :
+        else:
             filename = "{jobid}-{index}-{action}.json".format(
                 jobid=self.jobid,
                 index=index,
@@ -318,7 +327,7 @@ class ppdbNBA():
 
     def log_change(self, state='unknown', recid='ppdb_nba', comment=''):
         """
-        Logging of the state change of a record
+        Logging of the state change of a record to the elastic logging database
 
         :param state:
         :param recid:
@@ -346,7 +355,7 @@ class ppdbNBA():
     @db_session
     def clear_data(self, table=''):
         """
-        Remove data from table.
+        Remove data from table
         """
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
@@ -354,7 +363,11 @@ class ppdbNBA():
 
     @db_session
     def import_deleted(self, filename=''):
+        """
+        Import deleted records list
 
+        :param filename:
+        """
         table = self.source_config.get('table')
         index = self.source_config.get('index', 'noindex')
         currenttable = globals()[table.capitalize() + '_current']
@@ -378,6 +391,7 @@ class ppdbNBA():
             if (fp):
                 fp.write('{deleteid}\n'.format(deleteid=id))
             oldqry = currenttable.select(lambda p: p.rec[idfield] == id)
+
             oldrec = oldqry.get()
             if (oldrec):
                 oldrec.delete()
@@ -419,10 +433,10 @@ class ppdbNBA():
         self.db.execute("TRUNCATE public.{table}".format(table=table))
 
         # gooi de tabel leeg, weg met de indexes
-        self.db.execute("ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex".format(table=table))
-        self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__jsonid".format(table=table))
-        self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__hash".format(table=table))
-        self.db.execute("DROP INDEX IF EXISTS public.idx_{table}__gin".format(table=table))
+        self.db.execute('ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex'.format(table=table))
+        self.db.execute('DROP INDEX IF EXISTS public.idx_{table}__jsonid'.format(table=table))
+        self.db.execute('DROP INDEX IF EXISTS public.idx_{table}__hash'.format(table=table))
+        self.db.execute('DROP INDEX IF EXISTS public.idx_{table}__gin'.format(table=table))
 
         # verwijder de indexes
         self.db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
@@ -497,7 +511,9 @@ class ppdbNBA():
                     table=table,
                     elapsed=(timer() - lap))
             )
-        # set an index on scientificNameGroup, which should be present in taxa
+
+        # set an index on the part containing scientificNameGroup,
+        # which should be present in taxa sources
         if dst_enrich:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__sciname "
@@ -514,7 +530,8 @@ class ppdbNBA():
     @db_session
     def remove_doubles(self):
         """
-        Some sources can contain double records, these should be removed, before checking the hash.
+        Some sources can contain double records, these should be removed,
+        before checking the hash.
         """
         lap = timer()
 
@@ -546,14 +563,15 @@ class ppdbNBA():
     @db_session
     def list_changes(self):
         """
-        Identificeert de verschillen tussen de huidige database en de nieuwe data, op basis van hash.
+        Identifies differences between the current database and the imported data. It does this
+        by comparing hashes.
 
-        Als een hash ontbreekt in de bestaande data, maar aanwezig is in de nieuwe data. Dan kan het gaan
-        om een nieuw (new) record of een update.
+        If a hash is missing in the current database, but if it is present in the imported, than
+        it could be a new record, or an update.
 
-        Een hash die aanwezig is in de bestaande data, maar ontbreekt in de nieuwe data kan gaan om een
-        verwijderd record. Maar dit is alleen te bepalen bij analyse van complete datasets. Een changes
-        dictionary ziet er over het algemeen zo uit.
+        A hash that is present in the current data, but is missing in the imported data can be
+        deleted record. But this comparison can only be done with complete datasets. The changes
+        dictionary looks something like this.
 
         ```
             changes = {
@@ -593,6 +611,8 @@ class ppdbNBA():
             )
             lap = timer()
 
+            # @todo: non incremental updates should check the updates this way
+            # this part should be skipped if the source is 'incremental==no'
             rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash ' \
                              'FROM {source}_import ' \
                              'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
@@ -629,7 +649,7 @@ class ppdbNBA():
                     else:
                         self.changes['delete'][uuid] = [r.id]
 
-            if (len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete'])):
+            if len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete']):
                 if len(self.changes['new']):
                     logger.info(
                         '[{elapsed:.2f} seconds] {new} inserted'.format(
@@ -864,6 +884,13 @@ class ppdbNBA():
             return False
 
     def get_taxon(self, source, sciNameGroup):
+        """
+        Retrieve a taxon from the database on the field 'acceptedName.scientificNameGroup'
+
+        :param source:
+        :param sciNameGroup:
+        :return:
+        """
         source_config = self.config.get('sources').get(source, False)
         if not source_config:
             return False
@@ -884,6 +911,12 @@ class ppdbNBA():
         return taxon
 
     def create_name_summary(self, vernacularName):
+        """
+        Create a scientific name summary, only use certain fields
+
+        :param vernacularName:
+        :return:
+        """
         fields = [
             'name',
             'language'
@@ -896,6 +929,12 @@ class ppdbNBA():
         return summary
 
     def create_scientific_summary(self, scientificName):
+        """
+        Create a scientific summary, only use certain fields
+
+        :param scientificName:
+        :return:
+        """
         fields = [
             'fullScientificName',
             'taxonomicStatus',
@@ -913,6 +952,13 @@ class ppdbNBA():
         return summary
 
     def create_enrichment(self, rec, source):
+        """
+        Create the enrichment
+
+        :param rec:
+        :param source:
+        :return:
+        """
         lap = timer()
         vernacularNames = rec.get('vernacularNames')
         sciNameGroup = rec.get('acceptedName').get('scientificNameGroup')
@@ -990,6 +1036,16 @@ class ppdbNBA():
             return False
 
     def enrich_record(self, rec, sources):
+        """
+        Enrich a json record with taxon information from the sources it does this
+        by checking each element in identifications[] and if it contains a
+        'scientificName.scientificNameGroup' it tries to generate an enrichment
+        from each source
+
+        :param rec:
+        :param sources:
+        :return:
+        """
         sciNameGroup = False
         if rec.get('identifications', False):
             identifications = rec.get('identifications')
@@ -1007,6 +1063,12 @@ class ppdbNBA():
 
     @db_session
     def handle_impacted(self, source, record):
+        """
+        Handles the record that are impacted by a taxon record change
+
+        :param source:
+        :param record:
+        """
         scientificnamegroup = None
         source_config = self.config.get('sources').get(source)
         src_enrich = source_config.get('src-enrich', False)
@@ -1015,10 +1077,10 @@ class ppdbNBA():
 
         lap = timer()
 
-        if (record.rec.get('acceptedName')):
+        if record.rec.get('acceptedName'):
             scientificnamegroup = record.rec.get('acceptedName').get('scientificNameGroup')
 
-        if (scientificnamegroup):
+        if scientificnamegroup:
             impactedrecords = self.list_impacted(source_config, scientificnamegroup)
             if (impactedrecords):
                 fp = self.open_deltafile('enrich', index)
