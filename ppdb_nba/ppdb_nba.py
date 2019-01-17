@@ -923,13 +923,15 @@ class ppdb_NBA():
                 taxonkey=taxonkey
             ))
             cache.set(taxonkey, taxon.rec)
+            return taxon.rec
         else:
             logger.debug('get_taxon: {taxonkey} store FALSE in cache'.format(
                 taxonkey=taxonkey
             ))
             cache.set(taxonkey, False)
 
-        return taxon
+            return False
+
 
     def cache_taxon_record(self, jsonRec, systemCode):
         if jsonRec.get('acceptedName') and jsonRec.get('acceptedName').get('scientificNameGroup'):
