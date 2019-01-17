@@ -773,7 +773,7 @@ class ppdb_NBA():
             self.db.execute(updatequery)
 
             if (dst_enrich):
-                code = self.source_config('code')
+                code = self.source_config.get('code')
                 self.cache_taxon_record(jsonrec, code)
 
                 for source in dst_enrich:
@@ -829,7 +829,7 @@ class ppdb_NBA():
                 )
 
                 if (enriches):
-                    code = self.source_config('code')
+                    code = self.source_config.get('code')
                     self.cache_taxon_record(jsonrec, code)
 
                     for source in enriches:
