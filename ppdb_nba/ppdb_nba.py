@@ -395,7 +395,6 @@ class ppdb_NBA():
             oldrec = oldqry.get()
             if (oldrec):
                 oldrec.delete()
-                self.db.commit()
 
                 if (enriches):
                     for source in enriches:
@@ -810,8 +809,8 @@ class ppdb_NBA():
         enriches = self.source_config.get('enriches', None)
         index = self.source_config.get('index', 'noindex')
 
+        # Write data to incremental file
         fp = self.open_deltafile('delete', index)
-        # Schrijf de data naar incrementele file
 
         lap = timer()
         for change, dbids in self.changes['delete'].items():
@@ -822,10 +821,7 @@ class ppdb_NBA():
                 if (fp):
                     fp.write('{deleteid}\n'.format(deleteid=deleteid))
 
-                # @todo: Store the json record of the taxon
-                # cache.set(deleteid,False)
                 oldrec.delete()
-                self.db.commit()
 
                 self.log_change(
                     state='delete',
