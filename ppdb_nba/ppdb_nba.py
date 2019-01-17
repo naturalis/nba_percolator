@@ -533,7 +533,12 @@ class ppdb_NBA():
     def get_record(self, id, suffix="current"):
         base = self.source_config.get('table')
         idfield = self.source_config.get('id', 'id')
-        dbtable = globals()[base.capitalize() + '_' + suffix]
+        tableName = base.capitalize() + '_' + suffix
+        dbtable = globals()[tableName]
+        logger.debug('Get record {id} from {table}'.format(
+            table=tableName,
+            id=id
+        ))
 
         query = dbtable.select(lambda p: p.rec[idfield] == id)
 
@@ -630,9 +635,8 @@ class ppdb_NBA():
             )
             lap = timer()
 
-            # @todo: non incremental updates should check the updates this way
-            # this part should be skipped if the source is 'incremental==no'
             if not self.is_incremental():
+                # this part is only done when a source is non incremental
                 rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash ' \
                                  'FROM {source}_import ' \
                                  'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
@@ -663,11 +667,11 @@ class ppdb_NBA():
                             oldid=oldrec.id,
                             newid=r.id
                         ))
-                    else :
+                    else:
                         self.changes['new'][uuid] = [r.id]
 
             if not self.is_incremental():
-                # updates or deletes
+                # non incremental sources only have explicit deletes
                 for result in updateordeletes:
                     r = currenttable.get(hash=result[1])
                     if (r.rec):
@@ -769,60 +773,61 @@ class ppdb_NBA():
         """
         Handles updates
         """
-        table = self.source_config.get('table')
-        idfield = self.source_config.get('id')
-        dst_enrich = self.source_config.get('dst-enrich', None)
-        src_enrich = self.source_config.get('src-enrich', None)
-        importtable = globals()[table.capitalize() + '_import']
-        currenttable = globals()[table.capitalize() + '_import']
+        tableName = self.source_config.get('table')
+        idField = self.source_config.get('id')
+        enrichDestinations = self.source_config.get('dst-enrich', None)
+        enrichSources = self.source_config.get('src-enrich', None)
+        importTable = globals()[tableName.capitalize() + '_import']
+        currentTable = globals()[tableName.capitalize() + '_import']
         index = self.source_config.get('index', 'noindex')
 
         fp = self.open_deltafile('update', index)
         # Schrijf de data naar incrementele file
 
         lap = timer()
-        for change, dbids in self.changes['update'].items():
-            importrec = importtable[dbids[0]]
-            oldrec = currenttable[dbids[0]]
-            jsonrec = importrec.rec
+        for change, recordIds in self.changes['update'].items():
+            # first id points to the new rec
+            importRec = importTable[recordIds[0]]
+            oldRec = currentTable[recordIds[1]]
+            jsonRec = importRec.rec
 
-            if (src_enrich) :
-                jsonrec = self.enrich_record(jsonrec, src_enrich)
+            if (enrichSources) :
+                jsonRec = self.enrich_record(jsonRec, enrichSources)
 
             updatequery = "UPDATE {table}_current SET (rec, hash, datum) = " \
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
                           "WHERE {table}_current.id={currentid}".format(
-                table=table,
-                currentid=dbids[1],
-                importid=importrec.id
+                table=tableName,
+                currentid=recordIds[1],
+                importid=importRec.id
             )
             if (fp):
-                json.dump(jsonrec, fp)
+                json.dump(jsonRec, fp)
                 fp.write('\n')
 
             self.db.execute(updatequery)
 
-            if (dst_enrich):
+            if (enrichDestinations):
                 code = self.source_config.get('code')
-                self.cache_taxon_record(jsonrec, code)
+                self.cache_taxon_record(jsonRec, code)
 
-                for source in dst_enrich:
+                for source in enrichDestinations:
                     logger.debug(
                         'Enrich source = {source}'.format(source=source)
                     )
-                    self.handle_impacted(source, oldrec)
+                    self.handle_impacted(source, oldRec)
 
             logger.debug(
                 '[{elapsed:.2f} seconds] Updated record "{recordid}" in "{source}"'.format(
-                    source=table + '_current',
+                    source=tableName + '_current',
                     elapsed=(timer() - lap),
-                    recordid=importrec.rec[idfield]
+                    recordid=importRec.rec[idField]
                 )
             )
             self.log_change(
                 state='update',
-                recid=importrec.rec[idfield],
+                recid=importRec.rec[idField],
             )
             lap = timer()
 
