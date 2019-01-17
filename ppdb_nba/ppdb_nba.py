@@ -690,6 +690,7 @@ class ppdb_NBA():
         index = self.source_config.get('index', 'noindex')
         importtable = globals()[table.capitalize() + '_import']
         src_enrich = self.source_config.get('src-enrich', False)
+        dst_enrich = self.source_config.get('dst-enrich', None)
 
         fp = self.open_deltafile('new', index)
         # Schrijf de data naar incrementele files
@@ -712,10 +713,11 @@ class ppdb_NBA():
                 json.dump(jsonrec, fp)
                 fp.write('\n')
 
-            # @todo: Store the json record of the taxon
-            # cache.set(jsonrec.get('id'),jsonrec)
             self.db.execute(insertquery)
-            self.db.commit()
+
+            if (dst_enrich):
+                code = self.source_config('code')
+                self.cache_taxon_record(jsonrec, code)
 
             self.log_change(
                 state='new',
@@ -769,14 +771,13 @@ class ppdb_NBA():
                 json.dump(jsonrec, fp)
                 fp.write('\n')
 
-            # @todo: Store the json record of the taxon
-            # cache.set(jsonrec.get('id'),jsonrec)
             self.db.execute(updatequery)
-            self.db.commit()
 
             if (dst_enrich):
+                code = self.source_config('code')
+                self.cache_taxon_record(jsonrec, code)
+
                 for source in dst_enrich:
-                    self.create_enrichment(jsonrec, source)
                     logger.debug(
                         'Enrich source = {source}'.format(source=source)
                     )
@@ -816,7 +817,8 @@ class ppdb_NBA():
         for change, dbids in self.changes['delete'].items():
             oldrec = currenttable[dbids[0]]
             if (oldrec):
-                deleteid = oldrec.rec[idfield]
+                jsonrec = oldrec.rec
+                deleteid = oldrec.rec.get(idfield)
                 if (fp):
                     fp.write('{deleteid}\n'.format(deleteid=deleteid))
 
@@ -831,8 +833,9 @@ class ppdb_NBA():
                 )
 
                 if (enriches):
-                    # @todo: if the oldrec is used for enrichment this
-                    # should be removed from the enrichment cache
+                    code = self.source_config('code')
+                    self.cache_taxon_record(jsonrec, code)
+
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
                         self.handle_impacted(source, oldrec)
@@ -891,12 +894,20 @@ class ppdb_NBA():
         :param sciNameGroup:
         :return:
         """
+        taxonkey = '_'.join([code,sciNameGroup])
+        taxon = cache.get(taxonkey)
+        if taxon != None:
+            return taxon
+
         source_config = self.config.get('sources').get(source, False)
         if not source_config:
             return False
+
         table = source_config.get('table')
         if not table:
             return False
+
+        code = source_config.get('code')
 
         currenttable = globals().get(table.capitalize() + '_current', False)
         if not currenttable:
@@ -908,7 +919,18 @@ class ppdb_NBA():
         taxaqry = currenttable.select(lambda p: raw_sql(scisql))
         taxon = taxaqry.get()
 
+        if (taxon):
+            cache.set(taxonkey, taxon)
+        else:
+            cache.set(taxonkey, False)
+
         return taxon
+
+    def cache_taxon_record(self, jsonRec, systemCode):
+        if jsonRec.get('acceptedName') and jsonRec.get('acceptedName').get('scientificNameGroup'):
+            scientificNameGroup = jsonRec.get('acceptedName').get('scientificNameGroup')
+            taxonKey = '_'.join([systemCode, scientificNameGroup])
+            cache.set(taxonKey, jsonRec)
 
     def create_name_summary(self, vernacularName):
         """
@@ -992,8 +1014,6 @@ class ppdb_NBA():
                 scinamegroup=sciNameGroup
             )
         )
-        enrichmentkey = '-'.join([sciNameGroup,source])
-        cache.set(enrichmentkey, enrichment)
 
         return enrichment
 
@@ -1007,19 +1027,6 @@ class ppdb_NBA():
         :return:
         """
         lap = timer()
-        enrichmentkey = '-'.join([sciNameGroup,source])
-
-        enrichment = cache.get(enrichmentkey)
-        if (enrichment != None):
-            logger.debug(
-                '[{elapsed:.2f} seconds] Cached enrichment for "{scinamegroup}" in "{source}"'.format(
-                    source=source,
-                    elapsed=(timer() - lap),
-                    scinamegroup=sciNameGroup
-                )
-            )
-            return enrichment
-
         taxon = self.get_taxon(source, sciNameGroup)
 
         if taxon:
@@ -1032,7 +1039,6 @@ class ppdb_NBA():
                     scinamegroup=sciNameGroup
                 )
             )
-            cache.set(enrichmentkey, False)
             return False
 
     def enrich_record(self, rec, sources):
