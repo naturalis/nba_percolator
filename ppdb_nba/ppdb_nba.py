@@ -773,12 +773,12 @@ class ppdb_NBA():
         """
         Handles updates
         """
-        tableName = self.source_config.get('table')
+        tableBase = self.source_config.get('table')
         idField = self.source_config.get('id')
         enrichDestinations = self.source_config.get('dst-enrich', None)
         enrichSources = self.source_config.get('src-enrich', None)
-        importTable = globals()[tableName.capitalize() + '_import']
-        currentTable = globals()[tableName.capitalize() + '_import']
+        importTable = globals()[tableBase.capitalize() + '_import']
+        currentTable = globals()[tableBase.capitalize() + '_current']
         index = self.source_config.get('index', 'noindex')
 
         fp = self.open_deltafile('update', index)
@@ -798,7 +798,7 @@ class ppdb_NBA():
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
                           "WHERE {table}_current.id={currentid}".format(
-                table=tableName,
+                table=tableBase,
                 currentid=recordIds[1],
                 importid=importRec.id
             )
@@ -820,7 +820,7 @@ class ppdb_NBA():
 
             logger.debug(
                 '[{elapsed:.2f} seconds] Updated record "{recordid}" in "{source}"'.format(
-                    source=tableName + '_current',
+                    source=tableBase + '_current',
                     elapsed=(timer() - lap),
                     recordid=importRec.rec[idField]
                 )
