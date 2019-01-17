@@ -659,6 +659,10 @@ class ppdb_NBA():
                         oldrec = self.get_record(uuid)
                         self.changes['update'][uuid] = [r.id]
                         self.changes['update'][uuid].append(oldrec.id)
+                        logger.debug('Update {oldid} to {newid}'.format(
+                            oldid=oldrec.id,
+                            newid=r.id
+                        ))
                     else :
                         self.changes['new'][uuid] = [r.id]
 
