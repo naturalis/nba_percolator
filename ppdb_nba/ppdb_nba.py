@@ -1025,8 +1025,8 @@ class ppdb_NBA():
         lap = timer()
         taxon = self.get_taxon(source, sciNameGroup)
 
-        if taxon:
-            self.create_enrichment(taxon.rec, source)
+        if taxon and taxon.get('rec'):
+            return self.create_enrichment(taxon.rec, source)
         else :
             logger.debug(
                 '[{elapsed:.2f} seconds] No enrichment for "{scinamegroup}" in "{source}"'.format(
