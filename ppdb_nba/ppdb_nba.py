@@ -890,11 +890,6 @@ class ppdb_NBA():
         :param sciNameGroup:
         :return:
         """
-        taxonkey = '_'.join([code,sciNameGroup])
-        taxon = cache.get(taxonkey)
-        if taxon != None:
-            return taxon
-
         source_config = self.config.get('sources').get(source, False)
         if not source_config:
             return False
@@ -904,6 +899,11 @@ class ppdb_NBA():
             return False
 
         code = source_config.get('code')
+
+        taxonkey = '_'.join([code,sciNameGroup])
+        taxon = cache.get(taxonkey)
+        if taxon != None:
+            return taxon
 
         currenttable = globals().get(table.capitalize() + '_current', False)
         if not currenttable:
