@@ -217,7 +217,7 @@ class ppdb_NBA():
 
             # Get the date of the job
             rawdate = jobrec.get('date', False)
-           if rawdate:
+            if rawdate:
                 self.jobdate = parser.parse(rawdate)
 
             # Parse the validator part, get the outfiles
