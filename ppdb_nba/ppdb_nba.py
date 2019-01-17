@@ -903,6 +903,9 @@ class ppdb_NBA():
         taxonkey = '_'.join([code,sciNameGroup])
         taxon = cache.get(taxonkey)
         if taxon != None:
+            logger.debug('get_taxon: {taxonkey} got json from cache'.format(
+                taxonkey=taxonkey
+            ))
             return taxon
 
         currenttable = globals().get(table.capitalize() + '_current', False)
@@ -916,8 +919,14 @@ class ppdb_NBA():
         taxon = taxaqry.get()
 
         if (taxon):
+            logger.debug('get_taxon: {taxonkey} store json in cache'.format(
+                taxonkey=taxonkey
+            ))
             cache.set(taxonkey, taxon.rec)
         else:
+            logger.debug('get_taxon: {taxonkey} store FALSE in cache'.format(
+                taxonkey=taxonkey
+            ))
             cache.set(taxonkey, False)
 
         return taxon
@@ -926,6 +935,10 @@ class ppdb_NBA():
         if jsonRec.get('acceptedName') and jsonRec.get('acceptedName').get('scientificNameGroup'):
             scientificNameGroup = jsonRec.get('acceptedName').get('scientificNameGroup')
             taxonKey = '_'.join([systemCode, scientificNameGroup])
+
+            logger.debug('cache_taxon_record: {taxonkey} store json in cache'.format(
+                taxonkey=taxonKey
+            ))
             cache.set(taxonKey, jsonRec)
 
     def create_name_summary(self, vernacularName):
