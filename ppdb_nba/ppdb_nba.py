@@ -10,8 +10,8 @@ import glob
 import shutil
 import sys
 import time
-from timeit import default_timer as timer
 import yaml
+from timeit import default_timer as timer
 from elasticsearch import Elasticsearch
 from pony.orm import db_session, set_sql_debug
 from dateutil import parser
@@ -23,8 +23,8 @@ logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 
-# Caching on disk (diskcache) using sqlite, it is fast
-cache = Cache('tmp')
+# Caching on disk (diskcache) using sqlite, it should be fast
+cache = Cache('/tmp/import_cache')
 cache.clear()
 
 
@@ -44,8 +44,8 @@ class ppdb_NBA():
             try:
                 with open(file=config, mode='r') as ymlfile:
                     self.config = yaml.load(ymlfile)
-            except:
-                msg = '"config.yml" with configuration options of sources is missing in working directory'
+            except Exception:
+                msg = '"config.yml" is missing?'
                 logger.fatal(msg)
                 sys.exit(msg)
         elif isinstance(config, dict):
@@ -130,6 +130,9 @@ class ppdb_NBA():
             logger.fatal(msg)
             sys.exit(msg)
 
+    def is_incremental(self):
+        return self.source_config.get('incremental', True)
+
     def lock(self, jobfile):
         """
         Generates a locking file
@@ -152,7 +155,7 @@ class ppdb_NBA():
 
         os.remove(lock)
 
-    def islocked(self):
+    def is_locked(self):
         """
         Check if there is a lockfile and if so, parse it. A lockfile is a
         json record with PID as well as job filepath. If the process is
@@ -197,7 +200,7 @@ class ppdb_NBA():
 
     def parse_job(self, jobfile=''):
         """
-        Parse a json job file, and tries to retrieve the validated file names
+        Parse a json job file, and tries to retrieve the validated filenames
         then returns a dictionary of sources with a list of files.
 
         :rtype: object
@@ -205,6 +208,7 @@ class ppdb_NBA():
         files = {}
         with open(jobfile) as json_data:
             jobrec = json.load(json_data)
+
             # Get the id of the job
             self.jobid = jobrec.get('id')
 
@@ -213,7 +217,7 @@ class ppdb_NBA():
 
             # Get the date of the job
             rawdate = jobrec.get('date', False)
-            if rawdate:
+           if rawdate:
                 self.jobdate = parser.parse(rawdate)
 
             # Parse the validator part, get the outfiles
@@ -349,7 +353,7 @@ class ppdb_NBA():
                 doc_type='logging',
                 body=json.dumps(rec)
             )
-        except:
+        except Exception:
             logger.error(self, 'Failed to log to elastic search')
 
     @db_session
@@ -379,7 +383,7 @@ class ppdb_NBA():
         try:
             with open(file=filename, mode='r') as f:
                 delids = f.read().splitlines()
-        except:
+        except Exception:
             msg = '"{filename}" cannot be read'.format(filename=filename)
             logger.fatal(msg)
             sys.exit(msg)
@@ -390,9 +394,8 @@ class ppdb_NBA():
                 fp = self.open_deltafile('kill', index)
             if (fp):
                 fp.write('{deleteid}\n'.format(deleteid=id))
-            oldqry = currenttable.select(lambda p: p.rec[idfield] == id)
 
-            oldrec = oldqry.get()
+            oldrec = self.get_current_record(id)
             if (oldrec):
                 oldrec.delete()
 
@@ -431,19 +434,19 @@ class ppdb_NBA():
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
 
-        # gooi de tabel leeg, weg met de indexes
+        # empties the table, removes indexes
         self.db.execute('ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex'.format(table=table))
         self.db.execute('DROP INDEX IF EXISTS public.idx_{table}__jsonid'.format(table=table))
         self.db.execute('DROP INDEX IF EXISTS public.idx_{table}__hash'.format(table=table))
         self.db.execute('DROP INDEX IF EXISTS public.idx_{table}__gin'.format(table=table))
 
-        # verwijder de indexes
+        # removes the hash column
         self.db.execute("ALTER TABLE public.{table} ALTER COLUMN hash DROP NOT NULL".format(table=table))
         logger.debug('[{elapsed:.2f} seconds] Reset "{table}" for import'.format(table=table, elapsed=(timer() - lap)))
         lap = timer()
 
         # db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
-        # import alle data
+        # imports all data by reading the jsonlines as a one column csv
         try:
             self.db.execute(
                 "COPY public.{table} (rec) FROM '{datafile}' "
@@ -527,6 +530,16 @@ class ppdb_NBA():
             )
 
     @db_session
+    def get_record(self, id, suffix="current"):
+        base = self.source_config.get('table')
+        idfield = self.source_config.get('id', 'id')
+        dbtable = globals()[base.capitalize() + '_' + suffix]
+
+        query = dbtable.select(lambda p: p.rec[idfield] == id)
+
+        return query.get()
+
+    @db_session
     def remove_doubles(self):
         """
         Some sources can contain double records, these should be removed,
@@ -572,6 +585,9 @@ class ppdb_NBA():
         deleted record. But this comparison can only be done with complete datasets. The changes
         dictionary looks something like this.
 
+        The 'update' changes should be pairs of record id, which point to the id of
+        records in the import and the current databases.
+
         ```
             changes = {
                 'new': {
@@ -590,7 +606,11 @@ class ppdb_NBA():
 
         """
 
-        self.changes = {'new': {}, 'update': {}, 'delete': {}}
+        self.changes = {
+            'new': {},
+            'update': {},
+            'delete': {}
+        }
         source_base = self.source_config.get('table')
         idfield = self.source_config.get('id')
 
@@ -612,18 +632,19 @@ class ppdb_NBA():
 
             # @todo: non incremental updates should check the updates this way
             # this part should be skipped if the source is 'incremental==no'
-            rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash ' \
-                             'FROM {source}_import ' \
-                             'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
-                             'WHERE {source}_import.hash is null'.format(source=source_base)
-            updateordeletes = self.db.select(rightdiffquery)
-            logger.debug(
-                '[{elapsed:.2f} seconds] Right full outer join on "{source}": {count}'.format(
-                    source=source_base,
-                    elapsed=(timer() - lap),
-                    count=len(updateordeletes)
+            if not self.is_incremental():
+                rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash ' \
+                                 'FROM {source}_import ' \
+                                 'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
+                                 'WHERE {source}_import.hash is null'.format(source=source_base)
+                updateordeletes = self.db.select(rightdiffquery)
+                logger.debug(
+                    '[{elapsed:.2f} seconds] Right full outer join on "{source}": {count}'.format(
+                        source=source_base,
+                        elapsed=(timer() - lap),
+                        count=len(updateordeletes)
+                    )
                 )
-            )
             lap = timer()
 
             importtable = globals()[source_base.capitalize() + '_import']
@@ -634,19 +655,25 @@ class ppdb_NBA():
                 r = importtable.get(hash=result[1])
                 if (r.rec):
                     uuid = r.rec[idfield]
-                    self.changes['new'][uuid] = [r.id]
+                    if self.is_incremental() and self.get_record(uuid):
+                        oldrec = self.get_record(uuid)
+                        self.changes['update'][uuid] = [r.id]
+                        self.changes['update'][uuid].append(oldrec.id)
+                    else :
+                        self.changes['new'][uuid] = [r.id]
 
-            # updates or deletes
-            for result in updateordeletes:
-                r = currenttable.get(hash=result[1])
-                if (r.rec):
-                    uuid = r.rec[idfield]
-                    if self.changes['new'].get(uuid, False):
-                        self.changes['update'][uuid] = self.changes['new'].get(uuid)
-                        self.changes['update'][uuid].append(r.id)
-                        del self.changes['new'][uuid]
-                    else:
-                        self.changes['delete'][uuid] = [r.id]
+            if not self.is_incremental():
+                # updates or deletes
+                for result in updateordeletes:
+                    r = currenttable.get(hash=result[1])
+                    if (r.rec):
+                        uuid = r.rec[idfield]
+                        if self.changes['new'].get(uuid, False):
+                            self.changes['update'][uuid] = self.changes['new'].get(uuid)
+                            self.changes['update'][uuid].append(r.id)
+                            del self.changes['new'][uuid]
+                        else:
+                            self.changes['delete'][uuid] = [r.id]
 
             if len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete']):
                 if len(self.changes['new']):
@@ -929,7 +956,6 @@ class ppdb_NBA():
                 taxonkey=taxonkey
             ))
             cache.set(taxonkey, False)
-
             return False
 
 

@@ -16,8 +16,8 @@ def scan_jobs(pp, args):
     :param args:
     :return:
     """
-    if pp.islocked():
-        logger.info('Stopping, lockfile found, ppdb_nba still busy importing')
+    if pp.is_locked():
+        logger.info('Lockfile found, ppdb_nba still busy importing?')
         return False
 
     jobspath = pp.config.get('paths').get('jobs')
@@ -67,6 +67,7 @@ def import_incremental(pp, args):
         pp.import_data(table=pp.source_config.get('table') + '_import', datafile=file)
     except Exception:
         exit(2)
+
     pp.remove_doubles()
     pp.handle_changes()
     logger.info(
