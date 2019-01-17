@@ -916,7 +916,7 @@ class ppdb_NBA():
         taxon = taxaqry.get()
 
         if (taxon):
-            cache.set(taxonkey, taxon)
+            cache.set(taxonkey, taxon.rec)
         else:
             cache.set(taxonkey, False)
 
@@ -1023,11 +1023,11 @@ class ppdb_NBA():
         :return:
         """
         lap = timer()
-        taxon = self.get_taxon(source, sciNameGroup)
+        taxonJson = self.get_taxon(source, sciNameGroup)
 
-        if taxon and taxon.rec:
-            return self.create_enrichment(taxon.rec, source)
-        else :
+        if taxonJson:
+            return self.create_enrichment(taxonJson, source)
+        else:
             logger.debug(
                 '[{elapsed:.2f} seconds] No enrichment for "{scinamegroup}" in "{source}"'.format(
                     source=source,
