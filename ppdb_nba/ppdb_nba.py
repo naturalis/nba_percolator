@@ -36,8 +36,8 @@ class ppdb_NBA():
 
     def __init__(self, config):
         """
-        Reading the config.yml file where all sources, configuration and
-        specifics are listed
+        Reading the config.yml file where all sources, configuration
+        and specifics are listed
         """
         if isinstance(config, str):
             # config is string, read the config file
@@ -92,7 +92,7 @@ class ppdb_NBA():
         try:
             es = Elasticsearch(hosts=self.config['elastic']['host'])
             return es
-        except:
+        except Exception:
             msg = 'Cannot connect to elastic search server'
             logger.fatal(msg)
             sys.exit(msg)
@@ -114,7 +114,7 @@ class ppdb_NBA():
                 host=self.config['postgres']['host'],
                 database=self.config['postgres']['db']
             )
-        except:
+        except Exception:
             msg = 'Cannot connect to postgres database'
             logger.fatal(msg)
             sys.exit(msg)
@@ -125,7 +125,7 @@ class ppdb_NBA():
         """
         try:
             self.db.generate_mapping(create_tables=create_tables)
-        except:
+        except Exception:
             msg = 'Creating tables needed for preprocessing failed'
             logger.fatal(msg)
             sys.exit(msg)
@@ -149,8 +149,8 @@ class ppdb_NBA():
         """
         Remove the locking file
         """
-        jobspath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
-        locks = glob.glob(os.path.join(jobspath, '.lock'))
+        jobsPath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
+        locks = glob.glob(os.path.join(jobsPath, '.lock'))
         lock = locks.pop()
 
         os.remove(lock)
@@ -164,12 +164,12 @@ class ppdb_NBA():
 
         :return:  True = still locked / False = no longer locked
         """
-        jobspath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
+        jobsPath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
 
-        locks = glob.glob(jobspath + '/.lock')
+        locks = glob.glob(jobsPath + '/.lock')
         if (len(locks) > 0):
-            lockfile = locks.pop()
-            with open(file=lockfile, mode='r') as fp:
+            lockFile = locks.pop()
+            with open(file=lockFile, mode='r') as fp:
                 lockinfo = json.load(fp)
 
             # check of the process in the lockfile is still running, kill signal=0
@@ -180,12 +180,12 @@ class ppdb_NBA():
                     'Preprocessor still processing (PID={pid}), handling job file "{job}"'.format(pid=lockinfo['pid'],
                                                                                                   job=lockinfo['job']))
                 return True
-            except:
+            except Exception:
                 # Exception means the process is no longer running, but the
                 # lockfile is still there
-                jobfile = lockinfo['job'].split('/')[-1]
+                jobFile = lockinfo['job'].split('/')[-1]
                 failedpath = self.config.get('paths').get('failed', os.path.join(os.getcwd(), "failed"))
-                shutil.move(lockinfo['job'], os.path.join(failedpath, jobfile))
+                shutil.move(lockinfo['job'], os.path.join(failedpath, jobFile))
 
                 self.log_change(
                     state='fail'
@@ -194,7 +194,7 @@ class ppdb_NBA():
                     'Preprocessor failed in the last run? '
                     'Job file "{job}" moved to failed'.format(job=lockinfo['job'])
                 )
-                os.remove(lockfile)
+                os.remove(lockFile)
 
         return False
 
@@ -301,7 +301,7 @@ class ppdb_NBA():
 
         try:
             fp = open(filepath, 'a')
-        except:
+        except Exception:
             msg = 'Unable to write to "{filepath}"'.format(filepath=filepath)
             logger.fatal(msg)
             sys.exit(msg)
@@ -317,16 +317,16 @@ class ppdb_NBA():
         :param datafile:
         :return:
         """
-        destpath = self.config.get('paths').get('delta', '/tmp')
+        destinationPath = self.config.get('paths').get('delta', '/tmp')
         lockfile = os.path.basename(datafile) + '.lock'
-        filepath = os.path.join(destpath, lockfile)
+        filePath = os.path.join(destinationPath, lockfile)
 
-        if (os.path.isfile(filepath)):
+        if (os.path.isfile(filePath)):
             # Lock file already exists
             return False
         else:
-            with open(file=filepath, mode='a'):
-                os.utime(filepath, None)
+            with open(file=filePath, mode='a'):
+                os.utime(filePath, None)
             return True
 
     def log_change(self, state='unknown', recid='ppdb_nba', comment=''):
@@ -374,36 +374,34 @@ class ppdb_NBA():
         """
         table = self.source_config.get('table')
         index = self.source_config.get('index', 'noindex')
-        currenttable = globals()[table.capitalize() + '_current']
-        idfield = self.source_config.get('id', 'id')
         enriches = self.source_config.get('dst-enrich', None)
         lap = timer()
 
-        delids = []
+        deleteIds = []
         try:
             with open(file=filename, mode='r') as f:
-                delids = f.read().splitlines()
+                deleteIds = f.read().splitlines()
         except Exception:
             msg = '"{filename}" cannot be read'.format(filename=filename)
             logger.fatal(msg)
             sys.exit(msg)
 
         fp = None
-        for id in delids:
+        for id in deleteIds:
             if (not fp):
                 fp = self.open_deltafile('kill', index)
             if (fp):
                 fp.write('{deleteid}\n'.format(deleteid=id))
 
-            oldrec = self.get_current_record(id)
-            if (oldrec):
-                oldrec.delete()
+            oldRecord = self.get_current_record(id)
+            if (oldRecord):
+                oldRecord.delete()
 
                 if (enriches):
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
 
-                        self.handle_impacted(source, oldrec)
+                        self.handle_impacted(source, oldRecord)
 
                 logger.debug(
                     '[{elapsed:.2f} seconds] Permanently deleted (kill) record "{recordid}" in "{source}"'.format(
@@ -424,8 +422,8 @@ class ppdb_NBA():
         """
         lap = timer()
 
-        src_enrich = self.source_config.get('src-enrich', False)
-        dst_enrich = self.source_config.get('dst-enrich', False)
+        enrichmentSource = self.source_config.get('src-enrich', False)
+        enrichmentDestination = self.source_config.get('dst-enrich', False)
 
         # Use the name of the filename as a job id
         if not self.jobid:
@@ -445,7 +443,6 @@ class ppdb_NBA():
         logger.debug('[{elapsed:.2f} seconds] Reset "{table}" for import'.format(table=table, elapsed=(timer() - lap)))
         lap = timer()
 
-        # db.execute("COPY public.{table} (rec) FROM '{datafile}'".format(table=table, datafile=datafile))
         # imports all data by reading the jsonlines as a one column csv
         try:
             self.db.execute(
@@ -457,7 +454,8 @@ class ppdb_NBA():
             )
         except Exception as err:
             logger.fatal(
-                'Import of "{datafile}" into "{table}" failed:\n\n{error}'.format(table=table, datafile=datafile,
+                'Import of "{datafile}" into "{table}" failed:\n\n{error}'.format(table=table,
+                                                                                  datafile=datafile,
                                                                                   error=str(err)))
             raise
 
@@ -483,7 +481,11 @@ class ppdb_NBA():
                 table=table)
         )
         logger.debug(
-            '[{elapsed:.2f} seconds] Set hashing index on "{table}"'.format(table=table, elapsed=(timer() - lap)))
+            '[{elapsed:.2f} seconds] Set hashing index on "{table}"'.format(
+                table=table,
+                elapsed=(timer() - lap)
+            )
+        )
         lap = timer()
 
         # zet de jsonid index
@@ -492,7 +494,7 @@ class ppdb_NBA():
             "CREATE INDEX IF NOT EXISTS idx_{table}__jsonid "
             "ON public.{table} USING BTREE(({table}.rec->>'{idfield}'))".format(
                 table=table,
-                idfield=self.source_config.get('id')
+                idfield=self.source_config.get('id', 'id')
             )
         )
         logger.debug(
@@ -502,7 +504,7 @@ class ppdb_NBA():
         )
 
         # set an index on identifications, which should be present in enriched data
-        if src_enrich:
+        if enrichmentSource:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
                 "ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
@@ -516,7 +518,7 @@ class ppdb_NBA():
 
         # set an index on the part containing scientificNameGroup,
         # which should be present in taxa sources
-        if dst_enrich:
+        if enrichmentDestination:
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__sciname "
                 "ON public.{table} USING gin((rec->'acceptedName') jsonb_path_ops)".format(
@@ -798,10 +800,9 @@ class ppdb_NBA():
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
                           "WHERE {table}_current.id={currentid}".format(
-                table=tableBase,
-                currentid=recordIds[1],
-                importid=importRec.id
-            )
+                            table=tableBase,
+                            currentid=recordIds[1],
+                            importid=importRec.id)
             if (fp):
                 json.dump(jsonRec, fp)
                 fp.write('\n')
@@ -885,18 +886,18 @@ class ppdb_NBA():
         if (fp):
             fp.close()
 
-    def list_impacted(self, source_config, scientificnamegroup):
+    def list_impacted(self, sourceConfig, scientificNameGroup):
         """
         Looks for impacted records based on scientificnamegroup
 
-        :param scientificnamegroup:
+        :param scientificNameGroup:
         :return bool:
         """
-        table = source_config.get('table')
+        table = sourceConfig.get('table')
         currenttable = globals()[table.capitalize() + '_current']
 
         jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (
-            scientificnamegroup
+            scientificNameGroup
         )
         items = currenttable.select(lambda p: raw_sql(jsonsql))
 
@@ -905,7 +906,7 @@ class ppdb_NBA():
                 "Found {number} records in {source} with scientificNameGroup={namegroup}".format(
                     number=len(items),
                     source=table.capitalize(),
-                    namegroup=scientificnamegroup)
+                    namegroup=scientificNameGroup)
             )
             return items
         else:
@@ -913,58 +914,61 @@ class ppdb_NBA():
                 "Found no records in {source} with scientificNameGroup={namegroup}".format(
                     number=len(items),
                     source=table.capitalize(),
-                    namegroup=scientificnamegroup)
+                    namegroup=scientificNameGroup)
             )
             logger.debug(items.get_sql())
             return False
 
-    def get_taxon(self, source, sciNameGroup):
+    def get_taxon(self, source, scientificNameGroup):
         """
         Retrieve a taxon from the database on the field 'acceptedName.scientificNameGroup'
 
         :param source:
-        :param sciNameGroup:
+        :param scientificNameGroup:
         :return:
         """
-        source_config = self.config.get('sources').get(source, False)
-        if not source_config:
+        sourceConfig = self.config.get('sources').get(source, False)
+        if not sourceConfig:
             return False
 
-        table = source_config.get('table')
+        table = sourceConfig.get('table')
         if not table:
             return False
 
-        code = source_config.get('code')
+        code = sourceConfig.get('code')
 
-        taxonkey = '_'.join([code,sciNameGroup])
-        taxon = cache.get(taxonkey)
+        # Retrieve the taxon from cache
+        taxonKey = '_'.join([code, scientificNameGroup])
+        taxon = cache.get(taxonKey)
         if taxon != None:
             logger.debug('get_taxon: {taxonkey} got json from cache'.format(
-                taxonkey=taxonkey
+                taxonkey=taxonKey
             ))
             return taxon
 
-        currenttable = globals().get(table.capitalize() + '_current', False)
-        if not currenttable:
+        currentTable = globals().get(table.capitalize() + '_current', False)
+        if not currentTable:
             return False
 
+        # Retrieve the taxon from the database
         scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
-            sciNameGroup
+            scientificNameGroup
         )
-        taxaqry = currenttable.select(lambda p: raw_sql(scisql))
-        taxon = taxaqry.get()
+        taxonQuery = currentTable.select(lambda p: raw_sql(scisql))
+        taxon = taxonQuery.get()
 
         if (taxon):
             logger.debug('get_taxon: {taxonkey} store json in cache'.format(
-                taxonkey=taxonkey
+                taxonkey=taxonKey
             ))
-            cache.set(taxonkey, taxon.rec)
+            cache.set(taxonKey, taxon.rec)
             return taxon.rec
         else:
+            # No taxon found, store this also in the cache
             logger.debug('get_taxon: {taxonkey} store FALSE in cache'.format(
-                taxonkey=taxonkey
+                taxonkey=taxonKey
             ))
-            cache.set(taxonkey, False)
+            cache.set(taxonKey, False)
             return False
 
 
@@ -1029,7 +1033,7 @@ class ppdb_NBA():
         """
         lap = timer()
         vernacularNames = rec.get('vernacularNames')
-        sciNameGroup = rec.get('acceptedName').get('scientificNameGroup')
+        scientificNameGroup = rec.get('acceptedName').get('scientificNameGroup')
         enrichment = {}
 
         if vernacularNames:
@@ -1057,7 +1061,7 @@ class ppdb_NBA():
             '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
                 source=source,
                 elapsed=(timer() - lap),
-                scinamegroup=sciNameGroup
+                scinamegroup=scientificNameGroup
             )
         )
 
@@ -1099,17 +1103,20 @@ class ppdb_NBA():
         :return:
         """
         sciNameGroup = False
-        if rec.get('identifications', False):
-            identifications = rec.get('identifications')
-            for index, ident in enumerate(identifications):
-                if ident.get('scientificName') and ident.get('scientificName').get('scientificNameGroup'):
-                    sciNameGroup = ident.get('scientificName').get('scientificNameGroup')
-                    rec.get('identifications')[index]['taxonomicEnrichments'] = []
+        if not rec.get('identifications', False):
+            return rec
 
-                    for source in sources:
-                        enrichment = self.get_enrichment(sciNameGroup, source)
-                        if (enrichment):
-                            rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichment)
+        identifications = rec.get('identifications')
+        for index, identification in enumerate(identifications):
+            if identification.get('scientificName') and \
+               identification.get('scientificName').get('scientificNameGroup'):
+                sciNameGroup = identification.get('scientificName').get('scientificNameGroup')
+                rec.get('identifications')[index]['taxonomicEnrichments'] = []
+
+                for source in sources:
+                    enrichment = self.get_enrichment(sciNameGroup, source)
+                    if (enrichment):
+                        rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichment)
 
         return rec
 
@@ -1121,41 +1128,42 @@ class ppdb_NBA():
         :param source:
         :param record:
         """
-        scientificnamegroup = None
-        source_config = self.config.get('sources').get(source)
-        src_enrich = source_config.get('src-enrich', False)
-        idfield = source_config.get('id')
+        scientificNameGroup = None
+        sourceConfig = self.config.get('sources').get(source)
+        enrichmentSources = sourceConfig.get('src-enrich', False)
+        idField = sourceConfig.get('id')
         index = self.source_config.get('index', 'noindex')
 
         lap = timer()
 
+        # Retrieve scientificNameGroup
         if record.rec.get('acceptedName'):
-            scientificnamegroup = record.rec.get('acceptedName').get('scientificNameGroup')
+            scientificNameGroup = record.rec.get('acceptedName').get('scientificNameGroup')
 
-        if scientificnamegroup:
-            impactedrecords = self.list_impacted(source_config, scientificnamegroup)
-            if (impactedrecords):
+        if scientificNameGroup:
+            impactedRecords = self.list_impacted(sourceConfig, scientificNameGroup)
+            if (impactedRecords):
                 fp = self.open_deltafile('enrich', index)
                 if (fp):
-                    for impactedrec in impactedrecords:
-                        jsonrec = impactedrec.rec
-                        if src_enrich:
-                            jsonrec = self.enrich_record(jsonrec, src_enrich)
+                    for impacted in impactedRecords:
+                        jsonRecord = impacted.rec
+                        if enrichmentSources:
+                            jsonRecord = self.enrich_record(jsonRecord, enrichmentSources)
 
-                        json.dump(jsonrec, fp)
+                        json.dump(jsonRecord, fp)
                         fp.write('\n')
 
-                        impactid = impactedrec.rec[idfield]
+                        impactId = impacted.rec[idField]
                         logger.debug(
                             '[{elapsed:.2f} seconds] Record "{recordid}" of "{source}" needs to be enriched'.format(
                                 source=source,
                                 elapsed=(timer() - lap),
-                                recordid=impactid
+                                recordid=impactId
                             )
                         )
                         self.log_change(
                             state='enrich',
-                            recid=impactid
+                            recid=impactId
                         )
                         lap = timer()
                     fp.close()

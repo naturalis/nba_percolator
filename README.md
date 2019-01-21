@@ -18,7 +18,7 @@ aan je executable path. De aanroep is meestal:
 ppdb_nba --source [bronnaam] /volledigepad/naar/jsonlinesfile.txt
 ```
 
-**LETOP: Het pad naar de jsonlines bestand moet exact hetzelfde zijn als die voor
+**LET OP: Het pad naar de jsonlines bestand moet exact hetzelfde zijn als die voor
 postgres instance. En bij voorkeur niet relatief!**
 
 Meer opties zijn te vinden bij aanroep met --help
@@ -81,6 +81,70 @@ door Atze. Alle relevante acties worden weggeschreven:
  - delete
  
 Dit gebeurt met de functie [log_change](https://github.com/naturalis/ppdb_nba/blob/c499b29875254045e0093006d8655731973a9129/ppdb_nba/ppdb_nba.py#L316).
+
+## Directory structuur
+
+De onderstaande mappen structuur is volledig instelbaar via `config.yml`, die in
+de root van de shared data directory. Op de huidige productie machine is dat in
+`/data/shared-data`, de mappenstructuur staat alsvolgt gedefinieerd:
+
+```
+paths:
+    incoming: /shared-data/incoming
+    processed: /shared-data/processed
+    jobs: /shared-data/jobs
+    failed: /shared-data/failed
+    done: /shared-data/done
+    delta: /shared-data/incremental 
+```
+
+**LET OP: De paden moeten in alle docker containers te vinden zijn op dezelfde 
+locatie anders gaat het mis.**
+
+### /shared-data/incoming
+
+Hier komen alle json lines bestanden die (nog) moeten worden opgepakt.
+
+### /shared-data/jobs
+
+De json files in deze directory bevatten de meta informatie over
+te importeren data. Job files die in behandeling zijn worden
+gelocked in de `.lock` file. 
+
+### /shared-data/processed
+
+Hier komen de data files terecht die succesvol zijn afgehandeld.
+
+### /shared-data/done
+
+Hier komen de job files terecht die zijn afgehandeld.
+
+### /shared-data/failed
+
+Hier komen de job files terecht die niet succesvol zijn afgehandeld.
+
+### /shared-data/incremental
+
+Hier komen alle `delta` veranderingen op de nba database. Dit zijn de records die
+een-voor-een zullen worden ingelezen en gepost naar de elastic search database.
+
+### Import proces
+
+Periodiek scant `ppdb_nba` de jobs directory. De files die hier worden 
+aangetroffen worden op volgorde van timestamp (oplopend) verwerkt. Er
+wordt maar een job per keer verwerkt. Op het moment dat een job wordt
+behandelt wordt er een lock file gezet, zolang die lock file wordt
+er geen import proces gestart. In de lock file wordt de naam van het
+job bestand gezet.
+
+Na het succesvol afhandelen van de import file(s) in een job worden de 
+jsonlines bestanden in `./imported/` gezet. De job file gaat naar done.
+Als een job niet succesvol wordt afgehandeld wordt hij in failed gezet,
+de import data blijft in dit geval staan.
+
+Nadat een job file is afgehandeld wordt de .lock file weer verwijderd, 
+waarna de volgende job wordt opgepakt.
+
 
 ## Class
 
