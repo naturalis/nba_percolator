@@ -13,7 +13,7 @@ import time
 import yaml
 from timeit import default_timer as timer
 from elasticsearch import Elasticsearch
-from pony.orm import db_session, set_sql_debug
+from pony.orm import db_session
 from dateutil import parser
 from diskcache import Cache
 from .schema import *
@@ -28,6 +28,7 @@ cache = Cache('/tmp/import_cache')
 cache.clear()
 
 
+# noinspection SqlNoDataSourceInspection,SqlResolve,PyTypeChecker,PyUnresolvedReferences
 class ppdb_NBA():
     """
     Preprocessor class containing all functions needed for importing the data and
@@ -42,8 +43,8 @@ class ppdb_NBA():
         if isinstance(config, str):
             # config is string, read the config file
             try:
-                with open(file=config, mode='r') as ymlfile:
-                    self.config = yaml.load(ymlfile)
+                with open(file=config, mode='r') as ymlFile:
+                    self.config = yaml.load(ymlFile)
             except Exception:
                 msg = '"config.yml" is missing?'
                 logger.fatal(msg)
@@ -57,16 +58,18 @@ class ppdb_NBA():
             logger.fatal(msg)
             sys.exit(msg)
 
-        if (not self.config.get('sources', False)):
+        if not self.config.get('sources', False):
             msg = 'Sources part missing in config'
             sys.exit(msg)
 
         self.es = self.connect_to_elastic()
         self.connect_to_database()
 
-        self.jobdate = datetime.now()
+        self.jobDate = datetime.now()
 
-        self.jobid = ''
+        self.jobId = ''
+        self.source = ''
+        self.sourceConfig = {}
 
     def set_source(self, source):
         """
@@ -76,8 +79,8 @@ class ppdb_NBA():
         """
 
         self.source = source
-        if (self.config.get('sources').get(source)):
-            self.source_config = self.config.get('sources').get(source)
+        if self.config.get('sources').get(source):
+            self.sourceConfig = self.config.get('sources').get(source)
         else:
             msg = 'Source "%s" does not exist in config file' % (source)
             sys.exit(msg)
@@ -88,18 +91,17 @@ class ppdb_NBA():
 
         :return:
         """
-        # Verbinden met Elastic search
         try:
             es = Elasticsearch(hosts=self.config['elastic']['host'])
             return es
         except Exception:
-            msg = 'Cannot connect to elastic search server'
+            msg = 'Cannot connect to elastic search server (needed for logging)'
             logger.fatal(msg)
             sys.exit(msg)
 
     def connect_to_database(self):
         """
-        Connect to postgres database
+        Connects to postgres database
         """
         global ppdb
 
@@ -121,7 +123,7 @@ class ppdb_NBA():
 
     def generate_mapping(self, create_tables=False):
         """
-        Generate mapping of the database
+        Generates mapping of the database
         """
         try:
             self.db.generate_mapping(create_tables=create_tables)
@@ -131,23 +133,23 @@ class ppdb_NBA():
             sys.exit(msg)
 
     def is_incremental(self):
-        return self.source_config.get('incremental', True)
+        return self.sourceConfig.get('incremental', True)
 
-    def lock(self, jobfile):
+    def lock(self, jobFile):
         """
         Generates a locking file
         """
-        jobs_path = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
-        with open(os.path.join(jobs_path, '.lock'), 'w') as fp:
-            lockrec = {
-                'job': jobfile,
+        jobsPath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
+        with open(os.path.join(jobsPath, '.lock'), 'w') as lockFile:
+            lockRecord = {
+                'job': jobFile,
                 'pid': os.getpid()
             }
-            json.dump(lockrec, fp)
+            json.dump(lockRecord, lockFile)
 
     def unlock(self):
         """
-        Remove the locking file
+        Removes the locking file
         """
         jobsPath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
         locks = glob.glob(os.path.join(jobsPath, '.lock'))
@@ -157,20 +159,22 @@ class ppdb_NBA():
 
     def is_locked(self):
         """
-        Check if there is a lockfile and if so, parse it. A lockfile is a
+        Checks if there's a lockfile and if so, parse it. A lockfile is a
         json record with PID as well as job filepath. If the process is
         still running then the process is still locked. If not it has
-        failed. If no lock file exists it is no longer locked.
+        failed.
+
+        If no lock file exists it is no longer locked.
 
         :return:  True = still locked / False = no longer locked
         """
         jobsPath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
 
         locks = glob.glob(jobsPath + '/.lock')
-        if (len(locks) > 0):
+        if len(locks) > 0:
             lockFile = locks.pop()
-            with open(file=lockFile, mode='r') as fp:
-                lockinfo = json.load(fp)
+            with open(file=lockFile, mode='r') as f:
+                lockinfo = json.load(f)
 
             # check of the process in the lockfile is still running, kill signal=0
             # this does not kill the process, just checks if the process is there
@@ -198,7 +202,7 @@ class ppdb_NBA():
 
         return False
 
-    def parse_job(self, jobfile=''):
+    def parse_job(self, jobFile=''):
         """
         Parse a json job file, and tries to retrieve the validated filenames
         then returns a dictionary of sources with a list of files.
@@ -206,41 +210,42 @@ class ppdb_NBA():
         :rtype: object
         """
         files = {}
-        with open(jobfile) as json_data:
-            jobrec = json.load(json_data)
+        with open(jobFile) as jsonData:
+            jobRecord = json.load(jsonData)
 
             # Get the id of the job
-            self.jobid = jobrec.get('id')
+            self.jobId = jobRecord.get('id')
 
             # Get the name of the supplier
-            self.supplier = jobrec.get('data_supplier')
+            self.supplier = jobRecord.get('data_supplier')
 
             # Get the date of the job
-            rawdate = jobrec.get('date', False)
+            rawdate = jobRecord.get('date', False)
             if rawdate:
-                self.jobdate = parser.parse(rawdate)
+                self.jobDate = parser.parse(rawdate)
 
             # Parse the validator part, get the outfiles
-            if jobrec.get('validator'):
-                for key in jobrec.get('validator').keys():
-                    export = jobrec.get('validator').get(key)
+            if jobRecord.get('validator'):
+                for key in jobRecord.get('validator').keys():
+                    export = jobRecord.get('validator').get(key)
                     for validfile in export.get('results').get('outfiles').get('valid'):
                         source = self.supplier + '-' + key
                         if source not in files:
                             files[source] = []
                         files[source].append(validfile.split('/')[-1])
+
         return files
 
-    def handle_job(self, jobfile=''):
+    def handle_job(self, jobFile=''):
         """
         Handle the job
 
-        :param jobfile:
+        :param jobFile:
         :return:
         """
-        self.lock(jobfile)
+        self.lock(jobFile)
 
-        files = self.parse_job(jobfile)
+        files = self.parse_job(jobFile)
         incoming_path = self.config.get('paths').get('incoming', '/tmp')
 
         self.log_change(
@@ -251,23 +256,24 @@ class ppdb_NBA():
         for source, filenames in files.items():
             for filename in filenames:
                 self.set_source(source.lower())
-                filepath = os.path.join(incoming_path, filename)
+                filePath = os.path.join(incoming_path, filename)
 
                 self.log_change(
                     state='import',
-                    comment='{filepath}'.format(filepath=filepath)
+                    comment='{filepath}'.format(filepath=filePath)
                 )
                 try:
-                    self.import_data(table=self.source_config.get('table') + '_import', datafile=filepath)
+                    self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
                 except Exception:
                     # import fails? remove the lock, return false
                     logger.error(
-                        "Import of '{file}' into '{source}' failed".format(file=filepath, source=source.lower()))
+                        "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
                     return False
 
                 # import successful, move the data file
                 processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                shutil.move(filepath, processed_path)
+                shutil.move(filePath, processed_path)
+
                 self.remove_doubles()
                 self.handle_changes()
 
@@ -275,7 +281,7 @@ class ppdb_NBA():
             state='finish'
         )
 
-        # everything, okay and finished, remove the lock
+        # everything is finished and okay, remove the lock
         self.unlock()
 
         return True
@@ -284,8 +290,8 @@ class ppdb_NBA():
         """
         Open the delta file for the updated, new or deleted records
         """
-        destpath = self.config.get('paths').get('delta', '/tmp')
-        if not self.jobid:
+        deltaPath = self.config.get('paths').get('delta', '/tmp')
+        if not self.jobId:
             filename = "{ts}-{index}-{action}.json".format(
                 index=index,
                 ts=time.strftime('%Y%m%d%H%M%S'),
@@ -293,21 +299,22 @@ class ppdb_NBA():
             )
         else:
             filename = "{jobid}-{index}-{action}.json".format(
-                jobid=self.jobid,
+                jobid=self.jobId,
                 index=index,
                 action=action
             )
-        filepath = os.path.join(destpath, filename)
+        filePath = os.path.join(deltaPath, filename)
 
         try:
-            fp = open(filepath, 'a')
+            deltaFile = open(filePath, 'a')
         except Exception:
-            msg = 'Unable to write to "{filepath}"'.format(filepath=filepath)
+            msg = 'Unable to write to "{filepath}"'.format(filepath=filePath)
             logger.fatal(msg)
             sys.exit(msg)
-        logger.debug(filepath + ' opened')
 
-        return fp
+        logger.debug(filePath + ' opened')
+
+        return deltaFile
 
     def lock_datafile(self, datafile=''):
         """
@@ -321,7 +328,7 @@ class ppdb_NBA():
         lockfile = os.path.basename(datafile) + '.lock'
         filePath = os.path.join(destinationPath, lockfile)
 
-        if (os.path.isfile(filePath)):
+        if os.path.isfile(filePath):
             # Lock file already exists
             return False
         else:
@@ -342,13 +349,13 @@ class ppdb_NBA():
         rec = {
             '@timestamp': datetime.now().isoformat(),
             'state': state,
-            'ppd_timestamp': self.jobdate.isoformat(),
+            'ppd_timestamp': self.jobDate.isoformat(),
             'comment': comment
         }
 
         try:
             self.es.index(
-                index=self.jobid.lower(),
+                index=self.jobId.lower(),
                 id=recid,
                 doc_type='logging',
                 body=json.dumps(rec)
@@ -372,12 +379,12 @@ class ppdb_NBA():
 
         :param filename:
         """
-        table = self.source_config.get('table')
-        index = self.source_config.get('index', 'noindex')
-        enriches = self.source_config.get('dst-enrich', None)
+        table = self.sourceConfig.get('table')
+        index = self.sourceConfig.get('index', 'noindex')
+        enriches = self.sourceConfig.get('dst-enrich', None)
         lap = timer()
-
         deleteIds = []
+
         try:
             with open(file=filename, mode='r') as f:
                 deleteIds = f.read().splitlines()
@@ -386,18 +393,17 @@ class ppdb_NBA():
             logger.fatal(msg)
             sys.exit(msg)
 
-        fp = None
-        for id in deleteIds:
-            if (not fp):
-                fp = self.open_deltafile('kill', index)
-            if (fp):
-                fp.write('{deleteid}\n'.format(deleteid=id))
+        deltaFile = None
+        for deleteId in deleteIds:
+            deltaFile = self.open_deltafile('kill', index)
+            if deltaFile:
+                deltaFile.write('{deleteid}\n'.format(deleteid=deleteId))
 
-            oldRecord = self.get_current_record(id)
-            if (oldRecord):
+            oldRecord = self.get_record(deleteId)
+            if oldRecord:
                 oldRecord.delete()
 
-                if (enriches):
+                if enriches:
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
 
@@ -407,13 +413,13 @@ class ppdb_NBA():
                     '[{elapsed:.2f} seconds] Permanently deleted (kill) record "{recordid}" in "{source}"'.format(
                         source=table + '_current',
                         elapsed=(timer() - lap),
-                        recordid=id
+                        recordid=deleteId
                     )
                 )
                 lap = timer()
 
-        if fp:
-            fp.close()
+        if deltaFile:
+            deltaFile.close()
 
     @db_session
     def import_data(self, table='', datafile=''):
@@ -422,13 +428,13 @@ class ppdb_NBA():
         """
         lap = timer()
 
-        enrichmentSource = self.source_config.get('src-enrich', False)
-        enrichmentDestination = self.source_config.get('dst-enrich', False)
+        enrichmentSource = self.sourceConfig.get('src-enrich', False)
+        enrichmentDestination = self.sourceConfig.get('dst-enrich', False)
 
         # Use the name of the filename as a job id
-        if not self.jobid:
+        if not self.jobId:
             filename = datafile.split('/')[-1]
-            self.jobid = filename.replace('.json','')
+            self.jobId = filename.replace('.json', '')
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
 
@@ -489,12 +495,11 @@ class ppdb_NBA():
         lap = timer()
 
         # zet de jsonid index
-        lap = timer()
         self.db.execute(
             "CREATE INDEX IF NOT EXISTS idx_{table}__jsonid "
             "ON public.{table} USING BTREE(({table}.rec->>'{idfield}'))".format(
                 table=table,
-                idfield=self.source_config.get('id', 'id')
+                idfield=self.sourceConfig.get('id', 'id')
             )
         )
         logger.debug(
@@ -522,7 +527,7 @@ class ppdb_NBA():
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__sciname "
                 "ON public.{table} USING gin((rec->'acceptedName') jsonb_path_ops)".format(
-                   table=table
+                    table=table
                 )
             )
             logger.debug(
@@ -533,16 +538,25 @@ class ppdb_NBA():
 
     @db_session
     def get_record(self, id, suffix="current"):
-        base = self.source_config.get('table')
-        idfield = self.source_config.get('id', 'id')
+        """
+        Get record from the (current) table, suffix is optional and 'current' by default.
+        The other option is 'import'.
+
+        :param id:
+        :param suffix:
+        :return:
+        """
+        base = self.sourceConfig.get('table')
+        idField = self.sourceConfig.get('id', 'id')
+
         tableName = base.capitalize() + '_' + suffix
-        dbtable = globals()[tableName]
+
         logger.debug('Get record {id} from {table}'.format(
             table=tableName,
             id=id
         ))
-
-        query = dbtable.select(lambda p: p.rec[idfield] == id)
+        dataTable = globals()[tableName]
+        query = dataTable.select(lambda p: p.rec[idField] == id)
 
         return query.get()
 
@@ -554,13 +568,12 @@ class ppdb_NBA():
         """
         lap = timer()
 
-        doublequery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
+        doubleQuery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
                       "FROM {source}_import " \
                       "GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
-            source=self.source_config.get('table'),
-            idfield=self.source_config.get('id')
-        )
-        doubles = self.db.select(doublequery)
+                        source=self.sourceConfig.get('table'),
+                        idfield=self.sourceConfig.get('id'))
+        doubles = self.db.select(doubleQuery)
         logger.debug('[{elapsed:.2f} seconds] Find doubles'.format(elapsed=(timer() - lap)))
         lap = timer()
 
@@ -568,7 +581,7 @@ class ppdb_NBA():
         for double in doubles:
             for importid in double.importids[:-1]:
                 deletequery = "DELETE FROM {source}_import WHERE id = {importid}".format(
-                    source=self.source_config.get('table'),
+                    source=self.sourceConfig.get('table'),
                     importid=importid)
                 self.db.execute(deletequery)
             count += 1
@@ -618,11 +631,12 @@ class ppdb_NBA():
             'update': {},
             'delete': {}
         }
-        source_base = self.source_config.get('table')
-        idfield = self.source_config.get('id')
+        source_base = self.sourceConfig.get('table')
+        idField = self.sourceConfig.get('id')
+        updateOrDeletes = None
 
         lap = timer()
-        if (len(source_base)):
+        if len(source_base):
             leftdiffquery = 'SELECT {source}_import.id, {source}_import.hash ' \
                             'FROM {source}_import ' \
                             'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
@@ -643,12 +657,12 @@ class ppdb_NBA():
                                  'FROM {source}_import ' \
                                  'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                                  'WHERE {source}_import.hash is null'.format(source=source_base)
-                updateordeletes = self.db.select(rightdiffquery)
+                updateOrDeletes = self.db.select(rightdiffquery)
                 logger.debug(
                     '[{elapsed:.2f} seconds] Right full outer join on "{source}": {count}'.format(
                         source=source_base,
                         elapsed=(timer() - lap),
-                        count=len(updateordeletes)
+                        count=len(updateOrDeletes)
                     )
                 )
             lap = timer()
@@ -660,7 +674,7 @@ class ppdb_NBA():
             for result in neworupdates:
                 r = importtable.get(hash=result[1])
                 if (r.rec):
-                    uuid = r.rec[idfield]
+                    uuid = r.rec[idField]
                     if self.is_incremental() and self.get_record(uuid):
                         oldrec = self.get_record(uuid)
                         self.changes['update'][uuid] = [r.id]
@@ -673,11 +687,11 @@ class ppdb_NBA():
                         self.changes['new'][uuid] = [r.id]
 
             if not self.is_incremental():
-                # non incremental sources only have explicit deletes
-                for result in updateordeletes:
+                # incremental sources only have explicit deletes
+                for result in updateOrDeletes:
                     r = currenttable.get(hash=result[1])
                     if (r.rec):
-                        uuid = r.rec[idfield]
+                        uuid = r.rec[idField]
                         if self.changes['new'].get(uuid, False):
                             self.changes['update'][uuid] = self.changes['new'].get(uuid)
                             self.changes['update'][uuid].append(r.id)
@@ -721,70 +735,74 @@ class ppdb_NBA():
         """
         Handle new records
         """
-        table = self.source_config.get('table')
-        idfield = self.source_config.get('id')
-        index = self.source_config.get('index', 'noindex')
-        importtable = globals()[table.capitalize() + '_import']
-        src_enrich = self.source_config.get('src-enrich', False)
-        dst_enrich = self.source_config.get('dst-enrich', None)
+        table = self.sourceConfig.get('table')
+        idField = self.sourceConfig.get('id')
+        index = self.sourceConfig.get('index', 'noindex')
+        importTable = globals()[table.capitalize() + '_import']
+        srcEnrich = self.sourceConfig.get('src-enrich', False)
+        dstEnrich = self.sourceConfig.get('dst-enrich', None)
 
-        fp = self.open_deltafile('new', index)
+        deltaFile = self.open_deltafile('new', index)
         # Schrijf de data naar incrementele files
 
         lap = timer()
-        for jsonid, dbids in self.changes['new'].items():
-            importid = dbids[0]
-            importrec = importtable[importid]
-            jsonrec = importrec.rec
-            if src_enrich:
-                jsonrec = self.enrich_record(jsonrec, src_enrich)
+        for jsonId, databaseIds in self.changes['new'].items():
+            importId = databaseIds[0]
+            importRec = importTable[importId]
+            jsonRec = importRec.rec
+            if srcEnrich:
+                jsonRec = self.enrich_record(jsonRec, srcEnrich)
 
-            insertquery = "INSERT INTO {table}_current (rec, hash, datum) " \
+            insertQuery = "INSERT INTO {table}_current (rec, hash, datum) " \
                           "SELECT rec, hash, datum FROM {table}_import where id={id}".format(
-                table=self.source_config.get('table'),
-                id=importid
-            )
+                            table=self.sourceConfig.get('table'),
+                            id=importId)
 
-            if (fp):
-                json.dump(jsonrec, fp)
-                fp.write('\n')
+            if (deltaFile):
+                json.dump(jsonRec, deltaFile)
+                deltaFile.write('\n')
 
-            self.db.execute(insertquery)
+            self.db.execute(insertQuery)
 
-            if (dst_enrich):
-                code = self.source_config('code')
-                self.cache_taxon_record(jsonrec, code)
+            if (dstEnrich):
+                code = self.sourceConfig.get('code')
+                self.cache_taxon_record(jsonRec, code)
 
             self.log_change(
                 state='new',
-                recid=importrec.rec[idfield]
+                recid=importRec.rec[idField]
             )
             logger.debug(
                 '[{elapsed:.2f} seconds] New record "{recordid}" inserted in "{source}"'.format(
                     elapsed=(timer() - lap),
                     source=table + '_current',
-                    recordid=importrec.rec[idfield]
+                    recordid=importRec.rec[idField]
                 )
             )
             lap = timer()
-        if (fp):
-            fp.close()
+        if deltaFile:
+            deltaFile.close()
 
     @db_session
     def handle_updates(self):
         """
-        Handles updates
+        Handles updates by storing the import records into the current table.
+
+        When a source record needs to get enriched it retrieves the enrichment part from a taxon record and adds it
+        to the record.
+
+        If the source record enriches another source, the impacted records get enriched again.
         """
-        tableBase = self.source_config.get('table')
-        idField = self.source_config.get('id')
-        enrichDestinations = self.source_config.get('dst-enrich', None)
-        enrichSources = self.source_config.get('src-enrich', None)
+        tableBase = self.sourceConfig.get('table')
+        idField = self.sourceConfig.get('id')
+        enrichDestinations = self.sourceConfig.get('dst-enrich', None)
+        enrichSources = self.sourceConfig.get('src-enrich', None)
         importTable = globals()[tableBase.capitalize() + '_import']
         currentTable = globals()[tableBase.capitalize() + '_current']
-        index = self.source_config.get('index', 'noindex')
+        index = self.sourceConfig.get('index', 'noindex')
 
-        fp = self.open_deltafile('update', index)
-        # Schrijf de data naar incrementele file
+        deltaFile = self.open_deltafile('update', index)
+        # Write updated records to the deltafile
 
         lap = timer()
         for change, recordIds in self.changes['update'].items():
@@ -793,24 +811,26 @@ class ppdb_NBA():
             oldRec = currentTable[recordIds[1]]
             jsonRec = importRec.rec
 
-            if (enrichSources) :
+            # If this record should be enriched by specified sources
+            if enrichSources:
                 jsonRec = self.enrich_record(jsonRec, enrichSources)
 
-            updatequery = "UPDATE {table}_current SET (rec, hash, datum) = " \
+            updateQuery = "UPDATE {table}_current SET (rec, hash, datum) = " \
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
                           "WHERE {table}_current.id={currentid}".format(
                             table=tableBase,
                             currentid=recordIds[1],
                             importid=importRec.id)
-            if (fp):
-                json.dump(jsonRec, fp)
-                fp.write('\n')
+            if deltaFile:
+                json.dump(jsonRec, deltaFile)
+                deltaFile.write('\n')
 
-            self.db.execute(updatequery)
+            self.db.execute(updateQuery)
 
+            # If this record has impact on records that should be enriched again
             if (enrichDestinations):
-                code = self.source_config.get('code')
+                code = self.sourceConfig.get('code')
                 self.cache_taxon_record(jsonRec, code)
 
                 for source in enrichDestinations:
@@ -832,59 +852,60 @@ class ppdb_NBA():
             )
             lap = timer()
 
-        if (fp):
-            fp.close()
+        if deltaFile:
+            deltaFile.close()
 
     @db_session
     def handle_deletes(self):
         """
         Handles temporary deletes
         """
-        table = self.source_config.get('table')
-        idfield = self.source_config.get('id')
-        currenttable = globals()[table.capitalize() + '_current']
-        enriches = self.source_config.get('enriches', None)
-        index = self.source_config.get('index', 'noindex')
+        table = self.sourceConfig.get('table')
+        idField = self.sourceConfig.get('id')
+        currentTable = globals()[table.capitalize() + '_current']
+        enriches = self.sourceConfig.get('enriches', None)
+        index = self.sourceConfig.get('index', 'noindex')
 
-        # Write data to incremental file
-        fp = self.open_deltafile('delete', index)
+        # Write data to deltafile file
+        deltaFile = self.open_deltafile('delete', index)
 
         lap = timer()
         for change, dbids in self.changes['delete'].items():
-            oldrec = currenttable[dbids[0]]
-            if (oldrec):
-                jsonrec = oldrec.rec
-                deleteid = oldrec.rec.get(idfield)
-                if (fp):
-                    fp.write('{deleteid}\n'.format(deleteid=deleteid))
+            oldRecord = currentTable[dbids[0]]
+            if oldRecord:
+                jsonRec = oldRecord.rec
+                deleteId = oldRecord.rec.get(idField)
+                if (deltaFile):
+                    deltaFile.write('{deleteid}\n'.format(deleteid=deleteId))
 
-                oldrec.delete()
+                oldRecord.delete()
 
                 self.log_change(
                     state='delete',
-                    recid=deleteid
+                    recid=deleteId
                 )
 
                 if (enriches):
-                    code = self.source_config.get('code')
-                    self.cache_taxon_record(jsonrec, code)
+                    code = self.sourceConfig.get('code')
+                    self.cache_taxon_record(jsonRec, code)
 
                     for source in enriches:
                         logger.debug('Enrich source = {source}'.format(source=source))
-                        self.handle_impacted(source, oldrec)
+                        self.handle_impacted(source, oldRecord)
 
                 logger.debug(
                     '[{elapsed:.2f} seconds] Temporarily deleted record "{deleteid}" in "{source}"'.format(
                         source=table + '_current',
                         elapsed=(timer() - lap),
-                        deleteid=deleteid
+                        deleteid=deleteId
                     )
                 )
                 lap = timer()
 
-                logger.info("Record [{deleteid}] deleted".format(deleteid=deleteid))
-        if (fp):
-            fp.close()
+                logger.info("Record [{deleteid}] deleted".format(deleteid=deleteId))
+
+        if (deltaFile):
+            deltaFile.close()
 
     def list_impacted(self, sourceConfig, scientificNameGroup):
         """
@@ -940,24 +961,24 @@ class ppdb_NBA():
         # Retrieve the taxon from cache
         taxonKey = '_'.join([code, scientificNameGroup])
         taxon = cache.get(taxonKey)
-        if taxon != None:
+        if taxon is not None:
             logger.debug('get_taxon: {taxonkey} got json from cache'.format(
                 taxonkey=taxonKey
             ))
             return taxon
 
-        currentTable = globals().get(table.capitalize() + '_current', False)
+        currentTable = globals().get(table.capitalize() + '_current')
         if not currentTable:
             return False
 
         # Retrieve the taxon from the database
-        scisql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
+        sciSql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
             scientificNameGroup
         )
-        taxonQuery = currentTable.select(lambda p: raw_sql(scisql))
+        taxonQuery = currentTable.select(lambda p: raw_sql(sciSql))
         taxon = taxonQuery.get()
 
-        if (taxon):
+        if taxon:
             logger.debug('get_taxon: {taxonkey} store json in cache'.format(
                 taxonkey=taxonKey
             ))
@@ -970,7 +991,6 @@ class ppdb_NBA():
             ))
             cache.set(taxonKey, False)
             return False
-
 
     def cache_taxon_record(self, jsonRec, systemCode):
         if jsonRec.get('acceptedName') and jsonRec.get('acceptedName').get('scientificNameGroup'):
@@ -1054,7 +1074,7 @@ class ppdb_NBA():
             enrichment['sourceSystem']['code'] = rec.get('sourceSystem').get('code')
 
             if (rec.get('sourceSystem').get('code') == 'COL'):
-                if rec.get('defaultClassification') :
+                if rec.get('defaultClassification'):
                     enrichment['defaultClassification'] = rec.get('defaultClassification')
 
         logger.debug(
@@ -1109,7 +1129,7 @@ class ppdb_NBA():
         identifications = rec.get('identifications')
         for index, identification in enumerate(identifications):
             if identification.get('scientificName') and \
-               identification.get('scientificName').get('scientificNameGroup'):
+                    identification.get('scientificName').get('scientificNameGroup'):
                 sciNameGroup = identification.get('scientificName').get('scientificNameGroup')
                 rec.get('identifications')[index]['taxonomicEnrichments'] = []
 
@@ -1132,7 +1152,7 @@ class ppdb_NBA():
         sourceConfig = self.config.get('sources').get(source)
         enrichmentSources = sourceConfig.get('src-enrich', False)
         idField = sourceConfig.get('id')
-        index = self.source_config.get('index', 'noindex')
+        index = self.sourceConfig.get('index', 'noindex')
 
         lap = timer()
 
@@ -1143,15 +1163,15 @@ class ppdb_NBA():
         if scientificNameGroup:
             impactedRecords = self.list_impacted(sourceConfig, scientificNameGroup)
             if (impactedRecords):
-                fp = self.open_deltafile('enrich', index)
-                if (fp):
+                deltaFile = self.open_deltafile('enrich', index)
+                if (deltaFile):
                     for impacted in impactedRecords:
                         jsonRecord = impacted.rec
                         if enrichmentSources:
                             jsonRecord = self.enrich_record(jsonRecord, enrichmentSources)
 
-                        json.dump(jsonRecord, fp)
-                        fp.write('\n')
+                        json.dump(jsonRecord, deltaFile)
+                        deltaFile.write('\n')
 
                         impactId = impacted.rec[idField]
                         logger.debug(
@@ -1166,7 +1186,7 @@ class ppdb_NBA():
                             recid=impactId
                         )
                         lap = timer()
-                    fp.close()
+                    deltaFile.close()
 
     @db_session
     def handle_changes(self):
@@ -1179,7 +1199,7 @@ class ppdb_NBA():
             self.handle_new()
         if (len(self.changes['update'])):
             self.handle_updates()
-        if (not self.source_config.get('incremental')):
+        if (not self.sourceConfig.get('incremental')):
             # Alleen incrementele deletes afhandelen als de bron complete sets levert
             if (len(self.changes['delete'])):
                 self.handle_deletes()
