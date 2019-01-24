@@ -276,7 +276,6 @@ class ppdb_NBA():
 
                 self.remove_doubles()
                 self.handle_changes()
-
         self.log_change(
             state='finish'
         )
@@ -306,7 +305,7 @@ class ppdb_NBA():
         filePath = os.path.join(deltaPath, filename)
 
         try:
-            deltaFile = open(filePath, 'a')
+            deltaFile = open(filePath, 'w')
         except Exception:
             msg = 'Unable to write to "{filepath}"'.format(filepath=filePath)
             logger.fatal(msg)
@@ -1103,7 +1102,7 @@ class ppdb_NBA():
         deleteRecord = dict()
 
         deleteRecord['unitID'] = recordId
-        deleteRecord['sourceSytemCode'] = sourceConfig.get('code')
+        deleteRecord['sourceSytemCode'] = sourceConfig.get('code', '')
         deleteRecord['status'] = status
 
         return deleteRecord
