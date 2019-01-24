@@ -138,3 +138,9 @@ class Waarnemingmedia_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
+
+
+class Deleted_records(ppdb.Entity):
+    recid = Required(str, index=True)
+    datum = Required(datetime, sql_default='now()')
+    count = Required(int, sql_default=1)
