@@ -410,7 +410,6 @@ class ppdb_NBA():
             logger.fatal(msg)
             sys.exit(msg)
 
-        deltaFile = None
         deltaFile = self.open_deltafile('kill', index)
         for deleteId in deleteIds:
             if deltaFile:
@@ -418,8 +417,11 @@ class ppdb_NBA():
                 json.dump(deleteRecord, deltaFile)
                 deltaFile.write('\n')
 
-            # @todo: register the delete in Deleted_records table
-            # if it already exists, change the status
+            statusRecord = Deleted_records.get(recid=deleteId)
+            if not statusRecord:
+                statusRecord = Deleted_records(recid=deleteId, status='REMOVED', count=0)
+            statusRecord.count += 1
+
             oldRecord = self.get_record(deleteId)
             if oldRecord:
                 oldRecord.delete()
@@ -901,8 +903,12 @@ class ppdb_NBA():
                     json.dump(deleteRecord, deltaFile)
                     deltaFile.write('\n')
 
-                # @todo: register the delete in Deleted_records table
-                # if it already exists, up the counter
+                statusRecord = Deleted_records.get(recid=deleteId)
+                if not statusRecord:
+                    statusRecord = Deleted_records(recid=deleteId, status='REJECTED', count=0)
+                statusRecord.count += 1
+
+                # @todo: only when a certain threshold is reached, the old record should be removed
                 oldRecord.delete()
 
                 self.log_change(
