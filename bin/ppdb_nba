@@ -76,14 +76,14 @@ def import_incremental(pp, args):
 
 
 def import_to_current(pp, args):
-    logger.info("Fill current table '%s' with data" % (pp.source_config.get('table') + '_current'))
     pp.set_source(args.source)
+    logger.info("Fill current table '%s' with data" % (pp.source_config.get('table') + '_current'))
     pp.import_data(pp.source_config.get('table') + '_current', args.files[0])
 
 
 def import_deleted(pp, args):
-    logger.info("Import deleted ids for source %s" % (pp.source_config.get('table')))
     pp.set_source(args.source)
+    logger.info("Import deleted ids for source %s" % (pp.source_config.get('table')))
     pp.import_deleted(args.files[0])
 
 
