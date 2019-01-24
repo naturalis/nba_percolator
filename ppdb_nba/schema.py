@@ -8,6 +8,7 @@ from pony.orm import Database, Optional, Json, Required, raw_sql
 
 ppdb = Database()
 
+
 class Nsrtaxa_import(ppdb.Entity):
     rec = Optional(Json)
     hash = Optional(str, index=True)
@@ -142,5 +143,6 @@ class Waarnemingmedia_import(ppdb.Entity):
 
 class Deleted_records(ppdb.Entity):
     recid = Required(str, index=True)
-    datum = Required(datetime, sql_default='now()')
+    status = Required(str, index=True)
     count = Required(int, sql_default=1)
+    datum = Required(datetime, sql_default='now()')

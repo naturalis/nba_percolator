@@ -28,7 +28,7 @@ cache = Cache('/tmp/import_cache')
 cache.clear()
 
 
-# noinspection SqlNoDataSourceInspection,SqlResolve,PyTypeChecker,PyUnresolvedReferences
+# noinspection SqlNoDataSourceInspection,SqlResolve,PyTypeChecker,PyUnresolvedReferences,SpellCheckingInspection
 class ppdb_NBA():
     """
     Preprocessor class containing all functions needed for importing the data and
@@ -1087,6 +1087,19 @@ class ppdb_NBA():
 
         return enrichment
 
+    def create_delete_record(self, source, recordId):
+        sourceConfig = None
+        if self.config.get('sources').get(source):
+            sourceConfig = self.config.get('sources').get(source)
+
+        deleteRecord = dict()
+
+        deleteRecord['unitID'] = recordId
+        deleteRecord['sourceSytemCode'] = sourceConfig.get('code')
+        deleteRecord['status'] = 'rejected'
+
+        return deleteRecord
+
     def get_enrichment(self, sciNameGroup, source):
         """
         First tries to retrieve the enrichment from cache. When it is not generated
@@ -1156,7 +1169,7 @@ class ppdb_NBA():
 
         lap = timer()
 
-        # Retrieve scientificNameGroup
+        # Retrieve scientificNameGroup from the acceptedName part
         if record.rec.get('acceptedName'):
             scientificNameGroup = record.rec.get('acceptedName').get('scientificNameGroup')
 
