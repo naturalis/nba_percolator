@@ -838,6 +838,7 @@ class ppdb_NBA():
             if enrichSources:
                 jsonRec = self.enrich_record(jsonRec, enrichSources)
 
+            # @todo: when it is an update, the record should be checked in the deleted list
             updateQuery = "UPDATE {table}_current SET (rec, hash, datum) = " \
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
