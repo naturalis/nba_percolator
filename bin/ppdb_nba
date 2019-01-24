@@ -56,7 +56,8 @@ def import_incremental(pp, args):
 
     pp.set_source(args.source)
     if not args.force and not pp.lock_datafile(file):
-        msg = "Lockfile gevonden. Import van '{file}' al bezig of uitgevoerd in een ander proces?".format(file=file)
+        msg = "Lockfile gevonden. Import van '{file}' al bezig " \
+              "of uitgevoerd in een ander proces?".format(file=file)
         logger.fatal(msg)
         print('Toch importeren? Roep opnieuw aan met --force')
         exit(2)
@@ -64,26 +65,28 @@ def import_incremental(pp, args):
     start = timer()
     logger.info("START incremental importing of {source}: {file}".format(source=args.source, file=file))
     try:
-        pp.import_data(table=pp.source_config.get('table') + '_import', datafile=file)
+        pp.import_data(table=pp.sourceConfig.get('table') + '_import', datafile=file)
     except Exception:
         exit(2)
 
     pp.remove_doubles()
     pp.handle_changes()
     logger.info(
-        "[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(elapsed=(timer() - start),
-                                                                                       source=args.source, file=file))
+        "[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(
+            elapsed=(timer() - start),
+            source=args.source,
+            file=file))
 
 
 def import_to_current(pp, args):
     pp.set_source(args.source)
-    logger.info("Fill current table '%s' with data" % (pp.source_config.get('table') + '_current'))
-    pp.import_data(pp.source_config.get('table') + '_current', args.files[0])
+    logger.info("Fill current table '%s' with data" % (pp.sourceConfig.get('table') + '_current'))
+    pp.import_data(pp.sourceConfig.get('table') + '_current', args.files[0])
 
 
 def import_deleted(pp, args):
     pp.set_source(args.source)
-    logger.info("Import deleted ids for source %s" % (pp.source_config.get('table')))
+    logger.info("Import deleted ids for source %s" % (pp.sourceConfig.get('table')))
     pp.import_deleted(args.files[0])
 
 
@@ -91,16 +94,32 @@ def main():
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
                                   '\n\nPreprocessing data to create incremental updates')
 
-    parser.add_argument('--source', action='store', help='Name of the data source')
-    parser.add_argument('--config', action='store', help='Config file', default="config.yml")
-    parser.add_argument('--current', action='store_true',
+    parser.add_argument('--source',
+                        action='store',
+                        help='Name of the data source')
+    parser.add_argument('--config',
+                        action='store',
+                        help='Config file',
+                        default="config.yml")
+    parser.add_argument('--current',
+                        action='store_true',
                         help='Import data directly to current table (default is normal incremental import)')
-    parser.add_argument('--delete', action='store_true',
+    parser.add_argument('--delete',
+                        action='store_true',
                         help='Handle permanent deletes (default is normal incremental import)')
-    parser.add_argument('--force', action='store_true', help='Ignore lockfiles, to force the import')
-    parser.add_argument('--createtables', action='store_true', help='Generate database tables needed for importing')
-    parser.add_argument('--debug', action='store_true', help='Set debugging level logging')
-    parser.add_argument('files', help='One json data file', nargs='*', default=[])
+    parser.add_argument('--force',
+                        action='store_true',
+                        help='Ignore lockfiles, to force the import')
+    parser.add_argument('--createtables',
+                        action='store_true',
+                        help='Generate database tables needed for importing')
+    parser.add_argument('--debug',
+                        action='store_true',
+                        help='Set debugging level logging')
+    parser.add_argument('files',
+                        help='One json data file',
+                        nargs='*',
+                        default=[])
 
     args = parser.parse_args()
 
