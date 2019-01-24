@@ -393,8 +393,8 @@ class ppdb_NBA():
             sys.exit(msg)
 
         deltaFile = None
+        deltaFile = self.open_deltafile('kill', index)
         for deleteId in deleteIds:
-            deltaFile = self.open_deltafile('kill', index)
             if deltaFile:
                 deleteRecord = self.create_delete_record(self.source, deleteId, 'REMOVED')
                 json.dump(deleteRecord, deltaFile)
