@@ -397,8 +397,12 @@ class ppdb_NBA():
         for deleteId in deleteIds:
             deltaFile = self.open_deltafile('kill', index)
             if deltaFile:
-                deltaFile.write('{deleteid}\n'.format(deleteid=deleteId))
+                deleteRecord = self.create_delete_record(self.source, deleteId, 'REMOVED')
+                json.dump(deleteRecord, deltaFile)
+                deltaFile.write('\n')
 
+            # @todo: register the delete in Deleted_records table
+            # if it already exists, change the status
             oldRecord = self.get_record(deleteId)
             if oldRecord:
                 oldRecord.delete()
@@ -875,9 +879,13 @@ class ppdb_NBA():
             if oldRecord:
                 jsonRec = oldRecord.rec
                 deleteId = oldRecord.rec.get(idField)
-                if (deltaFile):
-                    deltaFile.write('{deleteid}\n'.format(deleteid=deleteId))
+                if deltaFile:
+                    deleteRecord = self.create_delete_record(self.source, deleteId, 'REJECTED')
+                    json.dump(deleteRecord, deltaFile)
+                    deltaFile.write('\n')
 
+                # @todo: register the delete in Deleted_records table
+                # if it already exists, up the counter
                 oldRecord.delete()
 
                 self.log_change(
@@ -885,7 +893,7 @@ class ppdb_NBA():
                     recid=deleteId
                 )
 
-                if (enriches):
+                if enriches:
                     code = self.sourceConfig.get('code')
                     self.cache_taxon_record(jsonRec, code)
 
@@ -1087,7 +1095,7 @@ class ppdb_NBA():
 
         return enrichment
 
-    def create_delete_record(self, source, recordId):
+    def create_delete_record(self, source, recordId, status='REJECTED'):
         sourceConfig = None
         if self.config.get('sources').get(source):
             sourceConfig = self.config.get('sources').get(source)
@@ -1096,7 +1104,7 @@ class ppdb_NBA():
 
         deleteRecord['unitID'] = recordId
         deleteRecord['sourceSytemCode'] = sourceConfig.get('code')
-        deleteRecord['status'] = 'rejected'
+        deleteRecord['status'] = status
 
         return deleteRecord
 
