@@ -66,6 +66,7 @@ def import_incremental(pp, args):
     logger.info("START incremental importing of {source}: {file}".format(source=args.source, file=file))
     try:
         pp.import_data(table=pp.sourceConfig.get('table') + '_import', datafile=file)
+        pp.unlock_datafile(file)
     except Exception:
         exit(2)
 

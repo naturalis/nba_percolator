@@ -335,6 +335,24 @@ class ppdb_NBA():
                 os.utime(filePath, None)
             return True
 
+    def unlock_datafile(self, datafile=''):
+        """
+        Unlocking for single datafiles, this is different from the locking of jobs.
+        Maybe it should be combined.
+
+        :param datafile:
+        :return:
+        """
+        destinationPath = self.config.get('paths').get('delta', '/tmp')
+        lockfile = os.path.basename(datafile) + '.lock'
+        filePath = os.path.join(destinationPath, lockfile)
+
+        if os.path.isfile(filePath):
+            # Lock file already exists
+            os.remove(filePath)
+
+        return True
+
     def log_change(self, state='unknown', recid='ppdb_nba', comment=''):
         """
         Logging of the state change of a record to the elastic logging database
