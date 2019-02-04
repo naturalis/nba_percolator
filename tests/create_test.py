@@ -72,7 +72,7 @@ class CreateTestCase(unittest.TestCase):
         self.assertIsInstance(nameSummary, dict)
         self.assertEqual(nameSummary.get('name'), vernacularName.get('name'))
         self.assertEqual(nameSummary.get('language'), vernacularName.get('language'))
-        self.assertIsNone(vernacularName.get('other'))
+        self.assertIsNone(nameSummary.get('other'))
 
 
     def test_create_scientific_summary(self):
