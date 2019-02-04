@@ -1,6 +1,6 @@
 import unittest
 from ppdb_nba import ppdb_NBA
-from pony.orm import MappingError
+from pony.orm.core import MappingError
 import logging
 
 class SpecimenTestCase(unittest.TestCase):
