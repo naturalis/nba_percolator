@@ -70,8 +70,8 @@ class CreateTestCase(unittest.TestCase):
 
         nameSummary = self.pp.create_name_summary(vernacularName)
         self.assertIsInstance(nameSummary, dict)
-        self.assertIsEqual(nameSummary.get('name'), vernacularName.get('name'))
-        self.assertIsEqual(nameSummary.get('language'), vernacularName.get('language'))
+        self.assertEqual(nameSummary.get('name'), vernacularName.get('name'))
+        self.assertEqual(nameSummary.get('language'), vernacularName.get('language'))
         self.assertIsNone(vernacularName.get('other'))
 
 
