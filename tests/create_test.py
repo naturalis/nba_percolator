@@ -119,6 +119,9 @@ class CreateTestCase(unittest.TestCase):
             'sourceSystem': {
                 'code': 'TEST'
             },
+            'acceptedName': {
+                'scientificNameGroup': 'scientificNameGroup'
+            },
             'defaultClassification': 'test',
             'vernacularNames': [vernacularName],
             'synonyms': [scientificName]
