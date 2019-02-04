@@ -95,4 +95,85 @@ class CreateTestCase(unittest.TestCase):
         self.assertIsNone(scientificSummary.get('other'))
 
     def test_create_enrichment(self):
-        self.assertTrue(True)
+        vernacularName = {
+            'test': False,
+            'name': 'vernacularName',
+            'language': 'NL',
+            'other': 'not important',
+            'forgetit': 'removed'
+        }
+        scientificName = {
+            'test': False,
+            'other': 'not important',
+            'forgetit': 'removed',
+            'fullScientificName': 'fullScientificName',
+            'taxonomicStatus': 'taxonomicStatus',
+            'genusOrMonomial': 'genusOrMonomial',
+            'subgenus': 'subgenus',
+            'specificEpithet': 'specificEpithet',
+            'infraspecificEpithet': 'infraspecificEpithet',
+            'authorshipVerbatim': 'authorshipVerbatim'
+        }
+        rec = {
+            'id': 'TEST123',
+            'sourceSystem': {
+                'code': 'TEST'
+            },
+            'defaultClassification': 'test',
+            'vernacularNames': [vernacularName],
+            'synonyms': [scientificName]
+        }
+        enrichment = self.pp.create_enrichment(rec, 'test')
+
+        self.assertIsInstance(enrichment, dict)
+        self.assertIsNotNone(enrichment.get('taxonId'))
+        self.assertIsNotNone(enrichment.get('synonyms'))
+        self.assertIsNotNone(enrichment.get('sourceSystem'))
+        self.assertIsNotNone(enrichment.get('sourceSystem').get('code'))
+        self.assertIsNone(enrichment.get('defaultClassification'))
+
+    def test_create_col_enrichment(self):
+        vernacularName = {
+            'test': False,
+            'name': 'vernacularName',
+            'language': 'NL',
+            'other': 'not important',
+            'forgetit': 'removed'
+        }
+        scientificName = {
+            'test': False,
+            'other': 'not important',
+            'forgetit': 'removed',
+            'fullScientificName': 'fullScientificName',
+            'taxonomicStatus': 'taxonomicStatus',
+            'genusOrMonomial': 'genusOrMonomial',
+            'subgenus': 'subgenus',
+            'specificEpithet': 'specificEpithet',
+            'infraspecificEpithet': 'infraspecificEpithet',
+            'authorshipVerbatim': 'authorshipVerbatim'
+        }
+        rec = {
+            'id': 'TEST123',
+            'sourceSystem': {
+                'code': 'COL'
+            },
+            'defaultClassification': 'test',
+            'vernacularNames': [vernacularName],
+            'synonyms': [scientificName]
+        }
+        enrichment = self.pp.create_enrichment(rec, 'test')
+        self.assertIsNotNone(enrichment.get('defaultClassification'))
+
+    def test_cache_taxon(self):
+        systemCode = 'XC'
+        rec = {
+            'acceptedName': {
+                'scientificNameGroup': 'TEST'
+            },
+            'id': 'test123'
+        }
+        self.pp.cache_taxon_record(rec, systemCode)
+
+        taxon = self.pp.get_taxon(self.source, 'TEST')
+
+        print(taxon)
