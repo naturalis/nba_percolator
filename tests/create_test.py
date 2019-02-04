@@ -160,6 +160,9 @@ class CreateTestCase(unittest.TestCase):
             'sourceSystem': {
                 'code': 'COL'
             },
+            'acceptedName': {
+                'scientificNameGroup': 'scientificNameGroup'
+            },
             'defaultClassification': 'test',
             'vernacularNames': [vernacularName],
             'synonyms': [scientificName]
