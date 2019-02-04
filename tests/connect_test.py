@@ -57,15 +57,24 @@ class ConnectTestCase(unittest.TestCase):
         exists = os.path.isfile(os.path.join(jobsPath, '.lock'))
         self.assertTrue(exists)
 
-    def test_islocked(self):
         locked = self.pp.is_locked()
         self.assertTrue(locked)
 
-    def test_unlock(self):
         self.pp.unlock()
         jobsPath = self.pp.config.get('paths').get('jobs')
         exists = os.path.isfile(os.path.join(jobsPath, '.lock'))
         self.assertFalse(exists)
+
+    def test_lockdatafile(self):
+        lock = self.pp.lock_datafile('test')
+        self.assertTrue(lock)
+        lock = self.pp.lock_datafile('test')
+        self.assertFalse(lock)
+        lock = self.pp.unlock_datafile('test')
+        self.assertTrue(lock)
+        lock = self.pp.unlock_datafile('test')
+        self.assertTrue(lock)
+
 
 
 
