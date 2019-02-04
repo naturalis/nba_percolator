@@ -37,6 +37,7 @@ class SpecimenTestCase(unittest.TestCase):
                 'db': 'ppdb'
         }
     }
+    mapping = False
 
     def __init__(self, *args, **kwargs):
         super(SpecimenTestCase, self).__init__(*args, **kwargs)
@@ -44,7 +45,9 @@ class SpecimenTestCase(unittest.TestCase):
         logger.setLevel(logging.ERROR)
         self.pp = ppdb_NBA(config=self.config)
         self.pp.set_source(self.source)
-        self.pp.generate_mapping(create_tables=True)
+        if not self.mapping:
+            self.pp.generate_mapping(create_tables=True)
+            self.mapping = True
 
     def setUp(self):
         self.pp.clear_data(table=self.pp.sourceConfig.get('table') + "_current")
