@@ -181,6 +181,5 @@ class CreateTestCase(unittest.TestCase):
         self.pp.cache_taxon_record(rec, systemCode)
 
         taxon = self.pp.get_taxon(self.source, 'TEST')
+        self.assertIsNotNone(taxon)
 
-        print("the taxon:")
-        print(taxon)
