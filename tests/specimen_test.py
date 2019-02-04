@@ -25,7 +25,8 @@ class SpecimenTestCase(unittest.TestCase):
                  'id': 'id',
                  'enrich': True,
                  'code': 'XC',
-                 'incremental': False
+                 'incremental': False,
+                 'path': '/shared-data/test'
             }
         },
         'postgres':
@@ -44,10 +45,7 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp = ppdb_NBA(config=self.config)
 
     def setUp(self):
-
         source_config = self.config.get('sources').get(self.source)
-        print(source_config)
-        print(source_config.get('table'))
         self.pp.clear_data(table=source_config.get('table') + "_current")
 
         # Vul de basis tabel
