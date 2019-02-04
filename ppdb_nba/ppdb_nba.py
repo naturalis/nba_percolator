@@ -12,7 +12,7 @@ import sys
 import time
 import yaml
 from timeit import default_timer as timer
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, ElasticsearchException
 from pony.orm import db_session
 from dateutil import parser
 from diskcache import Cache
@@ -94,7 +94,7 @@ class ppdb_NBA():
         try:
             es = Elasticsearch(hosts=self.config['elastic']['host'])
             return es
-        except Exception:
+        except ElasticsearchException:
             msg = 'Cannot connect to elastic search server (needed for logging)'
             logger.fatal(msg)
             sys.exit(msg)
@@ -283,6 +283,7 @@ class ppdb_NBA():
 
                 self.remove_doubles()
                 self.handle_changes()
+
         self.log_change(
             state='finish'
         )
@@ -294,7 +295,7 @@ class ppdb_NBA():
 
     def open_deltafile(self, action='new', index='unknown'):
         """
-        Open the delta file for the updated, new or deleted records
+        Open the delta file for updated, new or deleted records
         """
         deltaPath = self.config.get('paths').get('delta', '/tmp')
         if not self.jobId:
@@ -860,7 +861,7 @@ class ppdb_NBA():
             self.db.execute(updateQuery)
 
             # If this record has impact on records that should be enriched again
-            if (enrichDestinations):
+            if enrichDestinations:
                 code = self.sourceConfig.get('code')
                 self.cache_taxon_record(jsonRec, code)
 
@@ -889,7 +890,7 @@ class ppdb_NBA():
     @db_session
     def handle_deletes(self):
         """
-        Handles temporary deletes
+        Handles temporary deleted records
         """
         table = self.sourceConfig.get('table')
         idField = self.sourceConfig.get('id')
@@ -1032,6 +1033,12 @@ class ppdb_NBA():
             return False
 
     def cache_taxon_record(self, jsonRec, systemCode):
+        """
+        Caches the taxon record
+
+        :param jsonRec:
+        :param systemCode:
+        """
         if jsonRec.get('acceptedName') and jsonRec.get('acceptedName').get('scientificNameGroup'):
             scientificNameGroup = jsonRec.get('acceptedName').get('scientificNameGroup')
             taxonKey = '_'.join([systemCode, scientificNameGroup])
@@ -1043,10 +1050,10 @@ class ppdb_NBA():
 
     def create_name_summary(self, vernacularName):
         """
-        Create a scientific name summary, only use certain fields
+        Creates a scientific name summary, only use the fields specified
 
         :param vernacularName:
-        :return:
+        :return dict:
         """
         fields = [
             'name',
@@ -1061,7 +1068,7 @@ class ppdb_NBA():
 
     def create_scientific_summary(self, scientificName):
         """
-        Create a scientific summary, only use certain fields
+        Creates a scientific summary, only use certain fields
 
         :param scientificName:
         :return:
@@ -1084,7 +1091,7 @@ class ppdb_NBA():
 
     def create_enrichment(self, rec, source):
         """
-        Create the enrichment
+        Creates the enrichment
 
         :param rec:
         :param source:
@@ -1127,6 +1134,14 @@ class ppdb_NBA():
         return enrichment
 
     def create_delete_record(self, source, recordId, status='REJECTED'):
+        """
+        Creates a delete record
+
+        :param source:
+        :param recordId:
+        :param status:
+        :return:
+        """
         sourceConfig = None
         if self.config.get('sources').get(source):
             sourceConfig = self.config.get('sources').get(source)
@@ -1146,7 +1161,7 @@ class ppdb_NBA():
 
         :param sciNameGroup:
         :param source:
-        :return:
+        :return enrichment(dictionary) or False:
         """
         lap = timer()
         taxonJson = self.get_taxon(source, sciNameGroup)
@@ -1165,7 +1180,7 @@ class ppdb_NBA():
 
     def enrich_record(self, rec, sources):
         """
-        Enrich a json record with taxon information from the sources it does this
+        Enriches a json record with taxon information from the sources it does this
         by checking each element in identifications[] and if it contains a
         'scientificName.scientificNameGroup' it tries to generate an enrichment
         from each source
@@ -1243,16 +1258,17 @@ class ppdb_NBA():
     @db_session
     def handle_changes(self):
         """
-        Handles the changes
+        Handles all the changes
         """
+
         self.list_changes()
 
-        if (len(self.changes['new'])):
+        if len(self.changes['new']):
             self.handle_new()
-        if (len(self.changes['update'])):
+        if len(self.changes['update']):
             self.handle_updates()
-        if (not self.sourceConfig.get('incremental')):
-            # Alleen incrementele deletes afhandelen als de bron complete sets levert
+        if not self.sourceConfig.get('incremental'):
+            # Only deletes in case a source supplies complete sets
             if (len(self.changes['delete'])):
                 self.handle_deletes()
 
