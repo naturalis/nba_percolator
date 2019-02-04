@@ -71,6 +71,10 @@ class ppdb_NBA():
         self.source = ''
         self.sourceConfig = {}
 
+        global ppdb
+
+        self.db = ppdb
+
     def set_source(self, source):
         """
         Setting the data source of the import (and it's source config)
@@ -103,10 +107,6 @@ class ppdb_NBA():
         """
         Connects to postgres database
         """
-        global ppdb
-
-        self.db = ppdb
-
         logger.debug('Connecting to database')
         try:
             self.db.bind(
@@ -116,6 +116,8 @@ class ppdb_NBA():
                 host=self.config['postgres']['host'],
                 database=self.config['postgres']['db']
             )
+        except TypeError:
+            return
         except Exception:
             msg = 'Cannot connect to postgres database'
             logger.fatal(msg)
