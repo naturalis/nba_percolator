@@ -44,6 +44,7 @@ class SpecimenTestCase(unittest.TestCase):
         logger.setLevel(logging.ERROR)
         self.pp = ppdb_NBA(config=self.config)
         self.pp.set_source(self.source)
+        self.pp.generate_mapping()
 
     def setUp(self):
         self.pp.clear_data(table=self.pp.sourceConfig.get('table') + "_current")
