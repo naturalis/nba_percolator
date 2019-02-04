@@ -71,10 +71,6 @@ class ppdb_NBA():
         self.source = ''
         self.sourceConfig = {}
 
-        global ppdb
-
-        self.db = ppdb
-
     def set_source(self, source):
         """
         Setting the data source of the import (and it's source config)
@@ -108,6 +104,11 @@ class ppdb_NBA():
         Connects to postgres database
         """
         logger.debug('Connecting to database')
+
+        global ppdb
+
+        self.db = ppdb
+
         try:
             self.db.bind(
                 provider='postgres',
