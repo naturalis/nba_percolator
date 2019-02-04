@@ -213,7 +213,7 @@ class ppdb_NBA():
         :rtype: object
         """
         files = {}
-        jobRecord = json.load(jsonData)
+        jobRecord = json.loads(jsonData)
 
         # Get the id of the job
         self.jobId = jobRecord.get('id')
