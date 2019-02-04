@@ -1,3 +1,4 @@
 pony
 pyyaml
 diskcache
+pytest
