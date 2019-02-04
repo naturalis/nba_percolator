@@ -54,12 +54,12 @@ class ConnectTestCase(unittest.TestCase):
         self.pp.lock('test')
 
         jobsPath = self.pp.config.get('paths').get('jobs')
-        exists = os.path.isfile(os.path.join(jobsPath, '.lock'), 'r')
+        exists = os.path.isfile(os.path.join(jobsPath, '.lock'))
         self.assertTrue(exists)
 
         self.pp.unlock()
         jobsPath = self.pp.config.get('paths').get('jobs')
-        exists = os.path.isfile(os.path.join(jobsPath, '.lock'), 'r')
+        exists = os.path.isfile(os.path.join(jobsPath, '.lock'))
         self.assertFalse(exists)
 
 
