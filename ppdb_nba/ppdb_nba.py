@@ -88,8 +88,6 @@ class ppdb_NBA():
     def connect_to_elastic(self):
         """
         Connect to elastic search for logging
-
-        :return:
         """
         try:
             es = Elasticsearch(hosts=self.config['elastic']['host'])
