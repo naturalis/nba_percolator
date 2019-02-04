@@ -240,14 +240,14 @@ class ppdb_NBA():
 
     def handle_job(self, jobFile=''):
         """
-        Handle the job
+        Handles the job
 
         :param jobFile:
         :return:
         """
 
         files = None
-        with open(jobFile) as jsonData:
+        with open(jobFile, "r") as jsonData:
             files = self.parse_job(jsonData)
             incoming_path = self.config.get('paths').get('incoming', '/tmp')
 
@@ -469,8 +469,10 @@ class ppdb_NBA():
 
         self.db.execute("TRUNCATE public.{table}".format(table=table))
 
-        # empties the table, removes indexes
+        # empties the table
         self.db.execute('ALTER TABLE public.{table} DROP CONSTRAINT IF EXISTS hindex'.format(table=table))
+
+        # removes indexes
         self.db.execute('DROP INDEX IF EXISTS public.idx_{table}__jsonid'.format(table=table))
         self.db.execute('DROP INDEX IF EXISTS public.idx_{table}__hash'.format(table=table))
         self.db.execute('DROP INDEX IF EXISTS public.idx_{table}__gin'.format(table=table))
@@ -570,12 +572,12 @@ class ppdb_NBA():
     @db_session
     def get_record(self, id, suffix="current"):
         """
-        Get record from the (current) table, suffix is optional and 'current' by default.
+        Gets records from the (current) table, suffix is optional and 'current' by default.
         The other option is 'import'.
 
         :param id:
-        :param suffix:
-        :return:
+        :param suffix (optional, 'current' is default):
+        :return query result:
         """
         base = self.sourceConfig.get('table')
         idField = self.sourceConfig.get('id', 'id')
@@ -594,8 +596,8 @@ class ppdb_NBA():
     @db_session
     def remove_doubles(self):
         """
-        Some sources can contain double records, these should be removed,
-        before checking the hash.
+        Removes double records. Some sources can contain double records,
+        these should be removed, before checking the hash.
         """
         lap = timer()
 
@@ -764,7 +766,7 @@ class ppdb_NBA():
     @db_session
     def handle_new(self):
         """
-        Handle new records
+        Handles new records
         """
         table = self.sourceConfig.get('table')
         idField = self.sourceConfig.get('id')
@@ -774,7 +776,6 @@ class ppdb_NBA():
         dstEnrich = self.sourceConfig.get('dst-enrich', None)
 
         deltaFile = self.open_deltafile('new', index)
-        # Schrijf de data naar incrementele files
 
         lap = timer()
         for jsonId, databaseIds in self.changes['new'].items():
@@ -811,6 +812,7 @@ class ppdb_NBA():
                 )
             )
             lap = timer()
+
         if deltaFile:
             deltaFile.close()
 
@@ -819,8 +821,8 @@ class ppdb_NBA():
         """
         Handles updates by storing the import records into the current table.
 
-        When a source record needs to get enriched it retrieves the enrichment part from a taxon record and adds it
-        to the record.
+        When a source record needs to get enriched it retrieves the enrichment part from
+        a taxon record and adds it to the record.
 
         If the source record enriches another source, the impacted records get enriched again.
         """
@@ -952,7 +954,7 @@ class ppdb_NBA():
         Looks for impacted records based on scientificnamegroup
 
         :param scientificNameGroup:
-        :return bool:
+        :return bool or list of items:
         """
         table = sourceConfig.get('table')
         currenttable = globals()[table.capitalize() + '_current']
@@ -982,7 +984,7 @@ class ppdb_NBA():
 
     def get_taxon(self, source, scientificNameGroup):
         """
-        Retrieve a taxon from the database on the field 'acceptedName.scientificNameGroup'
+        Retrieves a taxon from the database on the field 'acceptedName.scientificNameGroup'
 
         :param source:
         :param scientificNameGroup:
@@ -1071,7 +1073,7 @@ class ppdb_NBA():
         Creates a scientific summary, only use certain fields
 
         :param scientificName:
-        :return:
+        :return dict:
         """
         fields = [
             'fullScientificName',
@@ -1140,7 +1142,7 @@ class ppdb_NBA():
         :param source:
         :param recordId:
         :param status:
-        :return:
+        :return dict:
         """
         sourceConfig = None
         if self.config.get('sources').get(source):
