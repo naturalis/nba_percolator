@@ -1134,7 +1134,7 @@ class ppdb_NBA():
         deleteRecord = dict()
 
         deleteRecord['unitID'] = recordId
-        deleteRecord['sourceSytemCode'] = sourceConfig.get('code', '')
+        deleteRecord['sourceSystemCode'] = sourceConfig.get('code', '')
         deleteRecord['status'] = status
 
         return deleteRecord

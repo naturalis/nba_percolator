@@ -55,8 +55,8 @@ class CreateTestCase(unittest.TestCase):
         deleteRecord = self.pp.create_delete_record(self.source, recordID, status)
 
         self.assertIsInstance(deleteRecord, dict)
+        self.assertIsNotNone(deleteRecord.get('sourceSystemCode'))
         self.assertEqual(deleteRecord.get('unitID'), recordID)
-        self.assertEqual(deleteRecord.get('source'), self.source)
         self.assertEqual(deleteRecord.get('status'), status)
 
     def test_create_enrichment(self):
