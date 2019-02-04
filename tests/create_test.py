@@ -74,9 +74,25 @@ class CreateTestCase(unittest.TestCase):
         self.assertEqual(nameSummary.get('language'), vernacularName.get('language'))
         self.assertIsNone(nameSummary.get('other'))
 
-
     def test_create_scientific_summary(self):
-        self.assertTrue(True)
+        scientificName = {
+            'test': False,
+            'other': 'not important',
+            'forgetit': 'removed',
+            'fullScientificName': 'fullScientificName',
+            'taxonomicStatus': 'taxonomicStatus',
+            'genusOrMonomial': 'genusOrMonomial',
+            'subgenus': 'subgenus',
+            'specificEpithet': 'specificEpithet',
+            'infraspecificEpithet': 'infraspecificEpithet',
+            'authorshipVerbatim': 'authorshipVerbatim'
+        }
+
+        scientificSummary = self.pp.create_scientific_summary(scientificName)
+        self.assertIsInstance(scientificSummary, dict)
+        self.assertEqual(scientificSummary.get('fullScientificName'), scientificName.get('fullScientificName'))
+        self.assertEqual(scientificSummary.get('subgenus'), scientificName.get('subgenus'))
+        self.assertIsNone(scientificSummary.get('other'))
 
     def test_create_enrichment(self):
         self.assertTrue(True)
