@@ -2,6 +2,7 @@ import unittest
 from ppdb_nba import ppdb_NBA
 import logging
 
+
 class SpecimenTestCase(unittest.TestCase):
 
     source = 'specimen'
@@ -46,7 +47,7 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp.set_source(self.source)
         try:
             self.pp.generate_mapping(create_tables=True)
-        except:
+        except Exception:
             pass
 
     def setUp(self):
