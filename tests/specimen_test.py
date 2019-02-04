@@ -44,7 +44,7 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp = ppdb_NBA(config=self.config)
 
     def setUp(self):
-        source_config = self.config.get(self.source)
+        source_config = self.config.get('sources').get(self.source)
         self.pp.clear_data(table=source_config.get('table') + "_current")
 
         # Vul de basis tabel
@@ -56,7 +56,7 @@ class SpecimenTestCase(unittest.TestCase):
 
 
     def test_same(self):
-        source_config = self.config.get(self.source)
+        source_config = self.config.get('sources').get(self.source)
         # Vul de basis tabel
         self.pp.import_data(table=source_config.get('table') + "_import", datafile=source_config.get('path') + '/2-same.json')
 
@@ -70,7 +70,7 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp.handle_changes()
 
     def test_new(self):
-        source_config = self.config.get(self.source)
+        source_config = self.config.get('sources').get(self.source)
         self.pp.import_data(table=source_config.get('table') + "_import", datafile=source_config.get('path') + '/3-new.json')
 
         changes = self.pp.list_changes()
@@ -83,7 +83,7 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp.handle_changes()
 
     def test_updates(self):
-        source_config = self.config.get(self.source)
+        source_config = self.config.get('sources').get(self.source)
         self.pp.import_data(table=source_config.get('table') + "_import", datafile=source_config.get('path') + '/4-updates.json')
 
         changes = self.pp.list_changes()
@@ -95,7 +95,7 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp.handle_changes()
 
     def test_updatesnew(self):
-        source_config = self.config.get(self.source)
+        source_config = self.config.get('sources').get(self.source)
         self.pp.import_data(table=source_config.get('table') + "_import", datafile=source_config.get('path') + '/5-updatesnew.json')
 
         changes = self.pp.list_changes()
@@ -107,7 +107,7 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp.handle_changes()
 
     def test_deletes(self):
-        source_config = self.config.get(self.source)
+        source_config = self.config.get('sources').get(self.source)
         self.pp.import_data(table=source_config.get('table') + "_import", datafile=source_config.get('path') + '/6-deletes.json')
 
         changes = self.pp.list_changes()
