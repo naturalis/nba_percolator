@@ -59,11 +59,24 @@ class CreateTestCase(unittest.TestCase):
         self.assertEqual(deleteRecord.get('unitID'), recordID)
         self.assertEqual(deleteRecord.get('status'), status)
 
-    def test_create_enrichment(self):
-        self.assertTrue(True)
-
     def test_create_name_summary(self):
-        self.assertTrue(True)
+        vernacularName = {
+            'test': False,
+            'name': 'vernacularName',
+            'language': 'NL',
+            'other': 'not important',
+            'forgetit': 'removed'
+        }
+
+        nameSummary = self.pp.create_name_summary(vernacularName)
+        self.assertIsInstance(nameSummary, dict)
+        self.assertIsEqual(nameSummary.get('name'), vernacularName.get('name'))
+        self.assertIsEqual(nameSummary.get('language'), vernacularName.get('language'))
+        self.assertIsNone(vernacularName.get('other'))
+
 
     def test_create_scientific_summary(self):
+        self.assertTrue(True)
+
+    def test_create_enrichment(self):
         self.assertTrue(True)
