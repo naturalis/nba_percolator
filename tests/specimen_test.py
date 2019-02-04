@@ -4,7 +4,7 @@ import logging
 
 class SpecimenTestCase(unittest.TestCase):
 
-    source = 'xc-specimen'
+    source = 'specimen'
     config = {
         'elastic': {
             'host': 'elasticsearch'
@@ -21,7 +21,7 @@ class SpecimenTestCase(unittest.TestCase):
         {
             'xc-specimen':
             {
-                 'table': 'xenocantospecimen',
+                 'table': 'testspecimen',
                  'id': 'id',
                  'enrich': True,
                  'code': 'XC',

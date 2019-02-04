@@ -22,7 +22,7 @@ class ConnectTestCase(unittest.TestCase):
             {
                 'specimen':
                     {
-                        'table': 'xenocantospecimen',
+                        'table': 'testspecimen',
                         'id': 'id',
                         'enrich': True,
                         'code': 'XC',

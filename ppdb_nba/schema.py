@@ -141,6 +141,18 @@ class Waarnemingmedia_import(ppdb.Entity):
     datum = Required(datetime, sql_default='now()')
 
 
+class Testspecimen_import(ppdb.Entity):
+    rec = Optional(Json)
+    hash = Optional(str, index=True)
+    datum = Required(datetime, sql_default='now()')
+
+
+class Testspecimen_current(ppdb.Entity):
+    rec = Optional(Json)
+    hash = Optional(str, index=True)
+    datum = Required(datetime, sql_default='now()')
+
+
 class Deleted_records(ppdb.Entity):
     recid = Required(str, index=True)
     status = Required(str, index=True)
