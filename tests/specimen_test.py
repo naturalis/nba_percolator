@@ -6,6 +6,9 @@ class SpecimenTestCase(unittest.TestCase):
 
     source = 'xc-specimen'
     config = {
+        'elastic': {
+            'host': 'elasticsearch'
+        },
         'paths': {
             'incoming': '/shared-data/incoming',
             'processed': '/shared-data/processed',
