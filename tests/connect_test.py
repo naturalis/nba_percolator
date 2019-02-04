@@ -57,9 +57,11 @@ class ConnectTestCase(unittest.TestCase):
         exists = os.path.isfile(os.path.join(jobsPath, '.lock'))
         self.assertTrue(exists)
 
+    def test_islocked(self):
         locked = self.pp.is_locked()
         self.assertTrue(locked)
 
+    def test_unlock(self):
         self.pp.unlock()
         jobsPath = self.pp.config.get('paths').get('jobs')
         exists = os.path.isfile(os.path.join(jobsPath, '.lock'))
