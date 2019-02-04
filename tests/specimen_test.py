@@ -113,7 +113,7 @@ class SpecimenTestCase(unittest.TestCase):
         self.assertEqual(len(changes['delete']), 10)
         self.assertEqual(len(changes['update']), 0)
 
-        self.pp.handle_changes(self.config)
+        self.pp.handle_changes()
 
 
 if __name__ == '__main__':
