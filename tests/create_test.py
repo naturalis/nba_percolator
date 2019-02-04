@@ -182,4 +182,6 @@ class CreateTestCase(unittest.TestCase):
 
         taxon = self.pp.get_taxon(self.source, 'TEST')
         self.assertIsNotNone(taxon)
+        self.assertIsInstance(taxon, dict)
+        self.assertEqual(taxon.get('id'), rec.get('id'))
 
