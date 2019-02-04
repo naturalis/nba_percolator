@@ -2,36 +2,43 @@ import unittest
 from ppdb_nba import ppdb_NBA
 import logging
 
-class XcspecimenTestCase(unittest.TestCase):
+class SpecimenTestCase(unittest.TestCase):
 
-    source = 'xenocanto-specimen'
+    source = 'xc-specimen'
     config = {
-        'deltapath' : '/data/incremental',
-        'sources' :
+        'paths': {
+            'incoming': '/shared-data/incoming',
+            'processed': '/shared-data/processed',
+            'jobs': '/shared-data/jobs',
+            'failed': '/shared-data/failed',
+            'done': '/shared-data/done',
+            'delta': '/shared-data/incremental'
+        },
+        'sources':
         {
-            'xenocanto-specimen' :
+            'xc-specimen':
             {
                  'table': 'xenocantospecimen',
                  'id': 'id',
                  'enrich': True,
-                 'incremental': False,
-                 'path': '/data/xenocanto-specimen'
+                 'code': 'XC',
+                 'incremental': False
             }
         },
-        'postgres' :
+        'postgres':
         {
-                'host' : 'postgres',
-                'user' : 'postgres',
-                'pass' : 'postgres',
-                'db'   : 'ppdb'
+                'host': 'postgres',
+                'user': 'postgres',
+                'pass': 'postgres',
+                'db': 'ppdb'
         }
     }
 
     def __init__(self, *args, **kwargs):
-        super(XcspecimenTestCase, self).__init__(*args, **kwargs)
+        super(SpecimenTestCase, self).__init__(*args, **kwargs)
         logger = logging.getLogger('ppdb_nba')
         logger.setLevel(logging.ERROR)
-        self.pp = ppdb_NBA(config=self.config, source=self.source)
+        self.pp = ppdb_NBA(config=self.config)
 
     def setUp(self):
         self.clear_data(table=self.config.get('table') + "_current")
@@ -106,4 +113,3 @@ class XcspecimenTestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

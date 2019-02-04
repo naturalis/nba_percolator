@@ -787,7 +787,7 @@ class ppdb_NBA():
 
             self.db.execute(insertQuery)
 
-            if (dstEnrich):
+            if dstEnrich:
                 code = self.sourceConfig.get('code')
                 self.cache_taxon_record(jsonRec, code)
 
