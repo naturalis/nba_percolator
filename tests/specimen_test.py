@@ -44,11 +44,10 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp = ppdb_NBA(config=self.config)
 
     def setUp(self):
-        print(self.config)
-        print(self.config.get('sources'))
-        print(self.config.get('sources').get(self.source))
 
         source_config = self.config.get('sources').get(self.source)
+        print(source_config)
+        print(source_config.get('table'))
         self.pp.clear_data(table=source_config.get('table') + "_current")
 
         # Vul de basis tabel
