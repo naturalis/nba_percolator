@@ -83,7 +83,9 @@ class ConnectTestCase(unittest.TestCase):
         files = self.pp.parse_job(json)
         self.assertEqual(len(files.keys()), 0)
 
-        json = '{"id":"1234","data_supplier":"XC","date":"2018-01-01 00:10:20","validator":{"results":{"specimen":{"outfiles":{"valid":["test.json"]}}}}}'
+        json = '{"id":"1234","data_supplier":"XC","date":"2018-01-01 00:10:20",' \
+               '"validator":{"specimen":{"results":' \
+               '{"outfiles":{"valid":["test.json"]}}}}}'
         files = self.pp.parse_job(json)
         self.assertEqual(len(files.keys()), 1)
 
