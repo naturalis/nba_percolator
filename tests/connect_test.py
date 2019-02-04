@@ -75,6 +75,18 @@ class ConnectTestCase(unittest.TestCase):
         lock = self.pp.unlock_datafile('test')
         self.assertTrue(lock)
 
+    def test_incremental(self):
+        self.assertFalse(self.pp.is_incremental())
+
+    def test_parsejob(self):
+        json = "{}"
+        files = self.pp.parse_job(json)
+        self.assertEquals(len(files.keys()), 0)
+
+        json = '{"id":"1234","data_supplier":"XC","validator":{"results":{"outfiles":{"valid":"test"}}}}'
+        files = self.pp.parse_job(json)
+        self.assertEquals(len(files.keys()), 1)
+
 
 
 

@@ -205,7 +205,7 @@ class ppdb_NBA():
 
         return False
 
-    def parse_job(self, jobFile=''):
+    def parse_job(self, jsonData='{}'):
         """
         Parse a json job file, and tries to retrieve the validated filenames
         then returns a dictionary of sources with a list of files.
@@ -213,29 +213,28 @@ class ppdb_NBA():
         :rtype: object
         """
         files = {}
-        with open(jobFile) as jsonData:
-            jobRecord = json.load(jsonData)
+        jobRecord = json.load(jsonData)
 
-            # Get the id of the job
-            self.jobId = jobRecord.get('id')
+        # Get the id of the job
+        self.jobId = jobRecord.get('id')
 
-            # Get the name of the supplier
-            self.supplier = jobRecord.get('data_supplier')
+        # Get the name of the supplier
+        self.supplier = jobRecord.get('data_supplier')
 
-            # Get the date of the job
-            rawdate = jobRecord.get('date', False)
-            if rawdate:
-                self.jobDate = parser.parse(rawdate)
+        # Get the date of the job
+        rawdate = jobRecord.get('date', False)
+        if rawdate:
+            self.jobDate = parser.parse(rawdate)
 
-            # Parse the validator part, get the outfiles
-            if jobRecord.get('validator'):
-                for key in jobRecord.get('validator').keys():
-                    export = jobRecord.get('validator').get(key)
-                    for validfile in export.get('results').get('outfiles').get('valid'):
-                        source = self.supplier + '-' + key
-                        if source not in files:
-                            files[source] = []
-                        files[source].append(validfile.split('/')[-1])
+        # Parse the validator part, get the outfiles
+        if jobRecord.get('validator'):
+            for key in jobRecord.get('validator').keys():
+                export = jobRecord.get('validator').get(key)
+                for validfile in export.get('results').get('outfiles').get('valid'):
+                    source = self.supplier + '-' + key
+                    if source not in files:
+                        files[source] = []
+                    files[source].append(validfile.split('/')[-1])
 
         return files
 
@@ -246,11 +245,16 @@ class ppdb_NBA():
         :param jobFile:
         :return:
         """
+
+        files = None
+        with open(jobFile) as jsonData:
+            files = self.parse_job(jsonData)
+            incoming_path = self.config.get('paths').get('incoming', '/tmp')
+
+        if files is None:
+            return False
+
         self.lock(jobFile)
-
-        files = self.parse_job(jobFile)
-        incoming_path = self.config.get('paths').get('incoming', '/tmp')
-
         self.log_change(
             state='start'
         )
