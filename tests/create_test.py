@@ -182,4 +182,5 @@ class CreateTestCase(unittest.TestCase):
 
         taxon = self.pp.get_taxon(self.source, 'TEST')
 
+        print("the taxon:")
         print(taxon)
