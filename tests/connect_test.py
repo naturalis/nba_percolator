@@ -81,11 +81,11 @@ class ConnectTestCase(unittest.TestCase):
     def test_parsejob(self):
         json = "{}"
         files = self.pp.parse_job(json)
-        self.assertEquals(len(files.keys()), 0)
+        self.assertEqual(len(files.keys()), 0)
 
         json = '{"id":"1234","data_supplier":"XC","validator":{"results":{"outfiles":{"valid":"test"}}}}'
         files = self.pp.parse_job(json)
-        self.assertEquals(len(files.keys()), 1)
+        self.assertEqual(len(files.keys()), 1)
 
 
 if __name__ == '__main__':
