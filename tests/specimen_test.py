@@ -37,7 +37,6 @@ class SpecimenTestCase(unittest.TestCase):
                 'db': 'ppdb'
         }
     }
-    mapping = False
 
     def __init__(self, *args, **kwargs):
         super(SpecimenTestCase, self).__init__(*args, **kwargs)
