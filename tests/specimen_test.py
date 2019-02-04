@@ -1,6 +1,5 @@
 import unittest
 from ppdb_nba import ppdb_NBA
-from pony.orm.core import MappingError
 import logging
 
 class SpecimenTestCase(unittest.TestCase):
@@ -48,7 +47,7 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp.set_source(self.source)
         try:
             self.pp.generate_mapping(create_tables=True)
-        except MappingError:
+        except:
             pass
 
     def setUp(self):
