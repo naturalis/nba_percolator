@@ -44,6 +44,9 @@ class SpecimenTestCase(unittest.TestCase):
         self.pp = ppdb_NBA(config=self.config)
 
     def setUp(self):
+        print(self.config)
+        print(self.config.get('sources'))
+        print(self.config.get('sources').get(self.source))
 
         source_config = self.config.get('sources').get(self.source)
         self.pp.clear_data(table=source_config.get('table') + "_current")
@@ -57,9 +60,6 @@ class SpecimenTestCase(unittest.TestCase):
 
 
     def test_same(self):
-        print(self.config)
-        print(self.config.get('sources'))
-        print(self.config.get('sources').get(self.source))
         source_config = self.config.get('sources').get(self.source)
         # Vul de basis tabel
         self.pp.import_data(table=source_config.get('table') + "_import", datafile=source_config.get('path') + '/2-same.json')
