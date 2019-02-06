@@ -247,7 +247,8 @@ class ppdb_NBA():
         """
 
         files = None
-        with open(jobFile, "r") as jsonData:
+        with open(jobFile, "r") as fp:
+            jsonData = fp.read()
             files = self.parse_job(jsonData)
             incoming_path = self.config.get('paths').get('incoming', '/tmp')
 
