@@ -1,25 +1,33 @@
-<h1 id="ppdb_nba">ppdb_nba</h1>
+<h1 id="ppdb_nba">ppdb_nba.ppdb_NBA</h1>
 
-Dit is de NBA preprocessing database class.
+This is the NBA preprocessing database class.
 
-Hierin zitten alle functies en database afhankelijkheden waarmee import data
-kan worden gefilterd alvorens een import in de NBA documentstore plaatsvind.
+Preprocessor class containing all functions needed for importing the 
+data and create incremental insert, update or delete files.
+
 
 ## installatie
 
-Installeren kan het beste via pip. Dit is een python3 module.
+Install can be done through pip. This is a python3 module.
 
 `pip install -e git+https://github.com/naturalis/ppdb_nba.git#egg=ppdb_nba`
 
-Vervolgens wordt de module `ppdb_nba` en het commando `ppdb_nba` toegevoegd
-aan je executable path. De aanroep is meestal:
+This installs `ppdb_nba` as well as the `ppdb_nba` script in your executable
+path.
 
 ```
-ppdb_nba --source [bronnaam] /volledigepad/naar/jsonlinesfile.txt
+ppdb_nba
 ```
 
-**LET OP: Het pad naar de jsonlines bestand moet exact hetzelfde zijn als die voor
-postgres instance. En bij voorkeur niet relatief!**
+or
+
+```
+ppdb_nba --source [bronnaam] /shared-data/source/jsonlinesfile.json
+```
+
+**LET OP: Het pad naar de jsonlines bestand moet exact 
+hetzelfde zijn als die voor postgres instance. En bij voorkeur 
+absoluut!**
 
 Meer opties zijn te vinden bij aanroep met --help
 
@@ -46,8 +54,7 @@ optional arguments:
 
 ## Cron
 
-Standaard zal het ppdb_nba script draaien door steeds opnieuw te starten via
-crontab. 
+By default the ppdb_nba script will be run by the crontab scheduler.
 
 ```
  * * * * * cd /shared-data && ppdb_nba
@@ -70,8 +77,8 @@ waarna de volgende job wordt opgepakt.
 
 ## Logging
 
-ppdb_nba logt naar een elastic search server volgens de wijze beschreven
-door Atze. Alle relevante acties worden weggeschreven:
+ppdb_nba logt naar een elastic search server. Alle relevante acties 
+worden weggeschreven:
 
  - start
  - finish
@@ -80,7 +87,8 @@ door Atze. Alle relevante acties worden weggeschreven:
  - update
  - delete
  
-Dit gebeurt met de functie [log_change](https://github.com/naturalis/ppdb_nba/blob/c499b29875254045e0093006d8655731973a9129/ppdb_nba/ppdb_nba.py#L316).
+Dit gebeurt met de functie 
+[log_change](https://github.com/naturalis/ppdb_nba/blob/c499b29875254045e0093006d8655731973a9129/ppdb_nba/ppdb_nba.py#L316).
 
 ## Directory structuur
 
@@ -98,8 +106,8 @@ paths:
     delta: /shared-data/incremental 
 ```
 
-**LET OP: De paden moeten in alle docker containers te vinden zijn op dezelfde 
-locatie anders gaat het mis.**
+**LET OP: De paden moeten in alle docker containers te vinden zijn op 
+dezelfde locatie  `/shared-data/' anders gaat het mis.**
 
 ### /shared-data/incoming
 
@@ -121,12 +129,13 @@ Hier komen de job files terecht die zijn afgehandeld.
 
 ### /shared-data/failed
 
-Hier komen de job files terecht die niet succesvol zijn afgehandeld.
+Hier komen de job files terecht die *niet* succesvol zijn afgehandeld.
 
 ### /shared-data/incremental
 
-Hier komen alle `delta` veranderingen op de nba database. Dit zijn de records die
-een-voor-een zullen worden ingelezen en gepost naar de elastic search database.
+Hier komen alle `delta` veranderingen op de nba database. Dit zijn 
+de records die kunnen worden ingelezen en gepost naar de elastic 
+search database.
 
 ### Import proces
 
@@ -151,52 +160,53 @@ waarna de volgende job wordt opgepakt.
 Om de class te gebruiken:
 
 ```python
-from ppdb_nba import ppdbNBA
-pp = ppdbNBA(config='config.yml',source='naam-van-de-bron')
+from ppdb_nba import ppdb_NBA
+pp = ppdb_NBA(config='config.yml')
+pp.set_source('naam-van-bron')
 ```
-
-<h2 id="ppdb_nba.ppdb_nba.open_deltafile">ppdbNBA.open_deltafile</h2>
-
-```python
-pp.open_deltafile(action='new', index='unknown')
-```
-
-Open een delta bestand met records of id's om weg te schrijven.
 
 <h2 id="ppdb_nba.ppdb_nba.clear_data">ppdbNBA.clear_data</h2>
 
 ```python
 pp.clear_data(table='')
 ```
-Verwijder data uit tabel.
+
+Remove data from table
+
 <h2 id="ppdb_nba.ppdb_nba.import_data">ppdbNBA.import_data</h2>
 
 ```python
 pp.import_data(table='', datafile='')
 ```
 
-Importeert data direct in de postgres database. En laat zoveel mogelijk over aan postgres zelf.
+Imports data directly to the postgres database.
 
 <h2 id="ppdb_nba.ppdb_nba.remove_doubles">ppdbNBA.remove_doubles</h2>
 
 ```python
 pp.remove_doubles()
 ```
-Bepaalde bronnen bevatte dubbele records, deze moeten eerst worden verwijderd, voordat de hash vergelijking wordt uitgevoerd.
+
+Removes double records. Some sources can contain double records,
+these should be removed, before checking the hash.
+
 <h2 id="ppdb_nba.ppdb_nba.list_changes">ppdbNBA.list_changes</h2>
 
 ```python
 pp.list_changes()
 ```
 
-Identificeert de verschillen tussen de huidige database en de nieuwe data, op basis van hash.
+Identifies differences between the current database and the imported 
+data. It does this by comparing hashes.
 
-Als een hash ontbreekt in de bestaande data, maar aanwezig is in de nieuwe data. Dan kan het gaan
-om een nieuw (new) record of een update.
+If a hash is missing in the current database, but if it is present 
+in the imported, than it could be a new record, or an update.
 
-Een hash die aanwezig is in de bestaande data, maar ontbreekt in de nieuwe data kan gaan om een
-verwijderd record. Maar dit is alleen te bepalen bij analyse van complete datasets. Een changes
-dictionary ziet er over het algemeen zo uit.
+A hash that is present in the current data, but is missing 
+in the imported data can be a deleted record. But this comparison 
+can only be done with complete datasets. The changes
+dictionary looks something like this.
+      
 
     ```
         changes = {
@@ -213,6 +223,8 @@ dictionary ziet er over het algemeen zo uit.
             }
         }
     ```
+The 'update' changes should be pairs of record id, which point to the id of
+records in the import and the current databases.
 
 
 <h2 id="ppdb_nba.ppdb_nba.handle_new">ppdbNBA.handle_new</h2>
@@ -221,7 +233,7 @@ dictionary ziet er over het algemeen zo uit.
 pp.handle_new()
 ```
 
-Afhandelen van alle nieuwe records.
+Handles all new records.
 
 
 <h2 id="ppdb_nba.ppdb_nba.handle_updates">ppdbNBA.handle_updates</h2>
@@ -230,7 +242,7 @@ Afhandelen van alle nieuwe records.
 pp.handle_updates()
 ```
 
-Afhandelen van alle updates.
+Handles all updated records.
 
 <h2 id="ppdb_nba.ppdb_nba.handle_deletes">ppdbNBA.handle_deletes</h2>
 
@@ -238,7 +250,7 @@ Afhandelen van alle updates.
 pp.handle_deletes()
 ```
 
-Afhandelen van alle deletes.
+Handles all deleted records.
 
 <h2 id="ppdb_nba.ppdb_nba.handle_changes">ppdbNBA.handle_changes</h2>
 
@@ -246,7 +258,7 @@ Afhandelen van alle deletes.
 pp.handle_changes()
 ```
 
-Afhandelen van alle veranderingen.
+Handles all changes.
 
 ## ppdbNBA.import_deleted(filename='')
 
@@ -254,30 +266,30 @@ Afhandelen van alle veranderingen.
 pp.import_deleted('/path/to/listofdeleteids.txt')
 ```
 
-Handelt alle deletes af, dit zijn de geforceerde deletes of van bronnen die
-geen volledige dumps leveren.
+Imports deleted records. These are *forced* deletes from sources that
+do not supply complete dumps.
 
 
-## Voorbeelden
+## Typical use
 
-Voorbeeld van een script dat een import doet.
+Example of a normal import flow
 
 ```python
 from ppdb_nba import *
 logger.setLevel(logging.DEBUG)
 # Zet de logging level op DEBUG
 
-pp = ppdbNBA(config='config.yml',source='brahms-specimen')
-# configureer de preprocessor
+pp = ppdbNBA(config='config.yml')
+pp.set_source('brahms-specimen')
+
 pp.clear_data(table=pp.source_config.get('table') + "_import")
-# verwijder de data uit de import tabel
-pp.import_data(table=pp.source_config.get('table') + "_import", datafile='/data/brahms-specimen/1-base.json')
-# importeer de basis data
+
+pp.import_data(table=pp.source_config.get('table') + "_import", datafile='/shared-data/brahms-specimen/1-base.json')
+
 pp.remove_doubles()
-# verwijder de dubbele
+
 pp.list_changes()
-# bepaal de veranderingen (allemaal nieuwe records)
+
 pp.handle_changes()
-# handel de nieuwe af
 ```
 
