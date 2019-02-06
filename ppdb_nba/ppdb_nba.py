@@ -208,7 +208,7 @@ class ppdb_NBA():
         """
         Parse a json job file, and tries to retrieve the validated
         filenames then returns a dictionary of sources with a list
-        of files.
+        of files to be processed.
 
         :rtype: object
         """
@@ -240,7 +240,7 @@ class ppdb_NBA():
 
     def handle_job(self, jobFile=''):
         """
-        Handles the job
+        Handles the jobfile
 
         :param jobFile:
         :return:
