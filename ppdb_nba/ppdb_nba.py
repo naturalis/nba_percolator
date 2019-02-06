@@ -31,8 +31,9 @@ cache.clear()
 # noinspection SqlNoDataSourceInspection,SqlResolve,PyTypeChecker,PyUnresolvedReferences,SpellCheckingInspection
 class ppdb_NBA():
     """
-    Preprocessor class containing all functions needed for importing the data and
-    create incremental insert, update or delete files.
+    Preprocessor class containing all functions needed for
+    importing the data and create incremental insert, update
+    or delete files.
     """
 
     def __init__(self, config):
@@ -160,10 +161,10 @@ class ppdb_NBA():
 
     def is_locked(self):
         """
-        Checks if there's a lockfile and if so, parse it. A lockfile is a
-        json record with PID as well as job filepath. If the process is
-        still running then the process is still locked. If not it has
-        failed.
+        Checks if there's a lockfile and if so, parse it. A
+        lockfile is a json record with PID as well as job
+        filepath. If the process is still running then the
+        process is still locked. If not it has failed.
 
         If no lock file exists it is no longer locked.
 
@@ -205,8 +206,9 @@ class ppdb_NBA():
 
     def parse_job(self, jsonData='{}'):
         """
-        Parse a json job file, and tries to retrieve the validated filenames
-        then returns a dictionary of sources with a list of files.
+        Parse a json job file, and tries to retrieve the validated
+        filenames then returns a dictionary of sources with a list
+        of files.
 
         :rtype: object
         """
@@ -323,8 +325,8 @@ class ppdb_NBA():
 
     def lock_datafile(self, datafile=''):
         """
-        Locking for single datafiles, this is different from the locking of jobs.
-        Maybe it should be combined.
+        Locking for single datafiles, this is different
+        from the locking of jobs. Maybe it should be combined.
 
         :param datafile:
         :return:
@@ -343,8 +345,8 @@ class ppdb_NBA():
 
     def unlock_datafile(self, datafile=''):
         """
-        Unlocking for single datafiles, this is different from the locking of jobs.
-        Maybe it should be combined.
+        Unlocking for single datafiles, this is different from the
+        locking of jobs. Maybe it should be combined.
 
         :param datafile:
         :return:
@@ -361,7 +363,8 @@ class ppdb_NBA():
 
     def log_change(self, state='unknown', recid='ppdb_nba', comment=''):
         """
-        Logging of the state change of a record to the elastic logging database
+        Logging of the state change of a record to the elastic logging
+        database
 
         :param state:
         :param recid:
@@ -570,8 +573,8 @@ class ppdb_NBA():
     @db_session
     def get_record(self, id, suffix="current"):
         """
-        Gets records from the (current) table, suffix is optional and 'current' by default.
-        The other option is 'import'.
+        Gets records from the (current) table, suffix is optional and
+        'current' by default. The other option is 'import'.
 
         :param id:
         :param suffix (optional, 'current' is default):
@@ -594,8 +597,8 @@ class ppdb_NBA():
     @db_session
     def remove_doubles(self):
         """
-        Removes double records. Some sources can contain double records,
-        these should be removed, before checking the hash.
+        Removes double records. Some sources can contain double
+        records, these should be removed, before checking the hash.
         """
         lap = timer()
 
@@ -626,18 +629,21 @@ class ppdb_NBA():
     @db_session
     def list_changes(self):
         """
-        Identifies differences between the current database and the imported data. It does this
-        by comparing hashes.
+        Identifies differences between the current database and the
+        imported data. It does this by comparing hashes.
 
-        If a hash is missing in the current database, but if it is present in the imported, than
-        it could be a new record, or an update.
+        If a hash is missing in the current database, but if it is
+        present in the imported, than it could be a new record, or
+        an update.
 
-        A hash that is present in the current data, but is missing in the imported data can be
-        deleted record. But this comparison can only be done with complete datasets. The changes
-        dictionary looks something like this.
+        A hash that is present in the current data, but is missing
+        in the imported data can be deleted record. But this
+        comparison can only be done with complete datasets. The
+        changes dictionary looks something like this.
 
-        The 'update' changes should be pairs of record id, which point to the id of
-        records in the import and the current databases.
+        The 'update' changes should be pairs of record id, which
+        point to the id of records in the import and the current
+        databases.
 
         ```
             changes = {
@@ -817,12 +823,14 @@ class ppdb_NBA():
     @db_session
     def handle_updates(self):
         """
-        Handles updates by storing the import records into the current table.
+        Handles updates by storing the import records into the
+        current table.
 
-        When a source record needs to get enriched it retrieves the enrichment part from
-        a taxon record and adds it to the record.
+        When a source record needs to get enriched it retrieves the
+        enrichment part from a taxon record and adds it to the record.
 
-        If the source record enriches another source, the impacted records get enriched again.
+        If the source record enriches another source, the impacted
+        records get enriched again.
         """
         tableBase = self.sourceConfig.get('table')
         idField = self.sourceConfig.get('id')
@@ -860,7 +868,8 @@ class ppdb_NBA():
 
             self.db.execute(updateQuery)
 
-            # If this record has impact on records that should be enriched again
+            # If this record has impact on records that should
+            # be enriched again
             if enrichDestinations:
                 code = self.sourceConfig.get('code')
                 self.cache_taxon_record(jsonRec, code)
@@ -982,7 +991,8 @@ class ppdb_NBA():
 
     def get_taxon(self, source, scientificNameGroup):
         """
-        Retrieves a taxon from the database on the field 'acceptedName.scientificNameGroup'
+        Retrieves a taxon from the database on the field
+        'acceptedName.scientificNameGroup'
 
         :param source:
         :param scientificNameGroup:
@@ -1156,8 +1166,9 @@ class ppdb_NBA():
 
     def get_enrichment(self, sciNameGroup, source):
         """
-        First tries to retrieve the enrichment from cache. When it is not generated
-        a new enrichment is created from a taxon json record and stored in cache
+        First tries to retrieve the enrichment from cache. When it
+        is not generated a new enrichment is created from a taxon
+        json record and stored in cache
 
         :param sciNameGroup:
         :param source:
@@ -1180,10 +1191,11 @@ class ppdb_NBA():
 
     def enrich_record(self, rec, sources):
         """
-        Enriches a json record with taxon information from the sources it does this
-        by checking each element in identifications[] and if it contains a
-        'scientificName.scientificNameGroup' it tries to generate an enrichment
-        from each source
+        Enriches a json record with taxon information from the
+        sources it does this by checking each element in
+        identifications[] and if it contains a
+        'scientificName.scientificNameGroup' it tries to generate
+        an enrichment from each source
 
         :param rec:
         :param sources:
