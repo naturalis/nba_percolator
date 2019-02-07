@@ -596,7 +596,7 @@ class ppdb_NBA():
         return query.get()
 
     @db_session
-    def remove_doubles(self):
+    def remove_doubles(self, suffix='import'):
         """
         Removes double records. Some sources can contain double
         records, these should be removed, before checking the hash.
@@ -604,8 +604,9 @@ class ppdb_NBA():
         lap = timer()
 
         doubleQuery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
-                      "FROM {source}_import " \
+                      "FROM {source}_{suffix} " \
                       "GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
+                        suffix=suffix,
                         source=self.sourceConfig.get('table'),
                         idfield=self.sourceConfig.get('id'))
         doubles = self.db.select(doubleQuery)
