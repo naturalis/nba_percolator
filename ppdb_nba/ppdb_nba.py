@@ -616,7 +616,8 @@ class ppdb_NBA():
         count = 0
         for double in doubles:
             for importid in double.importids[:-1]:
-                deletequery = "DELETE FROM {source}_import WHERE id = {importid}".format(
+                deletequery = "DELETE FROM {source}_{suffix} WHERE id = {importid}".format(
+                    suffix=suffix,
                     source=self.sourceConfig.get('table'),
                     importid=importid)
                 self.db.execute(deletequery)
