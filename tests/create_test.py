@@ -172,15 +172,16 @@ class CreateTestCase(unittest.TestCase):
 
     def test_cache_taxon(self):
         systemCode = 'XC'
-        rec = {
+        rec = [{
             'acceptedName': {
                 'scientificNameGroup': 'TEST'
             },
             'id': 'test123'
-        }
+        }]
+
         self.pp.cache_taxon_record(rec, systemCode)
 
-        taxon = self.pp.get_taxon(self.source, 'TEST')
+        taxon = self.pp.get_taxon('TEST', self.source)
         self.assertIsNotNone(taxon)
         self.assertIsInstance(taxon, dict)
         self.assertEqual(taxon.get('id'), rec.get('id'))

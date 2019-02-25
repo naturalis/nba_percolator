@@ -992,13 +992,13 @@ class ppdb_NBA():
             logger.debug(items.get_sql())
             return False
 
-    def get_taxon(self, source, scientificNameGroup):
+    def get_taxon(self, scientificNameGroup, source):
         """
         Retrieves a taxon from the database on the field
         'acceptedName.scientificNameGroup'
 
-        :param source:
         :param scientificNameGroup:
+        :param source:
         :return:
         """
         sourceConfig = self.config.get('sources').get(source, False)
@@ -1196,7 +1196,7 @@ class ppdb_NBA():
         :return enrichment(dictionary) or False:
         """
         lap = timer()
-        taxons = self.get_taxon(source, sciNameGroup)
+        taxons = self.get_taxon(sciNameGroup, source)
 
         if taxons:
             return self.create_enrichments(taxons, source)
