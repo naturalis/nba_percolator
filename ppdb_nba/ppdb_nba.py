@@ -1013,12 +1013,12 @@ class ppdb_NBA():
 
         # Retrieve the taxon from cache
         taxonKey = '_'.join([code, scientificNameGroup])
-        taxon = cache.get(taxonKey)
-        if taxon is not None:
+        taxons = cache.get(taxonKey)
+        if taxons is not None:
             logger.debug('get_taxon: {taxonkey} got json from cache'.format(
                 taxonkey=taxonKey
             ))
-            return taxon
+            return taxons
 
         currentTable = globals().get(table.capitalize() + '_current')
         if not currentTable:
@@ -1029,14 +1029,17 @@ class ppdb_NBA():
             scientificNameGroup
         )
         taxonQuery = currentTable.select(lambda p: raw_sql(sciSql))
-        taxon = taxonQuery.get()
 
-        if taxon:
+        if taxonQuery.count() > 0:
+            taxons = []
+            for taxon in taxonQuery:
+                taxons.append(taxon.rec)
+
             logger.debug('get_taxon: {taxonkey} store json in cache'.format(
                 taxonkey=taxonKey
             ))
-            cache.set(taxonKey, taxon.rec)
-            return taxon.rec
+            cache.set(taxonKey, taxons)
+            return taxons
         else:
             # No taxon found, store this also in the cache
             logger.debug('get_taxon: {taxonkey} store FALSE in cache'.format(
@@ -1052,14 +1055,25 @@ class ppdb_NBA():
         :param jsonRec:
         :param systemCode:
         """
+        taxons = []
         if jsonRec.get('acceptedName') and jsonRec.get('acceptedName').get('scientificNameGroup'):
             scientificNameGroup = jsonRec.get('acceptedName').get('scientificNameGroup')
             taxonKey = '_'.join([systemCode, scientificNameGroup])
 
-            logger.debug('cache_taxon_record: {taxonkey} store json in cache'.format(
+            cachedTaxons = cache.get(taxonKey)
+            if cachedTaxons:
+                for taxon in cachedTaxons:
+                    if taxon['id'] == jsonRec['id']:
+                        taxons.append(jsonRec)
+                    else:
+                        taxons.append(taxon)
+            else:
+                taxons.append(jsonRec)
+
+            logger.debug('cache_taxon_records: {taxonkey} store json in cache'.format(
                 taxonkey=taxonKey
             ))
-            cache.set(taxonKey, jsonRec)
+            cache.set(taxonKey, taxons)
 
     def create_name_summary(self, vernacularName):
         """
@@ -1102,7 +1116,7 @@ class ppdb_NBA():
 
         return summary
 
-    def create_enrichment(self, rec, source):
+    def create_enrichments(self, taxonRecs, source):
         """
         Creates the enrichment
 
@@ -1110,31 +1124,35 @@ class ppdb_NBA():
         :param source:
         :return:
         """
-        lap = timer()
-        vernacularNames = rec.get('vernacularNames')
-        scientificNameGroup = rec.get('acceptedName').get('scientificNameGroup')
-        enrichment = {}
+        enrichments = []
+        for rec in taxonRecs:
+            lap = timer()
+            vernacularNames = rec.get('vernacularNames')
+            scientificNameGroup = rec.get('acceptedName').get('scientificNameGroup')
+            enrichment = {}
 
-        if vernacularNames:
-            enrichment['vernacularNames'] = []
-            for name in vernacularNames:
-                enrichment['vernacularNames'].append(self.create_name_summary(name))
+            if vernacularNames:
+                enrichment['vernacularNames'] = []
+                for name in vernacularNames:
+                    enrichment['vernacularNames'].append(self.create_name_summary(name))
 
-        enrichment['taxonId'] = rec.get('id')
+            enrichment['taxonId'] = rec.get('id')
 
-        synonyms = rec.get('synonyms', False)
-        if synonyms:
-            enrichment['synonyms'] = []
-            for scientificName in synonyms:
-                enrichment['synonyms'].append(self.create_scientific_summary(scientificName))
+            synonyms = rec.get('synonyms', False)
+            if synonyms:
+                enrichment['synonyms'] = []
+                for scientificName in synonyms:
+                    enrichment['synonyms'].append(self.create_scientific_summary(scientificName))
 
-        if (rec.get('sourceSystem') and rec.get('sourceSystem').get('code')):
-            enrichment['sourceSystem'] = {}
-            enrichment['sourceSystem']['code'] = rec.get('sourceSystem').get('code')
+            if (rec.get('sourceSystem') and rec.get('sourceSystem').get('code')):
+                enrichment['sourceSystem'] = {}
+                enrichment['sourceSystem']['code'] = rec.get('sourceSystem').get('code')
 
-            if (rec.get('sourceSystem').get('code') == 'COL'):
-                if rec.get('defaultClassification'):
-                    enrichment['defaultClassification'] = rec.get('defaultClassification')
+                if (rec.get('sourceSystem').get('code') == 'COL'):
+                    if rec.get('defaultClassification'):
+                        enrichment['defaultClassification'] = rec.get('defaultClassification')
+
+            enrichments.append(enrichment)
 
         logger.debug(
             '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
@@ -1144,7 +1162,7 @@ class ppdb_NBA():
             )
         )
 
-        return enrichment
+        return enrichments
 
     def create_delete_record(self, source, recordId, status='REJECTED'):
         """
@@ -1167,10 +1185,10 @@ class ppdb_NBA():
 
         return deleteRecord
 
-    def get_enrichment(self, sciNameGroup, source):
+    def get_enrichments(self, sciNameGroup, source):
         """
-        First tries to retrieve the enrichment from cache. When it
-        is not generated a new enrichment is created from a taxon
+        First tries to retrieve the enrichments from cache. When it
+        is not generated, new enrichments are created from a taxon
         json record and stored in cache
 
         :param sciNameGroup:
@@ -1178,10 +1196,10 @@ class ppdb_NBA():
         :return enrichment(dictionary) or False:
         """
         lap = timer()
-        taxonJson = self.get_taxon(source, sciNameGroup)
+        taxons = self.get_taxon(source, sciNameGroup)
 
-        if taxonJson:
-            return self.create_enrichment(taxonJson, source)
+        if taxons:
+            return self.create_enrichments(taxons, source)
         else:
             logger.debug(
                 '[{elapsed:.2f} seconds] No enrichment for "{scinamegroup}" in "{source}"'.format(
@@ -1216,9 +1234,9 @@ class ppdb_NBA():
                 rec.get('identifications')[index]['taxonomicEnrichments'] = []
 
                 for source in sources:
-                    enrichment = self.get_enrichment(sciNameGroup, source)
-                    if (enrichment):
-                        rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichment)
+                    enrichments = self.get_enrichments(sciNameGroup, source)
+                    if enrichments:
+                        rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichments)
 
         return rec
 
