@@ -1233,10 +1233,12 @@ class ppdb_NBA():
                 sciNameGroup = identification.get('scientificName').get('scientificNameGroup')
                 rec.get('identifications')[index]['taxonomicEnrichments'] = []
 
+                enrichments = []
                 for source in sources:
-                    enrichments = self.get_enrichments(sciNameGroup, source)
-                    if enrichments:
-                        rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichments)
+                    enrichments = enrichments + self.get_enrichments(sciNameGroup, source)
+
+                if len(enrichments) > 0:
+                    rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichments)
 
         return rec
 
