@@ -45,7 +45,7 @@ class ppdb_NBA():
             # config is string, read the config file
             try:
                 with open(file=config, mode='r') as ymlFile:
-                    self.config = yaml.load(ymlFile)
+                    self.config = yaml.load(ymlFile, Loader=yaml.BaseLoader)
             except Exception:
                 msg = '"config.yml" is missing?'
                 logger.fatal(msg)
