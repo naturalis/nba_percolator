@@ -133,7 +133,7 @@ def main():
 
     configfile = args.config
     if not configfile:
-        configfile = os.environ.get('CONFIG_FILE', 'config.yml')
+        configfile = os.environ.get('PERCOLATOR_CONFIG', 'config.yml')
 
     pp = ppdb_NBA(config=configfile)
     pp.generate_mapping(create_tables=args.createtables)
