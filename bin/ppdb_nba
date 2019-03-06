@@ -7,7 +7,6 @@ from argparse import ArgumentParser
 from timeit import default_timer as timer
 
 from ppdb_nba import ppdb_NBA
-
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 
@@ -60,10 +59,10 @@ def import_incremental(pp, args):
 
     pp.set_source(args.source)
     if not args.force and not pp.lock_datafile(file):
-        msg = "Lockfile gevonden. Import van '{file}' al bezig " \
-              "of uitgevoerd in een ander proces?".format(file=file)
+        msg = "Lockfile found. Import of '{file}' still busy " \
+              "importing?".format(file=file)
         logger.fatal(msg)
-        print('Toch importeren? Roep opnieuw aan met --force')
+        print('To force an input: --force')
         exit(2)
 
     start = timer()
@@ -106,7 +105,7 @@ def main():
     parser.add_argument('--config',
                         action='store',
                         help='Config file',
-                        default="config.yml")
+                        default=False)
     parser.add_argument('--current',
                         action='store_true',
                         help='Import data directly to current table (default is normal incremental import)')
@@ -132,11 +131,15 @@ def main():
     if (args.debug):
         logger.setLevel(logging.DEBUG)
 
-    pp = ppdb_NBA(config=args.config)
+    configfile = args.config
+    if not configfile:
+        configfile = os.environ.get('CONFIG_FILE', 'config.yml')
+
+    pp = ppdb_NBA(config=configfile)
     pp.generate_mapping(create_tables=args.createtables)
 
     if not pp.config:
-        logger.fatal("Configuratie ontbreekt")
+        logger.fatal("Configuration file '{config}' missing".format(config=configfile))
         exit(1)
 
     if len(args.files) > 0:
