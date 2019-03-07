@@ -314,7 +314,7 @@ class ppdb_NBA():
         filePath = os.path.join(deltaPath, filename)
 
         try:
-            deltaFile = open(filePath, 'w')
+            deltaFile = open(filePath + "_writing", 'w')
         except Exception:
             msg = 'Unable to write to "{filepath}"'.format(filepath=filePath)
             logger.fatal(msg)
@@ -453,6 +453,8 @@ class ppdb_NBA():
 
         if deltaFile:
             deltaFile.close()
+            os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
+
 
     @db_session
     def import_data(self, table='', datafile=''):
