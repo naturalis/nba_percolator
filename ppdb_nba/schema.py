@@ -152,6 +152,17 @@ class Testspecimen_current(ppdb.Entity):
     hash = Optional(str, index=True)
     datum = Required(datetime, sql_default='now()')
 
+class Testmedia_import(ppdb.Entity):
+    rec = Optional(Json)
+    hash = Optional(str, index=True)
+    datum = Required(datetime, sql_default='now()')
+
+
+class Testmedia_current(ppdb.Entity):
+    rec = Optional(Json)
+    hash = Optional(str, index=True)
+    datum = Required(datetime, sql_default='now()')
+
 
 class Deleted_records(ppdb.Entity):
     recid = Required(str, index=True)
