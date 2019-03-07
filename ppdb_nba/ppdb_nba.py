@@ -593,7 +593,11 @@ class ppdb_NBA():
             id=id
         ))
         dataTable = globals()[tableName]
-        query = dataTable.select(lambda p: p.rec[idField] == id)
+        jsonsql = 'rec->>\'{idfield}\' = "{idvalue}"'.format(
+            idfield=idField,
+            idvalue=id
+        )
+        query = dataTable.select(lambda p: raw_sql(jsonsql))
 
         return query.get()
 
@@ -976,7 +980,7 @@ class ppdb_NBA():
         )
         items = currenttable.select(lambda p: raw_sql(jsonsql))
 
-        if (len(items)):
+        if len(items):
             logger.info(
                 "Found {number} records in {source} with scientificNameGroup={namegroup}".format(
                     number=len(items),
