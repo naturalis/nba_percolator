@@ -593,7 +593,7 @@ class ppdb_NBA():
             id=id
         ))
         dataTable = globals()[tableName]
-        jsonsql = 'rec->>\'{idfield}\' = "{idvalue}"'.format(
+        jsonsql = '(rec ->> \'{idfield}\' = \'{idvalue}\')'.format(
             idfield=idField,
             idvalue=id
         )
