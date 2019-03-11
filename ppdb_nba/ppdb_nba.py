@@ -59,16 +59,24 @@ class ppdb_NBA():
 
         if not self.config.get('sources', False):
             msg = 'Sources part missing in config'
+            logger.fatal(msg)
             sys.exit(msg)
 
         self.es = self.connect_to_elastic()
         self.connect_to_database()
 
+        self.delta_writable_test()
+
         self.jobDate = datetime.now()
 
         self.jobId = ''
         self.source = ''
+        self.elastic_logging = True
+
         self.sourceConfig = {}
+
+    def set_nologging(self):
+        self.elastic_logging = False
 
     def set_source(self, source):
         """
@@ -292,6 +300,18 @@ class ppdb_NBA():
 
         return True
 
+    def delta_writable_test(self):
+        deltaPath = self.config.get('paths').get('delta', '/tmp')
+        if not os.path.isdir(deltaPath):
+            msg = "Delta directory {deltapath} does not exist".format(deltapath=deltaPath)
+            logger.fatal(msg)
+            sys.exit(msg)
+        if not os.access(deltaPath,'w'):
+            msg = "Delta directory {deltapath} is not writable".format(deltapath=deltaPath)
+            logger.fatal(msg)
+            sys.exit(msg)
+        return true
+
     def open_deltafile(self, action='new', index='unknown'):
         """
         Open the delta file for updated, new or deleted records
@@ -378,15 +398,16 @@ class ppdb_NBA():
             'comment': comment
         }
 
-        try:
-            self.es.index(
-                index=self.jobId.lower(),
-                id=recid,
-                doc_type='logging',
-                body=json.dumps(rec)
-            )
-        except RequestError:
-            logger.error('Failed to log to elastic search')
+        if self.elastic_logging:
+            try:
+                self.es.index(
+                    index=self.jobId.lower(),
+                    id=recid,
+                    doc_type='logging',
+                    body=json.dumps(rec)
+                )
+            except RequestError:
+                logger.error('Failed to log to elastic search')
 
     @db_session
     def clear_data(self, table=''):
