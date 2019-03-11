@@ -21,6 +21,7 @@ from .schema import *
 # Setup logging
 logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
 fh = logging.FileHandler(filename='ppdb_nba.log')
+fh.setLevel(logging.DEBUG)
 sh = logging.StreamHandler()
 
 logger = logging.getLogger('ppdb_nba')
