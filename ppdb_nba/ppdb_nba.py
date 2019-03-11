@@ -19,7 +19,10 @@ from diskcache import Cache
 from .schema import *
 
 # Setup logging
-logging.basicConfig(filename=u'ppdb_nba.log', format=u'%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
+fh = logging.FileHandler(filename='ppdb_nba.log')
+sh = logging.StreamHandler()
+
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 
