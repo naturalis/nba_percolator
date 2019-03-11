@@ -7,8 +7,22 @@ from argparse import ArgumentParser
 from timeit import default_timer as timer
 
 from ppdb_nba import ppdb_NBA
-logger = logging.getLogger('ppdb_nba')
-logger.setLevel(logging.INFO)
+# Setup logging
+
+def setup_logging():
+    logger = logging.getLogger('ppdb_nba')
+    formatter = logging.Formatter(u'%(asctime)s - %(levelname)s - %(message)s')
+
+    fh = logging.FileHandler(filename='ppdb_nba.log')
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+
+    sh = logging.StreamHandler()
+    sh.setLevel(logging.DEBUG)
+    sh.setFormatter(formatter)
+
+    logger.addHandler(sh)
+    logger.addHandler(fh)
 
 
 def scan_jobs(pp, args):
@@ -96,6 +110,8 @@ def import_deleted(pp, args):
 
 
 def main():
+    setup_logging()
+
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
                                   '\n\nPreprocessing data to create incremental updates')
 

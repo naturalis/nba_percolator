@@ -18,16 +18,8 @@ from dateutil import parser
 from diskcache import Cache
 from .schema import *
 
-# Setup logging
-logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
-fh = logging.FileHandler(filename='ppdb_nba.log')
-fh.setLevel(logging.DEBUG)
-sh = logging.StreamHandler()
-sh.setLevel(logging.DEBUG)
 
 logger = logging.getLogger('ppdb_nba')
-logger.addHandler(sh)
-logger.addHandler(fh)
 
 # Caching on disk (diskcache) using sqlite, it should be fast
 cache = Cache('/tmp/import_cache')
