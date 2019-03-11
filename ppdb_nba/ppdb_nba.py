@@ -26,8 +26,8 @@ sh = logging.StreamHandler()
 sh.setLevel(logging.DEBUG)
 
 logger = logging.getLogger('ppdb_nba')
-logger.addHandler(fh)
 logger.addHandler(sh)
+logger.addHandler(fh)
 
 # Caching on disk (diskcache) using sqlite, it should be fast
 cache = Cache('/tmp/import_cache')
