@@ -9,6 +9,8 @@ from timeit import default_timer as timer
 from ppdb_nba import ppdb_NBA
 # Setup logging
 
+logger = None
+
 def setup_logging():
     logger = logging.getLogger('ppdb_nba')
     formatter = logging.Formatter(u'%(asctime)s - %(levelname)s - %(message)s')
@@ -60,13 +62,13 @@ def scan_jobs(pp, args):
                 os.path.join(pp.config.get('paths').get('done'),jobfile)
             )
         else:
-            logging.error("{job} failed".format(job=job))
+            logger.error("{job} failed".format(job=job))
             shutil.move(
                 job,
                 os.path.join(pp.config.get('paths').get('failed'),jobfile)
             )
     else:
-        logging.info('No jobs - nothing to do')
+        logger.info('No jobs - nothing to do')
         return False
 
 
@@ -77,12 +79,12 @@ def import_incremental(pp, args):
     if not args.force and not pp.lock_datafile(file):
         msg = "Lockfile found. Import of '{file}' still busy " \
               "importing?".format(file=file)
-        logging.fatal(msg)
+        logger.fatal(msg)
         print('To force an input: --force')
         exit(2)
 
     start = timer()
-    logging.info("START incremental importing of {source}: {file}".format(source=args.source, file=file))
+    logger.info("START incremental importing of {source}: {file}".format(source=args.source, file=file))
     try:
         pp.import_data(table=pp.sourceConfig.get('table') + '_import', datafile=file)
         pp.unlock_datafile(file)
@@ -91,7 +93,7 @@ def import_incremental(pp, args):
 
     pp.remove_doubles()
     pp.handle_changes()
-    logging.info(
+    logger.info(
         "[{elapsed:.2f} seconds] END incremental importing of {source}: {file}".format(
             elapsed=(timer() - start),
             source=args.source,
@@ -100,18 +102,19 @@ def import_incremental(pp, args):
 
 def import_to_current(pp, args):
     pp.set_source(args.source)
-    logging.info("Fill current table '%s' with data" % (pp.sourceConfig.get('table') + '_current'))
+    logger.info("Fill current table '%s' with data" % (pp.sourceConfig.get('table') + '_current'))
     pp.import_data(pp.sourceConfig.get('table') + '_current', args.files[0])
     pp.remove_doubles(suffix='current')
 
 
 def import_deleted(pp, args):
     pp.set_source(args.source)
-    logging.info("Import deleted ids for source %s" % (pp.sourceConfig.get('table')))
+    logger.info("Import deleted ids for source %s" % (pp.sourceConfig.get('table')))
     pp.import_deleted(args.files[0])
 
 
 def main():
+    global logger
     logger = setup_logging()
 
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
@@ -157,7 +160,7 @@ def main():
     pp.generate_mapping(create_tables=args.createtables)
 
     if not pp.config:
-        logging.fatal("Configuration file '{config}' missing".format(config=configfile))
+        logger.fatal("Configuration file '{config}' missing".format(config=configfile))
         exit(1)
 
     if len(args.files) > 0:
