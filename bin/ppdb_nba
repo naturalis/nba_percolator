@@ -24,6 +24,8 @@ def setup_logging():
     logger.addHandler(sh)
     logger.addHandler(fh)
 
+    return logger
+
 
 def scan_jobs(pp, args):
     """
@@ -110,7 +112,7 @@ def import_deleted(pp, args):
 
 
 def main():
-    setup_logging()
+    logger = setup_logging()
 
     parser = ArgumentParser(usage='ppdb_nba --source sourcename /path/file1'
                                   '\n\nPreprocessing data to create incremental updates')
