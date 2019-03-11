@@ -151,6 +151,8 @@ def main():
 
     if (args.debug):
         logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
 
     configfile = args.config
     if not configfile:
