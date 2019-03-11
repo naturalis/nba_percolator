@@ -19,7 +19,7 @@ from diskcache import Cache
 from .schema import *
 
 # Setup logging
-logging.basicConfig(format=u'%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename=u'ppdb_nba.log', format=u'%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ppdb_nba')
 logger.setLevel(logging.INFO)
 
@@ -828,6 +828,7 @@ class ppdb_NBA():
 
         if deltaFile:
             deltaFile.close()
+            os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
 
     @db_session
     def handle_updates(self):
@@ -904,6 +905,7 @@ class ppdb_NBA():
 
         if deltaFile:
             deltaFile.close()
+            os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
 
     @db_session
     def handle_deletes(self):
@@ -964,6 +966,7 @@ class ppdb_NBA():
 
         if (deltaFile):
             deltaFile.close()
+            os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
 
     def list_impacted(self, sourceConfig, scientificNameGroup):
         """
@@ -1295,6 +1298,7 @@ class ppdb_NBA():
                         )
                         lap = timer()
                     deltaFile.close()
+                    os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
 
     @db_session
     def handle_changes(self):
