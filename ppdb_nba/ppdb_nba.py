@@ -1341,7 +1341,7 @@ class ppdb_NBA():
             self.handle_new()
         if len(self.changes['update']):
             self.handle_updates()
-        if not self.sourceConfig.get('incremental'):
+        if not self.is_incremental():
             # Only deletes in case a source supplies complete sets
             if (len(self.changes['delete'])):
                 self.handle_deletes()
