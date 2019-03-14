@@ -536,6 +536,14 @@ class ppdb_NBA():
             '[{elapsed:.2f} seconds] Set hashing on "{table}"'.format(table=table, elapsed=(timer() - lap)))
         lap = timer()
 
+        self.set_indexes(table=table)
+
+    @db_session
+    def set_indexes(self, table=''):
+        lap = timer()
+        enrichmentSource = self.sourceConfig.get('src-enrich', False)
+        enrichmentDestination = self.sourceConfig.get('dst-enrich', False)
+
         # zet de hashing index
         self.db.execute(
             "CREATE INDEX IF NOT EXISTS idx_{table}__hash "
@@ -844,6 +852,8 @@ class ppdb_NBA():
                 )
             )
             lap = timer()
+
+        self.set_indexes(table + '_current')
 
         if deltaFile:
             deltaFile.close()
