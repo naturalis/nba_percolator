@@ -310,7 +310,7 @@ class ppdb_NBA():
         #    msg = "Delta directory {deltapath} is not writable".format(deltapath=deltaPath)
         #    logger.fatal(msg)
         #    sys.exit(msg)
-        return true
+        return True
 
     def open_deltafile(self, action='new', index='unknown'):
         """
