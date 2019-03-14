@@ -141,7 +141,7 @@ class ppdb_NBA():
             sys.exit(msg)
 
     def is_incremental(self):
-        return self.sourceConfig.get('incremental', True)
+        return self.sourceConfig.get('incremental', 'yes') == 'yes'
 
     def lock(self, jobFile):
         """
