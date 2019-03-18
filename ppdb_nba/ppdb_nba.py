@@ -380,7 +380,7 @@ class ppdb_NBA():
 
         return True
 
-    def log_change(self, state='unknown', recid='ppdb_nba', comment=''):
+    def log_change(self, state='unknown', recid='ppdb_nba', source='', type='', comment=''):
         """
         Logging of the state change of a record to the elastic logging
         database
@@ -388,6 +388,8 @@ class ppdb_NBA():
         :param state:
         :param recid:
         :param comment:
+        :param source:
+        :param type:
         :return:
         """
 
@@ -395,6 +397,8 @@ class ppdb_NBA():
             '@timestamp': datetime.now().isoformat(),
             'state': state,
             'ppd_timestamp': self.jobDate.isoformat(),
+            'type': type,
+            'source': source,
             'comment': comment
         }
 
@@ -1273,7 +1277,9 @@ class ppdb_NBA():
 
                 enrichments = []
                 for source in sources:
-                    enrichments = enrichments + self.get_enrichments(sciNameGroup, source)
+                    enrichment = self.get_enrichments(sciNameGroup, source)
+                    if enrichment:
+                        enrichments = enrichments + enrichment
 
                 if len(enrichments) > 0:
                     rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichments)
