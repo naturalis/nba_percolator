@@ -97,7 +97,15 @@ class ppdb_NBA():
         Connect to elastic search for logging
         """
         try:
-            es = Elasticsearch(hosts=self.config['elastic']['host'])
+            es = Elasticsearch(
+                hosts=self.config['elastic']['host'],
+                sniff_on_start=True,
+                sniff_on_connection_fail=True,
+                sniffer_timeout=30,
+                retry_on_timeout=True,
+                timeout=30,
+                max_retries=10
+            )
             return es
         except ElasticsearchException:
             msg = 'Cannot connect to elastic search server (needed for logging)'
