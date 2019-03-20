@@ -1296,7 +1296,6 @@ class ppdb_NBA():
             if identification.get('scientificName') and \
                     identification.get('scientificName').get('scientificNameGroup'):
                 sciNameGroup = identification.get('scientificName').get('scientificNameGroup')
-                rec.get('identifications')[index]['taxonomicEnrichments'] = []
 
                 enrichments = []
                 for source in sources:
