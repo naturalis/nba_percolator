@@ -195,6 +195,7 @@ class ppdb_NBA():
             except Exception:
                 # Exception means the process is no longer running, but the
                 # lockfile is still there
+                # @todo: move fails when the job file is already moved
                 jobFile = lockinfo['job'].split('/')[-1]
                 failedpath = self.config.get('paths').get('failed', os.path.join(os.getcwd(), "failed"))
                 shutil.move(lockinfo['job'], os.path.join(failedpath, jobFile))
@@ -1282,7 +1283,7 @@ class ppdb_NBA():
                         enrichments = enrichments + enrichment
 
                 if len(enrichments) > 0:
-                    rec.get('identifications')[index]['taxonomicEnrichments'].append(enrichments)
+                    rec.get('identifications')[index]['taxonomicEnrichments'] = enrichments
 
         return rec
 
@@ -1308,7 +1309,7 @@ class ppdb_NBA():
 
         if scientificNameGroup:
             impactedRecords = self.list_impacted(sourceConfig, scientificNameGroup)
-            if (impactedRecords):
+            if impactedRecords:
                 deltaFile = self.open_deltafile('enrich', index)
                 if (deltaFile):
                     for impacted in impactedRecords:
