@@ -12,7 +12,7 @@ import sys
 import time
 import yaml
 from timeit import default_timer as timer
-from elasticsearch import Elasticsearch, ElasticsearchException, RequestError
+from elasticsearch import Elasticsearch, ElasticsearchException, ConnectionError, TransportError
 from pony.orm import db_session
 from dateutil import parser
 from diskcache import Cache
@@ -419,8 +419,10 @@ class ppdb_NBA():
                     doc_type='logging',
                     body=json.dumps(rec)
                 )
-            except RequestError:
-                logger.error('Failed to log to elastic search')
+            except TransportError as err:
+                logger.error('Failed to log to elastic search: "{error}"'.format(error=err))
+            except ConnectionError as err:
+                logger.error('Timeout logging to elastic search: "{error}"'.format(error=err))
 
     @db_session
     def clear_data(self, table=''):
