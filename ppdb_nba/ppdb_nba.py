@@ -851,13 +851,15 @@ class ppdb_NBA():
 
             self.db.execute(insertQuery)
 
+            code = self.sourceConfig.get('code')
             if dstEnrich:
-                code = self.sourceConfig.get('code')
                 self.cache_taxon_record(jsonRec, code)
 
             self.log_change(
                 state='new',
-                recid=importRec.rec[idField]
+                recid=importRec.rec[idField],
+                source=code,
+                type=index
             )
             logger.debug(
                 '[{elapsed:.2f} seconds] New record "{recordid}" inserted in "{source}"'.format(
@@ -893,6 +895,7 @@ class ppdb_NBA():
         importTable = globals()[tableBase.capitalize() + '_import']
         currentTable = globals()[tableBase.capitalize() + '_current']
         index = self.sourceConfig.get('index', 'noindex')
+        code = self.sourceConfig.get('code','')
 
         deltaFile = self.open_deltafile('update', index)
         # Write updated records to the deltafile
@@ -944,6 +947,8 @@ class ppdb_NBA():
             self.log_change(
                 state='update',
                 recid=importRec.rec[idField],
+                source=code,
+                type=index
             )
             lap = timer()
 
@@ -961,6 +966,7 @@ class ppdb_NBA():
         currentTable = globals()[table.capitalize() + '_current']
         enriches = self.sourceConfig.get('enriches', None)
         index = self.sourceConfig.get('index', 'noindex')
+        code = self.sourceConfig.get('code', '')
 
         # Write data to deltafile file
         deltaFile = self.open_deltafile('delete', index)
@@ -986,7 +992,9 @@ class ppdb_NBA():
 
                 self.log_change(
                     state='delete',
-                    recid=deleteId
+                    recid=deleteId,
+                    type=index,
+                    source=code
                 )
 
                 if enriches:
@@ -1340,7 +1348,9 @@ class ppdb_NBA():
                         )
                         self.log_change(
                             state='enrich',
-                            recid=impactId
+                            recid=impactId,
+                            source=sourceConfig.get('code'),
+                            type=sourceConfig.get('index')
                         )
                         lap = timer()
                     deltaFile.close()
