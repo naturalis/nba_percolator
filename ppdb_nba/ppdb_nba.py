@@ -410,6 +410,10 @@ class ppdb_NBA():
             'source': source,
             'comment': comment
         }
+        if (state == 'start'):
+            print(self.jobId.lower())
+            print(recid)
+            print(json.dumps(rec))
 
         if self.elastic_logging:
             try:
