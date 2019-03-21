@@ -106,6 +106,7 @@ def import_to_current(pp, args):
     logger.info("Fill current table '%s' with data" % (pp.sourceConfig.get('table') + '_current'))
     pp.import_data(pp.sourceConfig.get('table') + '_current', args.files[0])
     pp.remove_doubles(suffix='current')
+    pp.set_indexes(pp.sourceConfig.get('table') + '_current')
 
 
 def import_deleted(pp, args):
