@@ -69,8 +69,14 @@ class ppdb_NBA():
 
         self.jobDate = datetime.now()
 
+        self.job = False
+
+        self.percolatorMeta = {}
+
         self.jobId = ''
         self.source = ''
+        self.supplier = ''
+        self.filename = ''
         self.elastic_logging = True
 
         self.sourceConfig = {}
@@ -91,6 +97,9 @@ class ppdb_NBA():
         else:
             msg = 'Source "%s" does not exist in config file' % (source)
             sys.exit(msg)
+
+    def set_metainfo(self, key, value):
+        self.percolatorMeta[self.source][self.filename][key] = value
 
     def connect_to_elastic(self):
         """
@@ -228,23 +237,23 @@ class ppdb_NBA():
         :rtype: object
         """
         files = {}
-        jobRecord = json.loads(jsonData)
+        self.job = json.loads(jsonData)
 
         # Get the id of the job
-        self.jobId = jobRecord.get('id')
+        self.jobId = self.job.get('id')
 
         # Get the name of the supplier
-        self.supplier = jobRecord.get('data_supplier')
+        self.supplier = self.job.get('data_supplier')
 
         # Get the date of the job
-        rawdate = jobRecord.get('date', False)
+        rawdate = self.job.get('date', False)
         if rawdate:
             self.jobDate = parser.parse(rawdate)
 
         # Parse the validator part, get the outfiles
-        if jobRecord.get('validator'):
-            for key in jobRecord.get('validator').keys():
-                export = jobRecord.get('validator').get(key)
+        if self.job.get('validator'):
+            for key in self.job.get('validator').keys():
+                export = self.job.get('validator').get(key)
                 for validfile in export.get('results').get('outfiles').get('valid'):
                     source = self.supplier + '-' + key
                     if source not in files:
@@ -277,9 +286,14 @@ class ppdb_NBA():
 
         # import each file
         for source, filenames in files.items():
+            self.percolatorMeta[source] = {}
             for filename in filenames:
+                self.percolatorMeta[source][filename] = {}
+                self.filename = filename
                 self.set_source(source.lower())
                 filePath = os.path.join(incoming_path, filename)
+
+                self.set_metainfo('in', filePath)
 
                 self.log_change(
                     state='import',
@@ -289,12 +303,14 @@ class ppdb_NBA():
                     self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
                 except Exception:
                     # import fails? remove the lock, return false
+                    self.set_metainfo('status', 'failed')
                     logger.error(
                         "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
                     return False
 
                 # import successful, move the data file
                 processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
+                self.set_metainfo('out', processed_path)
                 shutil.move(filePath, processed_path)
 
                 self.remove_doubles()
@@ -305,9 +321,26 @@ class ppdb_NBA():
         )
 
         # everything is finished and okay, remove the lock
-        self.unlock()
+        self.finish_job()
 
         return True
+
+    def finish_job(self):
+        self.unlock()
+        jobPath = self.config.get('paths').get('infuser', '/tmp')
+        filePath = os.path.join(jobPath, self.jobId + '.json')
+
+        self.job['percolator'] = self.percolatorMeta
+
+        try:
+            jobFile = open(filePath, 'w')
+        except Exception:
+            msg = 'Unable to write to "{filepath}"'.format(filepath=filePath)
+            logger.fatal(msg)
+            return
+
+        json.dump(self.job, jobFile)
+        jobFile.close()
 
     def delta_writable_test(self):
         deltaPath = self.config.get('paths').get('delta', '/tmp')
@@ -315,7 +348,7 @@ class ppdb_NBA():
             msg = "Delta directory {deltapath} does not exist".format(deltapath=deltaPath)
             logger.fatal(msg)
             sys.exit(msg)
-        #if not os.access(deltaPath,'w'):
+        # if not os.access(deltaPath,'w'):
         #    msg = "Delta directory {deltapath} is not writable".format(deltapath=deltaPath)
         #    logger.fatal(msg)
         #    sys.exit(msg)
@@ -423,10 +456,10 @@ class ppdb_NBA():
                     doc_type='logging',
                     body=json.dumps(rec)
                 )
-            except TransportError as err:
-                logger.error('Failed to log to elastic search: "{error}"'.format(error=err))
             except ConnectionError as err:
                 logger.error('Timeout logging to elastic search: "{error}"'.format(error=err))
+            except TransportError as err:
+                logger.error('Failed to log to elastic search: "{error}"'.format(error=err))
 
     @db_session
     def clear_data(self, table=''):
@@ -491,8 +524,7 @@ class ppdb_NBA():
 
         if deltaFile:
             deltaFile.close()
-            os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
-
+            os.rename(deltaFile.name, deltaFile.name.replace('_writing', ''))
 
     @db_session
     def import_data(self, table='', datafile=''):
@@ -653,7 +685,7 @@ class ppdb_NBA():
         Removes double records. Some sources can contain double
         records, these should be removed, before checking the hash.
         """
-        lap = timer()
+        start = lap = timer()
 
         doubleQuery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
                       "FROM {source}_{suffix} " \
@@ -663,6 +695,7 @@ class ppdb_NBA():
                         idfield=self.sourceConfig.get('id'))
         doubles = self.db.select(doubleQuery)
         logger.debug('[{elapsed:.2f} seconds] Find doubles'.format(elapsed=(timer() - lap)))
+
         lap = timer()
 
         count = 0
@@ -680,6 +713,12 @@ class ppdb_NBA():
                 doubles=count,
                 elapsed=(timer() - lap))
         )
+
+        doubles = {
+            'count': count,
+            'elapsed': (timer() - start)
+        }
+        self.set_metainfo('doubles', doubles)
 
     @db_session
     def list_changes(self):
@@ -836,7 +875,7 @@ class ppdb_NBA():
 
         deltaFile = self.open_deltafile('new', index)
 
-        lap = timer()
+        start = lap = timer()
         for jsonId, databaseIds in self.changes['new'].items():
             importId = databaseIds[0]
             importRec = importTable[importId]
@@ -879,6 +918,12 @@ class ppdb_NBA():
         if deltaFile:
             deltaFile.close()
             os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
+            meta = {
+                'count': len(self.changes['new']),
+                'file': deltaFile.name.replace('_writing', ''),
+                'elapsed': timer()-start
+            }
+            self.set_metainfo('new', meta)
 
     @db_session
     def handle_updates(self):
@@ -899,12 +944,12 @@ class ppdb_NBA():
         importTable = globals()[tableBase.capitalize() + '_import']
         currentTable = globals()[tableBase.capitalize() + '_current']
         index = self.sourceConfig.get('index', 'noindex')
-        code = self.sourceConfig.get('code','')
+        code = self.sourceConfig.get('code', '')
 
         deltaFile = self.open_deltafile('update', index)
         # Write updated records to the deltafile
 
-        lap = timer()
+        start = lap = timer()
         for change, recordIds in self.changes['update'].items():
             # first id points to the new rec
             importRec = importTable[recordIds[0]]
@@ -958,7 +1003,13 @@ class ppdb_NBA():
 
         if deltaFile:
             deltaFile.close()
-            os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
+            os.rename(deltaFile.name, deltaFile.name.replace('_writing', ''))
+            meta = {
+                'count': len(self.changes['update']),
+                'file': deltaFile.name.replace('_writing', ''),
+                'elapsed': timer()-start
+            }
+            self.set_metainfo('update', meta)
 
     @db_session
     def handle_deletes(self):
@@ -975,7 +1026,7 @@ class ppdb_NBA():
         # Write data to deltafile file
         deltaFile = self.open_deltafile('delete', index)
 
-        lap = timer()
+        start = lap = timer()
         for change, dbids in self.changes['delete'].items():
             oldRecord = currentTable[dbids[0]]
             if oldRecord:
@@ -1022,7 +1073,14 @@ class ppdb_NBA():
 
         if (deltaFile):
             deltaFile.close()
-            os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
+            os.rename(deltaFile.name, deltaFile.name.replace('_writing', ''))
+
+            meta = {
+                'count': len(self.changes['delete']),
+                'file': deltaFile.name.replace('_writing', ''),
+                'elapsed': timer()-start
+            }
+            self.set_metainfo('delete', meta)
 
     def list_impacted(self, sourceConfig, scientificNameGroup):
         """
@@ -1219,13 +1277,13 @@ class ppdb_NBA():
 
             enrichments.append(enrichment)
 
-        logger.debug(
-            '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
-                source=source,
-                elapsed=(timer() - lap),
-                scinamegroup=scientificNameGroup
+            logger.debug(
+                '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
+                    source=source,
+                    elapsed=(timer()-lap),
+                    scinamegroup=scientificNameGroup
+                )
             )
-        )
 
         return enrichments
 
@@ -1357,7 +1415,7 @@ class ppdb_NBA():
                         )
                         lap = timer()
                     deltaFile.close()
-                    os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
+                    os.rename(deltaFile.name, deltaFile.name.replace('_writing', ''))
 
     @db_session
     def handle_changes(self):
