@@ -99,6 +99,10 @@ class ppdb_NBA():
             sys.exit(msg)
 
     def set_metainfo(self, key, value):
+        if not self.percolatorMeta.get(self.source, False):
+            self.percolatorMeta[self.source] = {}
+        if not self.percolatorMeta.get(self.filename, False):
+            self.percolatorMeta[self.source][self.filename] = {}
         self.percolatorMeta[self.source][self.filename][key] = value
 
     def connect_to_elastic(self):
@@ -328,14 +332,14 @@ class ppdb_NBA():
     def finish_job(self):
         self.unlock()
         jobPath = self.config.get('paths').get('infuser', '/tmp')
-        filePath = os.path.join(jobPath, self.jobId + '.json')
+        infuserJobFile = os.path.join(jobPath, self.jobId + '.json')
 
         self.job['percolator'] = self.percolatorMeta
 
         try:
-            jobFile = open(filePath, 'w')
+            jobFile = open(infuserJobFile, 'w')
         except Exception:
-            msg = 'Unable to write to "{filepath}"'.format(filepath=filePath)
+            msg = 'Unable to write to "{filepath}"'.format(filepath=infuserJobFile)
             logger.fatal(msg)
             return
 
