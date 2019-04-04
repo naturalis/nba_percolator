@@ -177,6 +177,8 @@ def main():
             pp.set_source(source=args.source)
         if args.current:
             import_to_current(pp, args)
+            # @todo: import current in sources die enriched moeten worden, moeten op een of
+            # andere manier toch nog enriched worden
         elif args.delete:
             import_deleted(pp, args)
         elif len(args.files) > 0:

@@ -64,7 +64,7 @@ cd /opt/ppdb
 docker-compose exec postgres psql -U postgres test20190314
 TRUNCATE TABLE public.brahmsspecimen_current;
 \q
-``
+```
 
 ## Inladen in current
 
