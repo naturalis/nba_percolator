@@ -62,9 +62,17 @@ Let goed op dat je de database gebruikt die gespecificeerd staat in `/shared-dat
 ```
 cd /opt/ppdb
 docker-compose exec postgres psql -U postgres test20190314
+```
+
+In de commandline van postgres:
+
+```
 TRUNCATE TABLE public.brahmsspecimen_current;
 \q
 ```
+
+Dit is vooral belangrijk als je bijvoorbeeld data op de gebruikelijk wijze wil 
+importeren, maar dat bijvoorbeeld *alles* moet worden verrijkt.
 
 ## Inladen in current
 
@@ -112,6 +120,33 @@ van de [ppdb_nba](https://github.com/naturalis/ppdb_nba/).
 Let op dat je na wijzigingen wel weer de nieuwste versie van het percolator script
 moet installeren (zie eerder in deze instructie).
 
+
+### Alles lijkt veel te lang duren
+
+Heel af en toe komt het voor dat het inladen van het jsonlines bestand zo lang duurt
+omdat een proces in postgres teveel tijd kost of is vastgelopen. Dit komt gelukkig
+niet vaak voor. Maar om toch te monitoren wat er aan de hand is helpt het om te
+kijken waar postgres het op een bepaald moment druk mee heeft.
+
+Eerst een verbinding maken met postgres:
+
+```
+cd /opt/ppdb
+docker-compose exec postgres psql -U postgres test20190314
+```
+
+Daarna de 'ps' query om meer duidelijkheid te krijgen.
+
+```
+SELECT
+  pid,
+  now() - pg_stat_activity.query_start AS duration,
+  query,
+  state
+FROM pg_stat_activity
+WHERE (now() - pg_stat_activity.query_start) > interval '10 seconds';
+```
+
 ### Er is nog een .lock file aanwezig in /shared-data/jobs/.lock
 
 Deze blijft staan als een vorige run van ppdb_nba faalt of nog bezig is. Als de
@@ -130,5 +165,58 @@ mv /data/shared-data/infuser/incoming/* /data/shared-data/incremental/
 ```
 
 Daarna moet Tom gevraagd worden om zijn import stap uit te voeren.
+
+
+## Test backup
+
+Omdat sommige testsituaties meerdere keren moet worden uitgevoerd staan de diverse
+test files in `/data/shared-data/percolator/test/` gevolgd door het nummer van
+de teststap.
+
+
+## Test 3
+
+1. Inloggen in percolator postgres database.
+
+```
+TRUNCATE TABLE public.brahmsspecimen_current;
+TRUNCATE TABLE public.brahmsmedia_current;
+```
+
+2. Inlezen van taxonomische data in current tabellen in jupyter docker:
+
+
+```
+cd /shared-data
+cp /shared-data/percolator/test/3/current/test-* /shared-data/percolator/incoming/
+ppdb_nba --debug --source col-taxon --current /shared-data/percolator/incoming/test-col-taxon-20190401-075433--000.json 
+ppdb_nba --debug --source nsr-taxon --current /shared-data/percolator/incoming/test-nsr-taxon-20190401-075434--000.json 
+```
+
+3. Inlezen van de brahms specimen en multimedia plus verrijkking
+
+```
+cp /shared-data/percolator/test/3/current/brahms*.json /shared-data/percolator/jobs/
+ppdb_nba --debug
+```
+
+Na deze stap zou de data van brahms in /shared-data/infuser/incoming moeten staan. Deze 
+files, plus de taxonomische data van stap 2 moeten door Tom worden ingelezen.
+
+4. Starten van het inlezen van de taxonomische data voor incrementele verrijking
+
+```
+cp /shared-data/percolator/test/3/jobs/* /shared-data/percolator/jobs/
+cp /shared-data/percolator/test/3/incoming/* /shared-data/percolator/incoming/
+ppdb_nba --debug
+ppdb_nba --debug
+```
+
+Let op! ppdb_nba net zo vaak draaien tot de boodschap 'No jobs - nothing to do'.
+
+Hierna staat in `/shared-data/infuser/incoming` de taxon en  verrijkte incrementele 
+data. Die moeten op de host machine in `/data/incremental` worden gekopieerd.
+
+
 
 
