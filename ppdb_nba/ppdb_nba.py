@@ -100,9 +100,9 @@ class ppdb_NBA():
 
     def set_metainfo(self, key='', value='', source=False, filename=False):
         if not source:
-            source = self.source.lower()
+            source = self.source
         if not filename:
-            filename = self.filename.lower()
+            filename = self.filename
 
         if not self.percolatorMeta.get(source, False):
             self.percolatorMeta[source] = {}
@@ -297,9 +297,7 @@ class ppdb_NBA():
 
         # import each file
         for source, filenames in files.items():
-            self.percolatorMeta[source] = {}
             for filename in filenames:
-                self.percolatorMeta[source][filename] = {}
                 self.filename = filename
                 self.set_source(source.lower())
 
