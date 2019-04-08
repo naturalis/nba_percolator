@@ -57,6 +57,10 @@ def scan_jobs(pp, args):
         # handle the job (json) file
         if pp.handle_job(job):
             logger.info("SUCCESS: {job} completed".format(job=job))
+            shutil.move(
+                job,
+                os.path.join(pp.config.get('paths').get('done'),jobfile)
+            )
         else:
             logger.error("{job} failed".format(job=job))
             shutil.move(
