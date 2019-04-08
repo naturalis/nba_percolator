@@ -174,8 +174,8 @@ def main():
         if args.source:
             pp.set_source(source=args.source)
         if args.truncate:
-            pp.truncate_table(table=pp.sourceConfig.get('table') + '_current')
-            pp.truncate_table(table=pp.sourceConfig.get('table') + '_import')
+            pp.clear_data(table=pp.sourceConfig.get('table') + '_current')
+            pp.clear_data(table=pp.sourceConfig.get('table') + '_import')
         if args.current:
             import_to_current(pp, args)
             # @todo: import current in sources die enriched moeten worden, moeten op een of

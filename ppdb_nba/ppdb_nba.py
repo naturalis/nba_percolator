@@ -477,7 +477,7 @@ class ppdb_NBA():
         Remove data from table
         """
 
-        self.db.execute("TRUNCATE public.{table}".format(table=table))
+        self.db.execute("TRUNCATE TABLE public.{table}".format(table=table))
         logger.debug('Truncated table "{table}"'.format(table=table))
 
     @db_session
@@ -535,10 +535,6 @@ class ppdb_NBA():
         if deltaFile:
             deltaFile.close()
 
-
-    @db_session
-    def truncate_table(self, table=''):
-        self.db.execute("TRUNCATE public.{table}".format(table=table))
 
     @db_session
     def import_data(self, table='', datafile=''):
