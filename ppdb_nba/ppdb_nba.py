@@ -331,7 +331,7 @@ class ppdb_NBA():
 
     def finish_job(self):
         self.unlock()
-        jobPath = self.config.get('paths').get('infuser', '/tmp')
+        jobPath = self.config.get('paths').get('done', '/tmp')
         infuserJobFile = os.path.join(jobPath, self.jobId + '.json')
 
         self.job['percolator'] = self.percolatorMeta
