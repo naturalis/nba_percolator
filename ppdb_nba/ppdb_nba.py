@@ -530,6 +530,11 @@ class ppdb_NBA():
             deltaFile.close()
             os.rename(deltaFile.name, deltaFile.name.replace('_writing', ''))
 
+
+    @db_session
+    def truncate_table(self, table=''):
+        self.db.execute("TRUNCATE public.{table}".format(table=table))
+
     @db_session
     def import_data(self, table='', datafile=''):
         """
