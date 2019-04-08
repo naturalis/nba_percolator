@@ -82,9 +82,7 @@ en moet dus 'met de hand'. Gebruikelijk is hierbij de volgende procedure te gebr
 
 ```
 cd /opt/ppdb
-docker-compose exec jupyter bash
-cd /shared-data
-ppdb_nba --debug --current --source brahmsspecimen /shared-data/percolator/incoming/brahms-specimen-bestand.json
+docker-compose run percolator ppdb_nba --debug --current --source brahmsspecimen /shared-data/percolator/incoming/brahms-specimen-bestand.json
 ```
 
 Goed opletten, als aan dit jsonlines bestand wordt gerefereerd in een job bestand in
@@ -100,9 +98,7 @@ opgepakt. De procedure:
 
 ```
 cd /opt/ppdb
-docker-compose exec jupyter bash
-cd /shared-data
-ppdb_nba --debug
+docker-compose run percolator ppdb_nba --debug
 ```
 
 Als alles goed gaat krijg je te zien welke stappen het proces doorloopt. Als alles
@@ -187,17 +183,18 @@ TRUNCATE TABLE public.brahmsmedia_current;
 
 
 ```
-cd /shared-data
 cp /shared-data/percolator/test/3/current/test-* /shared-data/percolator/incoming/
-ppdb_nba --debug --source col-taxon --current /shared-data/percolator/incoming/test-col-taxon-20190401-075433--000.json 
-ppdb_nba --debug --source nsr-taxon --current /shared-data/percolator/incoming/test-nsr-taxon-20190401-075434--000.json 
+cd /opt/ppdb
+docker-compose run percolator ppdb_nba --debug --source col-taxon --current /shared-data/percolator/incoming/test-col-taxon-20190401-075433--000.json 
+docker-compose run percolator ppdb_nba --debug --source nsr-taxon --current /shared-data/percolator/incoming/test-nsr-taxon-20190401-075434--000.json 
 ```
 
 3. Inlezen van de brahms specimen en multimedia plus verrijkking
 
 ```
 cp /shared-data/percolator/test/3/current/brahms*.json /shared-data/percolator/jobs/
-ppdb_nba --debug
+cd /opt/ppdb
+docker-compose run percolator ppdb_nba --debug
 ```
 
 Na deze stap zou de data van brahms in /shared-data/infuser/incoming moeten staan. Deze 
@@ -208,8 +205,9 @@ files, plus de taxonomische data van stap 2 moeten door Tom worden ingelezen.
 ```
 cp /shared-data/percolator/test/3/jobs/* /shared-data/percolator/jobs/
 cp /shared-data/percolator/test/3/incoming/* /shared-data/percolator/incoming/
-ppdb_nba --debug
-ppdb_nba --debug
+cd /opt/ppdb
+docker-compose run percolator ppdb_nba --debug
+docker-compose run percolator ppdb_nba --debug
 ```
 
 Let op! ppdb_nba net zo vaak draaien tot de boodschap 'No jobs - nothing to do'.
