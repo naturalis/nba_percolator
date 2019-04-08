@@ -98,12 +98,19 @@ class ppdb_NBA():
             msg = 'Source "%s" does not exist in config file' % (source)
             sys.exit(msg)
 
-    def set_metainfo(self, key, value):
-        if not self.percolatorMeta.get(self.source, False):
-            self.percolatorMeta[self.source] = {}
-        if not self.percolatorMeta.get(self.filename, False):
-            self.percolatorMeta[self.source][self.filename] = {}
-        self.percolatorMeta[self.source][self.filename][key] = value
+    def set_metainfo(self, key='', value='', source=False, filename=False):
+        if not source:
+            source = self.source.lower()
+        if not filename:
+            filename = self.filename.lower()
+
+        if not self.percolatorMeta.get(source, False):
+            self.percolatorMeta[source] = {}
+
+        if not self.percolatorMeta.get(filename, False):
+            self.percolatorMeta[source][filename] = {}
+
+        self.percolatorMeta[source][filename][key] = value
 
     def connect_to_elastic(self):
         """
@@ -295,9 +302,10 @@ class ppdb_NBA():
                 self.percolatorMeta[source][filename] = {}
                 self.filename = filename
                 self.set_source(source.lower())
+
                 filePath = os.path.join(incoming_path, filename)
 
-                self.set_metainfo('in', filePath)
+                self.set_metainfo(key='in', value=filePath, source=source, filename=filename)
 
                 self.log_change(
                     state='import',
@@ -307,14 +315,14 @@ class ppdb_NBA():
                     self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
                 except Exception:
                     # import fails? remove the lock, return false
-                    self.set_metainfo('status', 'failed')
+                    self.set_metainfo(key='status', status='failed', source=source, filename=filename)
                     logger.error(
                         "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
                     return False
 
                 # import successful, move the data file
                 processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                self.set_metainfo('out', processed_path)
+                self.set_metainfo(key='out', status=processed_path, source=source, filename=filename)
                 shutil.move(filePath, processed_path)
 
                 self.remove_doubles()
@@ -726,7 +734,7 @@ class ppdb_NBA():
             'count': count,
             'elapsed': (timer() - start)
         }
-        self.set_metainfo('doubles', doubles)
+        self.set_metainfo(key='doubles', status=doubles)
 
     @db_session
     def list_changes(self):
@@ -930,7 +938,7 @@ class ppdb_NBA():
                 'file': deltaFile.name,
                 'elapsed': timer()-start
             }
-            self.set_metainfo('new', meta)
+            self.set_metainfo(key='new', status=meta)
 
     @db_session
     def handle_updates(self):
@@ -1015,7 +1023,7 @@ class ppdb_NBA():
                 'file': deltaFile.name,
                 'elapsed': timer()-start
             }
-            self.set_metainfo('update', meta)
+            self.set_metainfo(key='update', status=meta)
 
     @db_session
     def handle_deletes(self):
@@ -1085,7 +1093,7 @@ class ppdb_NBA():
                 'file': deltaFile.name,
                 'elapsed': timer()-start
             }
-            self.set_metainfo('delete', meta)
+            self.set_metainfo(key='delete', status=meta)
 
     def list_impacted(self, sourceConfig, scientificNameGroup):
         """
