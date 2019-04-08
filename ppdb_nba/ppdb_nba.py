@@ -313,14 +313,14 @@ class ppdb_NBA():
                     self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
                 except Exception:
                     # import fails? remove the lock, return false
-                    self.set_metainfo(key='status', status='failed', source=source, filename=filename)
+                    self.set_metainfo(key='status', value='failed', source=source, filename=filename)
                     logger.error(
                         "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
                     return False
 
                 # import successful, move the data file
                 processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                self.set_metainfo(key='out', status=processed_path, source=source, filename=filename)
+                self.set_metainfo(key='out', value=processed_path, source=source, filename=filename)
                 shutil.move(filePath, processed_path)
 
                 self.remove_doubles()
@@ -728,7 +728,7 @@ class ppdb_NBA():
             'count': count,
             'elapsed': (timer() - start)
         }
-        self.set_metainfo(key='doubles', status=doubles)
+        self.set_metainfo(key='doubles', value=doubles)
 
     @db_session
     def list_changes(self):
@@ -932,7 +932,7 @@ class ppdb_NBA():
                 'file': deltaFile.name,
                 'elapsed': timer()-start
             }
-            self.set_metainfo(key='new', status=meta)
+            self.set_metainfo(key='new', value=meta)
 
     @db_session
     def handle_updates(self):
@@ -1017,7 +1017,7 @@ class ppdb_NBA():
                 'file': deltaFile.name,
                 'elapsed': timer()-start
             }
-            self.set_metainfo(key='update', status=meta)
+            self.set_metainfo(key='update', value=meta)
 
     @db_session
     def handle_deletes(self):
@@ -1087,7 +1087,7 @@ class ppdb_NBA():
                 'file': deltaFile.name,
                 'elapsed': timer()-start
             }
-            self.set_metainfo(key='delete', status=meta)
+            self.set_metainfo(key='delete', value=meta)
 
     def list_impacted(self, sourceConfig, scientificNameGroup):
         """
