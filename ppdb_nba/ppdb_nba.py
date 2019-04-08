@@ -378,7 +378,7 @@ class ppdb_NBA():
         filePath = os.path.join(deltaPath, filename)
 
         try:
-            deltaFile = open(filePath + "_writing", 'w')
+            deltaFile = open(filePath, 'a')
         except Exception:
             msg = 'Unable to write to "{filepath}"'.format(filepath=filePath)
             logger.fatal(msg)
@@ -404,7 +404,7 @@ class ppdb_NBA():
             # Lock file already exists
             return False
         else:
-            with open(file=filePath, mode='a'):
+            with open(file=filePath, mode='w'):
                 os.utime(filePath, None)
             return True
 
@@ -528,7 +528,6 @@ class ppdb_NBA():
 
         if deltaFile:
             deltaFile.close()
-            os.rename(deltaFile.name, deltaFile.name.replace('_writing', ''))
 
 
     @db_session
@@ -926,10 +925,9 @@ class ppdb_NBA():
 
         if deltaFile:
             deltaFile.close()
-            os.rename(deltaFile.name, deltaFile.name.replace('_writing',''))
             meta = {
                 'count': len(self.changes['new']),
-                'file': deltaFile.name.replace('_writing', ''),
+                'file': deltaFile.name,
                 'elapsed': timer()-start
             }
             self.set_metainfo('new', meta)
@@ -1012,10 +1010,9 @@ class ppdb_NBA():
 
         if deltaFile:
             deltaFile.close()
-            os.rename(deltaFile.name, deltaFile.name.replace('_writing', ''))
             meta = {
                 'count': len(self.changes['update']),
-                'file': deltaFile.name.replace('_writing', ''),
+                'file': deltaFile.name,
                 'elapsed': timer()-start
             }
             self.set_metainfo('update', meta)
@@ -1082,11 +1079,10 @@ class ppdb_NBA():
 
         if (deltaFile):
             deltaFile.close()
-            os.rename(deltaFile.name, deltaFile.name.replace('_writing', ''))
 
             meta = {
                 'count': len(self.changes['delete']),
-                'file': deltaFile.name.replace('_writing', ''),
+                'file': deltaFile.name,
                 'elapsed': timer()-start
             }
             self.set_metainfo('delete', meta)
@@ -1424,7 +1420,6 @@ class ppdb_NBA():
                         )
                         lap = timer()
                     deltaFile.close()
-                    os.rename(deltaFile.name, deltaFile.name.replace('_writing', ''))
 
     @db_session
     def handle_changes(self):
