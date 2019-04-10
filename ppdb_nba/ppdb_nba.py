@@ -515,6 +515,20 @@ class ppdb_NBA():
                 logger.error('Failed to log to elastic search: "{error}"'.format(error=err))
 
     @db_session
+    def export_records(self):
+        base = self.sourceConfig.get('table')
+        srcEnrich = self.sourceConfig.get('src-enrich', False)
+
+        tableName = base.capitalize() + '_current'
+        dataTable = globals()[tableName]
+
+        for record in dataTable.select():
+            jsonRec = record.rec
+            if srcEnrich:
+                jsonRec = self.enrich_record(jsonRec, srcEnrich)
+            print(jsonRec)
+
+    @db_session
     def clear_data(self, table=''):
         """
         Remove data from table

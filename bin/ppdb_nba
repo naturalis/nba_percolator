@@ -114,6 +114,10 @@ def import_deleted(pp, args):
     pp.import_deleted(args.files[0])
 
 
+def export_source(pp, args):
+    pp.set_source(args.source)
+    pp.export_records()
+
 def main():
     global logger
     logger = setup_logging()
@@ -194,7 +198,10 @@ def main():
         elif len(args.files) > 0:
             import_incremental(pp, args)
     else:
-        scan_jobs(pp, args)
+        if args.export:
+            export_source(pp, args)
+        else:
+            scan_jobs(pp, args)
 
 
 if __name__ == "__main__":
