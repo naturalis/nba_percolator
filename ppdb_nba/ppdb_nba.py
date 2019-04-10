@@ -297,7 +297,7 @@ class ppdb_NBA():
 
         return files
 
-    def handle_job(self, jobFile=''):
+    def handle_job(self, jobFile='', tabulaRasa=False):
         """
         Handles the jobfile
 
@@ -310,6 +310,8 @@ class ppdb_NBA():
             jsonData = fp.read()
             files = self.parse_job(jsonData)
             incoming_path = self.config.get('paths').get('incoming', '/tmp')
+            if tabulaRasa:
+                self.tabulaRasa = True
 
         if files is None:
             return False
