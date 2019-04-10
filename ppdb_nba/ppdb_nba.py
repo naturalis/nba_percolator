@@ -1395,7 +1395,7 @@ class ppdb_NBA():
         idField = sourceConfig.get('id')
         index = sourceConfig.get('index', 'noindex')
 
-        start = timer()
+        lap = start = timer()
 
         # Retrieve scientificNameGroup from the acceptedName part
         if record.rec.get('acceptedName'):
