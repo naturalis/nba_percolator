@@ -119,8 +119,8 @@ class ppdb_NBA():
         if not filename:
             filename = self.filename
 
-        if not self.percolatorMeta.get(source, False):
-            if not self.percolatorMeta[source].get(filename, False):
+        if self.percolatorMeta.get(source, False):
+            if self.percolatorMeta[source].get(filename, False):
                 return self.percolatorMeta[source][filename].get(key)
 
         return False
@@ -339,7 +339,7 @@ class ppdb_NBA():
 
                 # import successful, move the data file
                 processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                self.set_metainfo(key='processed', value=processed_path, source=source.lower(), filename=filename)
+                self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
                 shutil.move(filePath, processed_path)
 
                 self.remove_doubles()
