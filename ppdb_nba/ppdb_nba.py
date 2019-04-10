@@ -73,6 +73,8 @@ class ppdb_NBA():
 
         self.percolatorMeta = {}
 
+        self.tabulaRasa = False
+
         self.jobId = ''
         self.source = ''
         self.supplier = ''
@@ -272,6 +274,9 @@ class ppdb_NBA():
         # Get the id of the job
         self.jobId = self.job.get('id')
 
+        # tabulaRasa, if true, import straight to current
+        self.tabulaRasa = self.job.get('tabula_rasa', False)
+
         # Get the name of the supplier
         self.supplier = self.job.get('data_supplier')
 
@@ -328,22 +333,39 @@ class ppdb_NBA():
                     state='import',
                     comment='{filepath}'.format(filepath=filePath)
                 )
-                try:
-                    self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
-                except Exception:
-                    # import fails? remove the lock, return false
-                    self.set_metainfo(key='status', value='failed', source=source.lower(), filename=filename)
-                    logger.error(
-                        "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
-                    return False
+                if not self.tabulaRasa:
+                    try:
+                        self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
+                    except Exception:
+                        # import fails? remove the lock, return false
+                        self.set_metainfo(key='status', value='failed', source=source.lower(), filename=filename)
+                        logger.error(
+                            "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
+                        return False
 
-                # import successful, move the data file
-                processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
-                shutil.move(filePath, processed_path)
+                    # import successful, move the data file
+                    processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
+                    self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
+                    shutil.move(filePath, processed_path)
 
-                self.remove_doubles()
-                self.handle_changes()
+                    self.remove_doubles()
+                    self.handle_changes()
+                else:
+                    self.clear_data(self.sourceConfig.get('table') + '_current')
+                    self.import_data(self.sourceConfig.get('table') + '_current', datafile=filePath)
+                    self.remove_doubles(suffix='current')
+                    self.set_indexes(self.sourceConfig.get('table') + '_current')
+
+                    # copy the data straight to the import
+                    output_path = os.path.join(self.config.get('paths').get('delta', '/tmp'), filename)
+                    self.add_deltafile(output_path)
+                    shutil.copy(filePath, output_path)
+
+                    # move the import data
+                    processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
+                    self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
+                    shutil.move(filePath, processed_path)
+
 
         self.log_change(
             state='finish'
