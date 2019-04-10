@@ -399,7 +399,7 @@ class ppdb_NBA():
             logger.fatal(msg)
             sys.exit(msg)
 
-        self.add_deltafile(deltaFile)
+        self.add_deltafile(filePath)
 
         logger.debug(filePath + ' opened')
 
