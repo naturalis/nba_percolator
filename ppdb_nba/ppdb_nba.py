@@ -77,6 +77,7 @@ class ppdb_NBA():
         self.source = ''
         self.supplier = ''
         self.filename = ''
+        self.deltafiles = []
         self.elastic_logging = True
 
         self.sourceConfig = {}
@@ -111,6 +112,12 @@ class ppdb_NBA():
             self.percolatorMeta[source][filename] = {}
 
         self.percolatorMeta[source][filename][key] = value
+
+    def add_deltafile(self, filepath):
+        try:
+            self.deltafiles.index(filepath)
+        except ValueError:
+            self.deltafiles.append(filepath)
 
     def connect_to_elastic(self):
         """
@@ -303,7 +310,7 @@ class ppdb_NBA():
 
                 filePath = os.path.join(incoming_path, filename)
 
-                self.set_metainfo(key='in', value=filePath, source=source, filename=filename)
+                self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
 
                 self.log_change(
                     state='import',
@@ -313,14 +320,14 @@ class ppdb_NBA():
                     self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
                 except Exception:
                     # import fails? remove the lock, return false
-                    self.set_metainfo(key='status', value='failed', source=source, filename=filename)
+                    self.set_metainfo(key='status', value='failed', source=source.lower(), filename=filename)
                     logger.error(
                         "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
                     return False
 
                 # import successful, move the data file
                 processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                self.set_metainfo(key='out', value=processed_path, source=source, filename=filename)
+                self.set_metainfo(key='processed', value=processed_path, source=source.lower(), filename=filename)
                 shutil.move(filePath, processed_path)
 
                 self.remove_doubles()
@@ -340,6 +347,8 @@ class ppdb_NBA():
         jobPath = self.config.get('paths').get('done', '/tmp')
         infuserJobFile = os.path.join(jobPath, self.jobId + '.json')
 
+        if len(self.deltafiles):
+            self.set_metainfo('outfiles',self.deltafiles)
         self.job['percolator'] = self.percolatorMeta
 
         try:
@@ -389,6 +398,8 @@ class ppdb_NBA():
             msg = 'Unable to write to "{filepath}"'.format(filepath=filePath)
             logger.fatal(msg)
             sys.exit(msg)
+
+        self.add_deltafile(deltaFile)
 
         logger.debug(filePath + ' opened')
 
@@ -453,10 +464,6 @@ class ppdb_NBA():
             'source': source,
             'comment': comment
         }
-        if (state == 'start'):
-            print(self.jobId.lower())
-            print(recid)
-            print(json.dumps(rec))
 
         if self.elastic_logging:
             try:
@@ -1120,7 +1127,7 @@ class ppdb_NBA():
                     source=table.capitalize(),
                     namegroup=scientificNameGroup)
             )
-            logger.debug(items.get_sql())
+            # logger.debug(items.get_sql())
             return False
 
     def get_taxon(self, scientificNameGroup, source):
@@ -1419,9 +1426,10 @@ class ppdb_NBA():
                             state='enrich',
                             recid=impactId,
                             source=sourceConfig.get('code'),
-                            type=sourceConfig.get('index')
+                            type=index
                         )
                         lap = timer()
+                        self.set_metainfo(key='enrich:' + index, value=meta)
                     deltaFile.close()
 
     @db_session
