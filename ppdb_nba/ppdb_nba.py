@@ -113,7 +113,7 @@ class ppdb_NBA():
 
         self.percolatorMeta[source][filename][key] = value
 
-    def get_metainfo(self, key='', value='', source=False, filename=False):
+    def get_metainfo(self, key='', source=False, filename=False):
         if not source:
             source = self.source
         if not filename:
@@ -1442,15 +1442,15 @@ class ppdb_NBA():
                         lap = timer()
 
                     meta = self.get_metainfo(key='enrich:' + index)
-                    if not meta:
+                    if isinstance(meta, dict):
+                        meta['count'] += len(impactedRecords)
+                        meta['elapsed'] += timer()-start
+                    else:
                         meta = {
                             'count': len(impactedRecords),
                             'file': deltaFile.name,
                             'elapsed': timer()-start
                         }
-                    else:
-                        meta['count'] += len(impactedRecords)
-                        meta['elapsed'] += timer()-start
 
                     self.set_metainfo(key='enrich:' + index, value=meta)
 
