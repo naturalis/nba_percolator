@@ -177,12 +177,14 @@ def main():
         logger.fatal("Configuration file '{config}' missing".format(config=configfile))
         exit(1)
 
+    if args.source:
+        pp.set_source(source=args.source)
+
+    if args.truncate:
+        pp.clear_data(table=pp.sourceConfig.get('table') + '_current')
+        pp.clear_data(table=pp.sourceConfig.get('table') + '_import')
+
     if len(args.files) > 0:
-        if args.source:
-            pp.set_source(source=args.source)
-        if args.truncate:
-            pp.clear_data(table=pp.sourceConfig.get('table') + '_current')
-            pp.clear_data(table=pp.sourceConfig.get('table') + '_import')
         if args.current:
             import_to_current(pp, args)
             # @todo: import current in sources die enriched moeten worden, moeten op een of
