@@ -1395,7 +1395,7 @@ class ppdb_NBA():
         idField = sourceConfig.get('id')
         index = sourceConfig.get('index', 'noindex')
 
-        lap = timer()
+        start = timer()
 
         # Retrieve scientificNameGroup from the acceptedName part
         if record.rec.get('acceptedName'):
@@ -1429,7 +1429,14 @@ class ppdb_NBA():
                             type=index
                         )
                         lap = timer()
-                        self.set_metainfo(key='enrich:' + index, value=meta)
+
+                    meta = {
+                        'count': len(impactedRecords),
+                        'file': deltaFile.name,
+                        'elapsed': timer()-start
+                    }
+                    self.set_metainfo(key='enrich:' + index, value=meta)
+
                     deltaFile.close()
 
     @db_session
