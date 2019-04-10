@@ -478,6 +478,7 @@ class ppdb_NBA():
         """
 
         self.db.execute("TRUNCATE TABLE public.{table}".format(table=table))
+        self.db.commit()
         logger.debug('Truncated table "{table}"'.format(table=table))
 
     @db_session
@@ -1385,7 +1386,7 @@ class ppdb_NBA():
         sourceConfig = self.config.get('sources').get(source)
         enrichmentSources = sourceConfig.get('src-enrich', False)
         idField = sourceConfig.get('id')
-        index = self.sourceConfig.get('index', 'noindex')
+        index = sourceConfig.get('index', 'noindex')
 
         lap = timer()
 
@@ -1397,7 +1398,7 @@ class ppdb_NBA():
             impactedRecords = self.list_impacted(sourceConfig, scientificNameGroup)
             if impactedRecords:
                 deltaFile = self.open_deltafile('enrich', index)
-                if (deltaFile):
+                if deltaFile:
                     for impacted in impactedRecords:
                         jsonRecord = impacted.rec
                         if enrichmentSources:
