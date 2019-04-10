@@ -124,6 +124,9 @@ def main():
     parser.add_argument('--source',
                         action='store',
                         help='Name of the data source')
+    parser.add_argument('--export',
+                        action='store',
+                        help='Name of the source that should be exported')
     parser.add_argument('--truncate',
                         action='store_true',
                         help='Truncate import and current tables of source before importing')

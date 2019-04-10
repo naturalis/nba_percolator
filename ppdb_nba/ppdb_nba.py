@@ -108,10 +108,22 @@ class ppdb_NBA():
         if not self.percolatorMeta.get(source, False):
             self.percolatorMeta[source] = {}
 
-        if not self.percolatorMeta.get(filename, False):
+        if not self.percolatorMeta[source].get(filename, False):
             self.percolatorMeta[source][filename] = {}
 
         self.percolatorMeta[source][filename][key] = value
+
+    def get_metainfo(self, key='', value='', source=False, filename=False):
+        if not source:
+            source = self.source
+        if not filename:
+            filename = self.filename
+
+        if not self.percolatorMeta.get(source, False):
+            if not self.percolatorMeta[source].get(filename, False):
+                return self.percolatorMeta[source][filename].get(key)
+
+        return False
 
     def add_deltafile(self, filepath):
         try:
@@ -485,7 +497,6 @@ class ppdb_NBA():
         """
 
         self.db.execute("TRUNCATE TABLE public.{table}".format(table=table))
-        self.db.commit()
         logger.debug('Truncated table "{table}"'.format(table=table))
 
     @db_session
@@ -1430,11 +1441,17 @@ class ppdb_NBA():
                         )
                         lap = timer()
 
-                    meta = {
-                        'count': len(impactedRecords),
-                        'file': deltaFile.name,
-                        'elapsed': timer()-start
-                    }
+                    meta = self.get_metainfo(key='enrich:' + index)
+                    if not meta:
+                        meta = {
+                            'count': len(impactedRecords),
+                            'file': deltaFile.name,
+                            'elapsed': timer()-start
+                        }
+                    else:
+                        meta['count'] += len(impactedRecords)
+                        meta['elapsed'] += timer()-start
+
                     self.set_metainfo(key='enrich:' + index, value=meta)
 
                     deltaFile.close()
