@@ -526,7 +526,7 @@ class ppdb_NBA():
             jsonRec = record.rec
             if srcEnrich:
                 jsonRec = self.enrich_record(jsonRec, srcEnrich)
-            print(jsonRec)
+            print(json.dumps(jsonRec))
 
     @db_session
     def clear_data(self, table=''):

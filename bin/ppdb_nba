@@ -115,7 +115,7 @@ def import_deleted(pp, args):
 
 
 def export_source(pp, args):
-    pp.set_source(args.source)
+    pp.set_source(args.export)
     pp.export_records()
 
 def main():
