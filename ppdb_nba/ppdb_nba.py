@@ -360,7 +360,7 @@ class ppdb_NBA():
         infuserJobFile = os.path.join(jobPath, self.jobId + '.json')
 
         if len(self.deltafiles):
-            self.set_metainfo('outfiles',self.deltafiles)
+            self.percolatorMeta['outfiles'] = self.deltafiles
         self.job['percolator'] = self.percolatorMeta
 
         try:
