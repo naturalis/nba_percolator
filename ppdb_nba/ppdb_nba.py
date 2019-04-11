@@ -304,6 +304,7 @@ class ppdb_NBA():
         :param jobFile:
         :return:
         """
+        global cache
 
         files = None
         with open(jobFile, "r") as fp:
@@ -364,6 +365,7 @@ class ppdb_NBA():
 
                     enrichSources = self.sourceConfig.get('src-enrich', None)
                     if enrichSources:
+                        cache.clear()
                         with open(file=output_path, mode='w') as outputFile:
                             self.export_records(fp=outputFile)
                             logger.debug('Creating an enriched export file: "{file}"'.format(file=output_path))
@@ -375,7 +377,6 @@ class ppdb_NBA():
                     processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
                     self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
                     shutil.move(filePath, processed_path)
-
 
         self.log_change(
             state='finish'
