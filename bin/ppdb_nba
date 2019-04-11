@@ -2,6 +2,7 @@
 import glob
 import logging
 import os
+import sys
 import shutil
 from argparse import ArgumentParser
 from timeit import default_timer as timer
@@ -12,7 +13,7 @@ from ppdb_nba import ppdb_NBA
 logger = None
 
 def setup_logging():
-    logger = logging.getLogger('ppdb_nba')
+    loginstance = logging.getLogger('ppdb_nba')
     formatter = logging.Formatter(u'%(asctime)s - %(levelname)s - %(message)s')
 
     fh = logging.FileHandler(filename='ppdb_nba.log')
@@ -23,10 +24,10 @@ def setup_logging():
     sh.setLevel(logging.DEBUG)
     sh.setFormatter(formatter)
 
-    logger.addHandler(sh)
-    logger.addHandler(fh)
+    loginstance.addHandler(sh)
+    loginstance.addHandler(fh)
 
-    return logger
+    return loginstance
 
 
 def scan_jobs(pp, args):
@@ -115,8 +116,19 @@ def import_deleted(pp, args):
 
 
 def export_source(pp, args):
-    pp.set_source(args.export)
-    pp.export_records()
+    if len(args.files) > 0:
+        exportfile = args.files[0]
+        try:
+            with open(exportfile,"w") as fp:
+                pp.export_records(fp)
+        except Exception:
+            msg = '"{filename}" cannot be written'.format(filename=exportfile)
+            logger.fatal(msg)
+            sys.exit(msg)
+    else:
+        pp.set_source(args.export)
+        pp.export_records()
+
 
 def main():
     global logger

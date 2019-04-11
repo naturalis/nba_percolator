@@ -361,7 +361,15 @@ class ppdb_NBA():
                     # copy the data straight to the import
                     output_path = os.path.join(self.config.get('paths').get('delta', '/tmp'), filename)
                     self.add_deltafile(output_path)
-                    shutil.copy(filePath, output_path)
+
+                    enrichSources = self.sourceConfig.get('src-enrich', None)
+                    if enrichSources:
+                        with open(file=output_path, mode='w') as outputFile:
+                            self.export_records(fp=outputFile)
+                            logger.debug('Creating an enriched export file: "{file}"'.format(file=output_path))
+                    else:
+                        shutil.copy(filePath, output_path)
+                        logger.debug('Copy the import file: "{file}"'.format(file=output_path))
 
                     # move the import data
                     processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
@@ -515,7 +523,7 @@ class ppdb_NBA():
                 logger.error('Failed to log to elastic search: "{error}"'.format(error=err))
 
     @db_session
-    def export_records(self):
+    def export_records(self, fp=None):
         base = self.sourceConfig.get('table')
         srcEnrich = self.sourceConfig.get('src-enrich', False)
 
@@ -526,7 +534,10 @@ class ppdb_NBA():
             jsonRec = record.rec
             if srcEnrich:
                 jsonRec = self.enrich_record(jsonRec, srcEnrich)
-            print(json.dumps(jsonRec))
+            if fp:
+                print(json.dump(jsonRec,fp))
+            else:
+                print(json.dumps(jsonRec))
 
     @db_session
     def clear_data(self, table=''):
