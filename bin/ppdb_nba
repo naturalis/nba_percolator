@@ -142,7 +142,8 @@ def main():
                         help='Name of the data source')
     parser.add_argument('--export',
                         action='store',
-                        help='Name of the source that should be exported')
+                        help='Name of the source that should be exported',
+                        default=False)
     parser.add_argument('--truncate',
                         action='store_true',
                         help='Truncate import and current tables of source before importing')
@@ -151,8 +152,9 @@ def main():
                         help='Config file',
                         default=False)
     parser.add_argument('--current',
-                        action='store_true',
-                        help='Import data directly to current table (default is normal incremental import)')
+                        action='store',
+                        help='Import data directly to current table (default is normal incremental import)',
+                        default=False)
     parser.add_argument('--delete',
                         action='store_true',
                         help='Handle permanent deletes (default is normal incremental import)')
@@ -175,7 +177,7 @@ def main():
 
     args = parser.parse_args()
 
-    if (args.debug):
+    if args.debug:
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
@@ -199,21 +201,18 @@ def main():
     if args.truncate:
         pp.clear_data(table=pp.sourceConfig.get('table') + '_current')
         pp.clear_data(table=pp.sourceConfig.get('table') + '_import')
-
-    if len(args.files) > 0:
+    elif args.export:
+        pp.set_source(source=args.export)
+        export_source(pp, args)
+    elif len(args.files) > 0:
         if args.current:
             import_to_current(pp, args)
-            # @todo: import current in sources die enriched moeten worden, moeten op een of
-            # andere manier toch nog enriched worden
         elif args.delete:
             import_deleted(pp, args)
         elif len(args.files) > 0:
             import_incremental(pp, args)
     else:
-        if args.export:
-            export_source(pp, args)
-        else:
-            scan_jobs(pp, args)
+        scan_jobs(pp, args)
 
 
 if __name__ == "__main__":
