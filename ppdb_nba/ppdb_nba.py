@@ -525,7 +525,7 @@ class ppdb_NBA():
     @db_session
     def export_records(self, fp=None):
         base = self.sourceConfig.get('table')
-        srcEnrich = self.sourceConfig.get('src-enrich', False)
+        srcEnrich = self.sourceConfig.get('src-enrich', None)
 
         tableName = base.capitalize() + '_current'
         dataTable = globals()[tableName]
