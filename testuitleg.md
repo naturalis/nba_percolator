@@ -165,9 +165,34 @@ Daarna moet Tom gevraagd worden om zijn import stap uit te voeren.
 
 ## Test backup
 
-Omdat sommige testsituaties meerdere keren moet worden uitgevoerd staan de diverse
-test files in `/data/shared-data/percolator/test/` gevolgd door het nummer van
-de teststap.
+Verstandig is voorafgaande aan een test even de test files te backuppen. Wat loont is in `/shared/percolator/` de
+`jobs` en `incoming` folders te backuppen met.
+
+```bash
+cd /shared-data/percolator/
+tar czf tests/testnr.tgz  incoming jobs
+```
+
+Op het moment dat je de test opnieuw wil doen:
+
+```bash
+cd /shared-data/percolator/
+tar xzf testnr.tgz
+```
+
+## Tabula Rasa
+
+Sinds de tweede week van april kan de validator aangeven of een import een 'schone lei' import kan zijn. Als
+er een `"tabula_rasa":true` in de job file staat wordt de current tabel van een bron leeggegooid en de data
+direct in die tabel geimporteerd. Hierdoor zijn heel veel van onderstaande stappen overbodig geworden.
+
+Als dit correct is uitgevoerd volstaat het om het proces meerdere malen op de standaard manier aan te roepen:
+
+```bash
+cd /opt/ppdb
+docker-compose run percolator ppdb_nba --debug
+```
+
 
 
 ## Test 3
