@@ -535,7 +535,8 @@ class ppdb_NBA():
             if srcEnrich:
                 jsonRec = self.enrich_record(jsonRec, srcEnrich)
             if fp:
-                print(json.dump(jsonRec,fp))
+                json.dump(jsonRec, fp)
+                fp.write('\n')
             else:
                 print(json.dumps(jsonRec))
 
