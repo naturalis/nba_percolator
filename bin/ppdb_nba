@@ -12,6 +12,7 @@ from ppdb_nba import ppdb_NBA
 
 logger = None
 
+
 def setup_logging():
     loginstance = logging.getLogger('ppdb_nba')
     formatter = logging.Formatter(u'%(asctime)s - %(levelname)s - %(message)s')
@@ -30,6 +31,18 @@ def setup_logging():
     return loginstance
 
 
+def get_first_job(jobs):
+    # sort the jobs on their name
+    if len(jobs):
+        datejobs = {}
+        for jobspath in jobs:
+            job = jobspath.split('/')[-1]
+            parts = job.split('-')
+            datejobs['-'.join(parts[1:])] = jobspath
+
+        return datejobs[sorted(datejobs).pop()]
+
+
 def scan_jobs(pp, args):
     """
     Scan the jobs directory specified in the config.yml in paths.jobs
@@ -46,12 +59,10 @@ def scan_jobs(pp, args):
 
     # list all the job files, order by mtime
     jobs = glob.glob(jobspath + '/*.json')
-    jobs.sort(key=os.path.getmtime)
-    jobs.reverse()
 
     if len(jobs) > 0:
         # if there are jobs, pick the first one
-        job = jobs.pop()
+        job = get_first_job(jobs)
         jobfile = job.split('/')[-1]
         logger.info("{job} started".format(job=job))
 
