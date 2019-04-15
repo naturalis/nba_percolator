@@ -33,8 +33,11 @@ def setup_logging():
 
 def get_first_job(jobs):
     """
-    Sort the jobs by their name, but without the first part.
-    return the first job in this list
+    Sort the jobs by their name, but without the first (source) part.
+    Return the first job in this list.
+
+    :param jobs:
+    :return job:
     """
 
     if len(jobs):
@@ -215,22 +218,30 @@ def main():
         exit(1)
 
     if args.source:
+        # specify the source
         pp.set_source(source=args.source)
 
     if args.truncate:
+        # truncate current and import tables
         pp.clear_data(table=pp.sourceConfig.get('table') + '_current')
         pp.clear_data(table=pp.sourceConfig.get('table') + '_import')
     elif args.export:
+        # export data of a single table
         pp.set_source(source=args.export)
         export_source(pp, args)
     elif len(args.files) > 0:
+        # if files are specified
         if args.current:
+            # --current import directly to current
             import_to_current(pp, args)
         elif args.delete:
+            # --delete import
             import_deleted(pp, args)
-        elif len(args.files) > 0:
+        else:
+            # do a normal incremental import
             import_incremental(pp, args)
     else:
+        # Default functionality, scan the jobs directory
         scan_jobs(pp, args)
 
 
