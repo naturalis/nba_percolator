@@ -45,6 +45,7 @@ def get_first_job(jobs):
             datejobs['-'.join(parts[1:])] = jobspath
 
         jobkeys = list(datejobs.keys())
+        jobkeys.sort()
         jobkeys.reverse()
 
         return datejobs[jobkeys.pop()]
