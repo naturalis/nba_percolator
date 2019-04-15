@@ -883,32 +883,38 @@ class ppdb_NBA():
 
             # new or update
             for result in neworupdates:
-                r = importtable.get(hash=result[1])
-                if (r.rec):
-                    uuid = r.rec[idField]
-                    if self.is_incremental() and self.get_record(uuid):
-                        oldrec = self.get_record(uuid)
-                        self.changes['update'][uuid] = [r.id]
-                        self.changes['update'][uuid].append(oldrec.id)
-                        logger.debug('Update {oldid} to {newid}'.format(
-                            oldid=oldrec.id,
-                            newid=r.id
-                        ))
-                    else:
-                        self.changes['new'][uuid] = [r.id]
+                if result[1]:
+                    r = importtable.get(hash=result[1])
+                    if (r.rec):
+                        uuid = r.rec[idField]
+                        if self.is_incremental() and self.get_record(uuid):
+                            oldrec = self.get_record(uuid)
+                            self.changes['update'][uuid] = [r.id]
+                            self.changes['update'][uuid].append(oldrec.id)
+                            logger.debug('Update {oldid} to {newid}'.format(
+                                oldid=oldrec.id,
+                                newid=r.id
+                            ))
+                        else:
+                            self.changes['new'][uuid] = [r.id]
+                else:
+                    logger.error('Empty hash in neworupdates')
 
             if not self.is_incremental():
                 # incremental sources only have explicit deletes
                 for result in updateOrDeletes:
-                    r = currenttable.get(hash=result[1])
-                    if (r.rec):
-                        uuid = r.rec[idField]
-                        if self.changes['new'].get(uuid, False):
-                            self.changes['update'][uuid] = self.changes['new'].get(uuid)
-                            self.changes['update'][uuid].append(r.id)
-                            del self.changes['new'][uuid]
-                        else:
-                            self.changes['delete'][uuid] = [r.id]
+                    if result[1]:
+                        r = currenttable.get(hash=result[1])
+                        if (r.rec):
+                            uuid = r.rec[idField]
+                            if self.changes['new'].get(uuid, False):
+                                self.changes['update'][uuid] = self.changes['new'].get(uuid)
+                                self.changes['update'][uuid].append(r.id)
+                                del self.changes['new'][uuid]
+                            else:
+                                self.changes['delete'][uuid] = [r.id]
+                    else:
+                        logger.error('Empty hash in updateordeletes')
 
             if len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete']):
                 if len(self.changes['new']):

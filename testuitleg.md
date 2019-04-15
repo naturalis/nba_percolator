@@ -168,14 +168,14 @@ Daarna moet Tom gevraagd worden om zijn import stap uit te voeren.
 Verstandig is voorafgaande aan een test even de test files te backuppen. Wat loont is in `/shared/percolator/` de
 `jobs` en `incoming` folders te backuppen met.
 
-```bash
+```
 cd /shared-data/percolator/
 tar czf tests/testnr.tgz  incoming jobs
 ```
 
 Op het moment dat je de test opnieuw wil doen:
 
-```bash
+```
 cd /shared-data/percolator/
 tar xzf testnr.tgz
 ```
