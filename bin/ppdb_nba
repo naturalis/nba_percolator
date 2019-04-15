@@ -32,7 +32,11 @@ def setup_logging():
 
 
 def get_first_job(jobs):
-    # sort the jobs on their name
+    """
+    Sort the jobs by their name, but without the first part.
+    return the first job in this list
+    """
+
     if len(jobs):
         datejobs = {}
         for jobspath in jobs:
@@ -40,7 +44,10 @@ def get_first_job(jobs):
             parts = job.split('-')
             datejobs['-'.join(parts[1:])] = jobspath
 
-        return datejobs[sorted(datejobs).pop()]
+        jobkeys = list(datejobs.keys())
+        jobkeys.reverse()
+
+        return datejobs[jobkeys.pop()]
 
 
 def scan_jobs(pp, args):
