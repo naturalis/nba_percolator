@@ -528,7 +528,7 @@ class ppdb_NBA():
                 logger.error('Failed to log to elastic search: "{error}"'.format(error=err))
 
     def slack(self, msg):
-        webhook = os.environ('SLACK_WEBHOOK', None)
+        webhook = os.environ.get('SLACK_WEBHOOK', None)
         if webhook:
             slack_data = {'text': msg}
 
