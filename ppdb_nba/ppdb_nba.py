@@ -398,7 +398,11 @@ class ppdb_NBA():
             self.percolatorMeta['outfiles'] = self.deltafiles
         self.job['percolator'] = self.percolatorMeta
 
-        self.slack('Percolator finished "{job}"'.format(job=self.jobId))
+        self.slack('Percolator finished "{job}" ```{json}```'.format(
+                job=self.jobId,
+                json=json.dumps(self.percolatorMeta,indent=3)
+            )
+        )
 
         try:
             jobFile = open(infuserJobFile, 'w')
