@@ -189,6 +189,9 @@ def main():
     parser.add_argument('--debug',
                         action='store_true',
                         help='Set debugging level logging')
+    parser.add_argument('--slack',
+                        action='store',
+                        help='Testing slack')
     parser.add_argument('--nologging',
                         action='store_true',
                         help='Do not log to the elastic search log')
@@ -216,6 +219,10 @@ def main():
     if not pp.config:
         logger.fatal("Configuration file '{config}' missing".format(config=configfile))
         exit(1)
+
+    if args.slack:
+        pp.slack(args.slack)
+        exit()
 
     if args.source:
         # specify the source
