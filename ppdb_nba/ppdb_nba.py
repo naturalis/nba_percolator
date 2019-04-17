@@ -9,6 +9,7 @@ import os
 import glob
 import shutil
 import sys
+import requests
 import time
 import yaml
 from timeit import default_timer as timer
@@ -321,6 +322,7 @@ class ppdb_NBA():
         self.log_change(
             state='start'
         )
+        self.slack('Percolator started "{job}"'.format(job=jobFile))
 
         # import each file
         for source, filenames in files.items():
@@ -395,6 +397,8 @@ class ppdb_NBA():
         if len(self.deltafiles):
             self.percolatorMeta['outfiles'] = self.deltafiles
         self.job['percolator'] = self.percolatorMeta
+
+        self.slack('Percolator finished "{job}"'.format(job=self.jobId))
 
         try:
             jobFile = open(infuserJobFile, 'w')
@@ -522,6 +526,21 @@ class ppdb_NBA():
                 logger.error('Timeout logging to elastic search: "{error}"'.format(error=err))
             except TransportError as err:
                 logger.error('Failed to log to elastic search: "{error}"'.format(error=err))
+
+    def slack(self, msg):
+        webhook = os.environ('SLACK_WEBHOOK', None)
+        if webhook:
+            slack_data = {'text': msg}
+
+            response = requests.post(
+                webhook_url, data=json.dumps(slack_data),
+                headers={'Content-Type': 'application/json'}
+            )
+            if response.status_code != 200:
+                raise ValueError(
+                    'Request to slack returned an error %s, the response is:\n%s'
+                    % (response.status_code, response.text)
+                )
 
     @db_session
     def export_records(self, fp=None):
