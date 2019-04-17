@@ -152,6 +152,7 @@ class ppdb_NBA():
         except ElasticsearchException:
             msg = 'Cannot connect to elastic search server (needed for logging)'
             logger.fatal(msg)
+            self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             sys.exit(msg)
 
     def connect_to_database(self):
@@ -177,6 +178,7 @@ class ppdb_NBA():
         except Exception:
             msg = 'Cannot connect to postgres database'
             logger.fatal(msg)
+            self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             sys.exit(msg)
 
     def generate_mapping(self, create_tables=False):
@@ -188,6 +190,7 @@ class ppdb_NBA():
         except Exception:
             msg = 'Creating tables needed for preprocessing failed'
             logger.fatal(msg)
+            self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             sys.exit(msg)
 
     def is_incremental(self):
@@ -322,7 +325,7 @@ class ppdb_NBA():
         self.log_change(
             state='start'
         )
-        self.slack('Percolator started "{job}"'.format(job=jobFile))
+        self.slack('*Percolator* started `{job}`'.format(job=jobFile))
 
         # import each file
         for source, filenames in files.items():
@@ -398,7 +401,7 @@ class ppdb_NBA():
             self.percolatorMeta['outfiles'] = self.deltafiles
         self.job['percolator'] = self.percolatorMeta
 
-        self.slack('Percolator finished "{job}" ```{json}```'.format(
+        self.slack('*Percolator* finished `{job}` ```{json}```'.format(
                 job=self.jobId,
                 json=json.dumps(self.percolatorMeta,indent=3)
             )
@@ -409,6 +412,7 @@ class ppdb_NBA():
         except Exception:
             msg = 'Unable to write to "{filepath}"'.format(filepath=infuserJobFile)
             logger.fatal(msg)
+            self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             return
 
         json.dump(self.job, jobFile)
@@ -419,6 +423,7 @@ class ppdb_NBA():
         if not os.path.isdir(deltaPath):
             msg = "Delta directory {deltapath} does not exist".format(deltapath=deltaPath)
             logger.fatal(msg)
+            self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             sys.exit(msg)
         # if not os.access(deltaPath,'w'):
         #    msg = "Delta directory {deltapath} is not writable".format(deltapath=deltaPath)
@@ -450,6 +455,7 @@ class ppdb_NBA():
         except Exception:
             msg = 'Unable to write to "{filepath}"'.format(filepath=filePath)
             logger.fatal(msg)
+            self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             sys.exit(msg)
 
         self.add_deltafile(filePath)
@@ -592,6 +598,7 @@ class ppdb_NBA():
         except Exception:
             msg = '"{filename}" cannot be read'.format(filename=filename)
             logger.fatal(msg)
+            self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             sys.exit(msg)
 
         deltaFile = self.open_deltafile('kill', index)
@@ -669,10 +676,11 @@ class ppdb_NBA():
                 )
             )
         except Exception as err:
-            logger.fatal(
-                'Import of "{datafile}" into "{table}" failed:\n\n{error}'.format(table=table,
+            msg = 'Import of "{datafile}" into "{table}" failed:\n\n{error}'.format(table=table,
                                                                                   datafile=datafile,
-                                                                                  error=str(err)))
+                                                                                  error=str(err))
+            logger.fatal(msg)
+            self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             raise
 
         logger.debug(
