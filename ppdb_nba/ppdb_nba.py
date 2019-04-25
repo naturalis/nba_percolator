@@ -141,7 +141,7 @@ class ppdb_NBA():
         """
         try:
             es = Elasticsearch(
-                hosts=self.config['elastic']['host'],
+                hosts=os.environ.get('LOGGING_HOST'),
                 sniff_on_start=True,
                 sniff_on_connection_fail=True,
                 sniffer_timeout=30,
@@ -169,10 +169,10 @@ class ppdb_NBA():
         try:
             self.db.bind(
                 provider='postgres',
-                user=self.config['postgres']['user'],
-                password=self.config['postgres']['pass'],
-                host=self.config['postgres']['host'],
-                database=self.config['postgres']['db']
+                user=os.environ.get('DATABASE_USER'),
+                password=os.environ.get('DATABASE_PASSWORD'),
+                host=os.environ.get('DATABASE_HOST'),
+                database=os.environ.get('DATABASE_DB')
             )
         except TypeError:
             return

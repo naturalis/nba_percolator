@@ -178,7 +178,7 @@ def main():
                         help='Truncate import and current tables of source before importing')
     parser.add_argument('--config',
                         action='store',
-                        help='Config file',
+                        help='Config file, default uses the config in the local directory',
                         default=False)
     parser.add_argument('--current',
                         action='store',
@@ -213,7 +213,7 @@ def main():
 
     configfile = args.config
     if not configfile:
-        configfile = os.environ.get('PERCOLATOR_CONFIG', 'config.yml')
+        configfile = os.environ.get('PERCOLATOR_CONFIG', './config.yml')
 
     pp = ppdb_NBA(config=configfile)
     pp.generate_mapping(create_tables=args.createtables)
