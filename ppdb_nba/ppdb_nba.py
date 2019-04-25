@@ -81,6 +81,7 @@ class ppdb_NBA():
         self.supplier = ''
         self.filename = ''
         self.deltafiles = []
+        self.noslack = False
         self.elastic_logging = True
 
         self.sourceConfig = {}
