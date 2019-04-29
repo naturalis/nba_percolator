@@ -363,10 +363,12 @@ class ppdb_NBA():
 
                 self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
 
-                #self.log_change(
+                #
+                # self.log_change(
                 #    state='import',
                 #    comment='{filepath}'.format(filepath=filePath)
-                #)
+                # )
+
                 if self.tabulaRasa:
                     self.tabularasa_import(filename, source)
                 else:
