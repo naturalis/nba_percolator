@@ -83,6 +83,7 @@ class ppdb_NBA():
         self.noslack = False
         self.elastic_logging = True
 
+        self.paths = self.config.get('paths')
         self.sourceConfig = {}
 
     def set_nologging(self):
@@ -126,6 +127,12 @@ class ppdb_NBA():
             if self.percolatorMeta[source].get(filename, False):
                 return self.percolatorMeta[source][filename].get(key)
 
+        return False
+
+    def get_path(self, pathkey='', filename=''):
+        path = self.paths.get(pathkey, False)
+        if path:
+            return os.path.join(path, filename)
         return False
 
     def add_deltafile(self, filepath):
@@ -200,8 +207,8 @@ class ppdb_NBA():
         """
         Generates a locking file
         """
-        jobsPath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
-        with open(os.path.join(jobsPath, '.lock'), 'w') as lockFile:
+        lockFilePath = self.get_path('jobs', '.lock')
+        with open(lockFilePath, 'w') as lockFile:
             lockRecord = {
                 'job': jobFile,
                 'pid': os.getpid()
@@ -212,11 +219,12 @@ class ppdb_NBA():
         """
         Removes the locking file
         """
-        jobsPath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
-        locks = glob.glob(os.path.join(jobsPath, '.lock'))
-        lock = locks.pop()
+        lockFilePath = self.get_path('jobs', '.lock')
 
-        os.remove(lock)
+        locks = glob.glob(lockFilePath)
+        lock = locks.pop()
+        if lock:
+            os.remove(lock)
 
     def is_locked(self):
         """
@@ -229,9 +237,9 @@ class ppdb_NBA():
 
         :return:  True = still locked / False = no longer locked
         """
-        jobsPath = self.config.get('paths').get('jobs', os.getcwd() + "/jobs")
+        lockFilePath = self.get_path('jobs', '.lock')
 
-        locks = glob.glob(jobsPath + '/.lock')
+        locks = glob.glob(lockFilePath)
         if len(locks) > 0:
             lockFile = locks.pop()
             with open(file=lockFile, mode='r') as f:
@@ -248,10 +256,9 @@ class ppdb_NBA():
             except Exception:
                 # Exception means the process is no longer running, but the
                 # lockfile is still there
-                # @todo: move fails when the job file is already moved
                 jobFile = lockinfo['job'].split('/')[-1]
-                failedpath = self.config.get('paths').get('failed', os.path.join(os.getcwd(), "failed"))
-                shutil.move(lockinfo['job'], os.path.join(failedpath, jobFile))
+                failedFilePath = self.get_path('failed', jobFile)
+                shutil.move(lockinfo['job'], failedFilePath)
 
                 self.log_change(
                     state='fail'
@@ -325,7 +332,6 @@ class ppdb_NBA():
         with open(jobFile, "r") as fp:
             jsonData = fp.read()
             files = self.parse_job(jsonData)
-            incoming_path = self.config.get('paths').get('incoming', '/tmp')
             if tabulaRasa:
                 self.tabulaRasa = True
 
@@ -333,115 +339,125 @@ class ppdb_NBA():
             return False
 
         self.lock(jobFile)
-        self.log_change(
-            state='start'
-        )
         self.slack('*Percolator* started `{job}`'.format(job=jobFile))
 
         # import each file
         if len(files['imports']):
-            self.process_imports(cache, files['imports'])
+            self.process_importfiles(files['imports'])
 
         if len(files['deletes']):
             self.process_deletefiles(files['deletes'])
-
-        self.log_change(
-            state='finish'
-        )
 
         # everything is finished and okay, remove the lock
         self.finish_job()
 
         return True
 
-    def process_imports(self, files):
-        global cache
-        incoming_path = self.config.get('paths').get('incoming', '/tmp')
-
+    def process_importfiles(self, files):
         for source, filenames in files.items():
             for filename in filenames:
                 self.filename = filename
                 self.set_source(source.lower())
 
-                filePath = os.path.join(incoming_path, filename)
+                filePath = self.get_path('incoming', filename)
 
                 self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
 
-                self.log_change(
-                    state='import',
-                    comment='{filepath}'.format(filepath=filePath)
-                )
-                if not self.tabulaRasa:
-                    # A normal import
-                    try:
-                        self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
-                    except Exception:
-                        # import fails? remove the lock, return false
-                        self.set_metainfo(key='status', value='failed', source=source.lower(), filename=filename)
-                        logger.error(
-                            "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower())
-                        )
-                        # return False
-
-                    # import successful, move the data file
-                    processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                    self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
-                    shutil.move(filePath, processed_path)
-
-                    self.remove_doubles()
-                    self.handle_changes()
+                #self.log_change(
+                #    state='import',
+                #    comment='{filepath}'.format(filepath=filePath)
+                #)
+                if self.tabulaRasa:
+                    self.tabularasa_import(filename, source)
                 else:
-                    # clear the table first
-                    self.clear_data(self.sourceConfig.get('table') + '_current')
-                    self.import_data(self.sourceConfig.get('table') + '_current', datafile=filePath)
-                    self.remove_doubles(suffix='current')
-                    self.set_indexes(self.sourceConfig.get('table') + '_current')
+                    self.normal_import(filename, source)
 
-                    # copy the data straight to the import
-                    output_path = os.path.join(self.config.get('paths').get('delta', '/tmp'), filename)
-                    self.add_deltafile(output_path)
+    def normal_import(self, filename, source):
+        """
+        Do a default import of a jsonlines file to a defined source
 
-                    enrichSources = self.sourceConfig.get('src-enrich', None)
-                    if enrichSources:
-                        cache.clear()
-                        with open(file=output_path, mode='w') as outputFile:
-                            self.export_records(fp=outputFile)
-                            logger.debug('Creating an enriched export file: "{file}"'.format(file=output_path))
-                    else:
-                        shutil.copy(filePath, output_path)
-                        logger.debug('Copy the import file: "{file}"'.format(file=output_path))
+        :param filename:
+        :param source:
+        """
+        filePath = self.get_path('incoming', filename)
 
-                    # move the import data
-                    processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                    self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
-                    shutil.move(filePath, processed_path)
+        try:
+            self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
+        except Exception:
+            # import fails? remove the lock, return false
+            self.set_metainfo(key='status', value='failed', source=source.lower(), filename=filename)
+            logger.error(
+                "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower())
+            )
+            # return False
+        # import successful, move the data file
+        processed_path = self.get_path('processed', filename)
+        self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
+
+        shutil.move(filePath, processed_path)
+        self.remove_doubles()
+        self.handle_changes()
+
+    def tabularasa_import(self, filename, source):
+        """
+        Do a tabula rasa import of a jsonlines file to a defined source
+
+        :param filename:
+        :param source:
+        """
+        global cache
+
+        filePath = self.get_path('incoming', filename)
+
+        self.clear_data(self.sourceConfig.get('table') + '_current')
+        self.import_data(self.sourceConfig.get('table') + '_current', datafile=filePath)
+        self.remove_doubles(suffix='current')
+        self.set_indexes(self.sourceConfig.get('table') + '_current')
+
+        # copy the data straight to the import
+        outputPath = self.get_path('delta', filename)
+
+        self.add_deltafile(outputPath)
+        enrichSources = self.sourceConfig.get('src-enrich', None)
+        if enrichSources:
+            cache.clear()
+            with open(file=outputPath, mode='w') as outputFile:
+                self.export_records(fp=outputFile)
+                logger.debug('Creating an enriched export file: "{file}"'.format(file=outputPath))
+        else:
+            shutil.copy(filePath, outputPath)
+            logger.debug('Copy the import file: "{file}"'.format(file=outputPath))
+
+        # move the import data
+        processedPath = self.get_path('processed', filename)
+        self.set_metainfo(key='out', value=processedPath, source=source.lower(), filename=filename)
+        shutil.move(filePath, processedPath)
 
     def process_deletefiles(self, files):
-        incoming_path = self.config.get('paths').get('incoming', '/tmp')
         for source, filenames in files.items():
             for filename in filenames:
                 self.set_source(source.lower())
 
-                filePath = os.path.join(incoming_path, filename)
+                filePath = self.get_path('incoming', filename)
 
                 self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
                 self.import_deleted(filePath)
-                processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
+
+                processed_path = self.get_path('processed', filename)
                 shutil.move(filePath, processed_path)
 
     def finish_job(self):
         self.unlock()
-        jobPath = self.config.get('paths').get('done', '/tmp')
-        infuserJobFile = os.path.join(jobPath, self.jobId + '.json')
+        infuserJobFile = self.get_path('done', self.jobId + '.json')
 
         if len(self.deltafiles):
             self.percolatorMeta['outfiles'] = self.deltafiles
         self.job['percolator'] = self.percolatorMeta
 
         self.slack('*Percolator* finished `{job}` ```{json}```'.format(
-            job=self.jobId,
-            json=json.dumps(self.percolatorMeta, indent=3)
-        )
+                job=self.jobId,
+                json=json.dumps(self.percolatorMeta, indent=3)
+            )
         )
 
         try:
@@ -456,7 +472,7 @@ class ppdb_NBA():
         jobFile.close()
 
     def delta_writable_test(self):
-        deltaPath = self.config.get('paths').get('delta', '/tmp')
+        deltaPath = self.paths.get('delta', '/tmp')
         if not os.path.isdir(deltaPath):
             msg = "Delta directory {deltapath} does not exist".format(deltapath=deltaPath)
             logger.fatal(msg)
@@ -472,7 +488,6 @@ class ppdb_NBA():
         """
         Open the delta file for updated, new or deleted records
         """
-        deltaPath = self.config.get('paths').get('delta', '/tmp')
         if not self.jobId:
             filename = "{ts}-{index}-{action}.json".format(
                 index=index,
@@ -485,7 +500,7 @@ class ppdb_NBA():
                 index=index,
                 action=action
             )
-        filePath = os.path.join(deltaPath, filename)
+        filePath = self.get_path('delta', filename)
 
         try:
             deltaFile = open(filePath, 'a')
@@ -509,9 +524,8 @@ class ppdb_NBA():
         :param datafile:
         :return:
         """
-        destinationPath = self.config.get('paths').get('delta', '/tmp')
         lockfile = os.path.basename(datafile) + '.lock'
-        filePath = os.path.join(destinationPath, lockfile)
+        filePath = self.get_path('delta', lockfile)
 
         if os.path.isfile(filePath):
             # Lock file already exists
@@ -529,9 +543,8 @@ class ppdb_NBA():
         :param datafile:
         :return:
         """
-        destinationPath = self.config.get('paths').get('delta', '/tmp')
         lockfile = os.path.basename(datafile) + '.lock'
-        filePath = os.path.join(destinationPath, lockfile)
+        filePath = self.get_path('delta', lockfile)
 
         if os.path.isfile(filePath):
             # Lock file already exists
@@ -575,6 +588,11 @@ class ppdb_NBA():
                 logger.error('Failed to log to elastic search: "{error}"'.format(error=err))
 
     def slack(self, msg):
+        """
+        Send message to slack
+
+        :param msg:
+        """
         webhook_url = os.environ.get('SLACK_WEBHOOK', None)
         if webhook_url:
             slack_data = {'text': msg}
@@ -1025,6 +1043,7 @@ class ppdb_NBA():
         """
         Handles new records
         """
+
         table = self.sourceConfig.get('table')
         idField = self.sourceConfig.get('id')
         index = self.sourceConfig.get('index', 'noindex')
@@ -1292,6 +1311,7 @@ class ppdb_NBA():
         # Retrieve the taxon from cache
         taxonKey = '_'.join([code, scientificNameGroup])
         taxons = cache.get(taxonKey)
+
         if taxons is not None:
             logger.debug('get_taxon: {taxonkey} got json from cache'.format(
                 taxonkey=taxonKey
