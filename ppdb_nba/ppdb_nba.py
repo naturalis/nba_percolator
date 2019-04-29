@@ -339,76 +339,11 @@ class ppdb_NBA():
         self.slack('*Percolator* started `{job}`'.format(job=jobFile))
 
         # import each file
-        # @todo: refactor this, it is way too big!
         if len(files['imports']):
-            for source, filenames in files['imports'].items():
-                for filename in filenames:
-                    self.filename = filename
-                    self.set_source(source.lower())
-
-                    filePath = os.path.join(incoming_path, filename)
-
-                    self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
-
-                    self.log_change(
-                        state='import',
-                        comment='{filepath}'.format(filepath=filePath)
-                    )
-                    if not self.tabulaRasa:
-                        # A normal import
-                        try:
-                            self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
-                        except Exception:
-                            # import fails? remove the lock, return false
-                            self.set_metainfo(key='status', value='failed', source=source.lower(), filename=filename)
-                            logger.error(
-                                "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
-                            return False
-
-                        # import successful, move the data file
-                        processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                        self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
-                        shutil.move(filePath, processed_path)
-
-                        self.remove_doubles()
-                        self.handle_changes()
-                    else:
-                        # clear the table first
-                        self.clear_data(self.sourceConfig.get('table') + '_current')
-                        self.import_data(self.sourceConfig.get('table') + '_current', datafile=filePath)
-                        self.remove_doubles(suffix='current')
-                        self.set_indexes(self.sourceConfig.get('table') + '_current')
-
-                        # copy the data straight to the import
-                        output_path = os.path.join(self.config.get('paths').get('delta', '/tmp'), filename)
-                        self.add_deltafile(output_path)
-
-                        enrichSources = self.sourceConfig.get('src-enrich', None)
-                        if enrichSources:
-                            cache.clear()
-                            with open(file=output_path, mode='w') as outputFile:
-                                self.export_records(fp=outputFile)
-                                logger.debug('Creating an enriched export file: "{file}"'.format(file=output_path))
-                        else:
-                            shutil.copy(filePath, output_path)
-                            logger.debug('Copy the import file: "{file}"'.format(file=output_path))
-
-                        # move the import data
-                        processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                        self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
-                        shutil.move(filePath, processed_path)
+            self.process_imports(cache, files['imports'])
 
         if len(files['deletes']):
-            for source, filenames in files['deletes'].items():
-                for filename in filenames:
-                    self.set_source(source.lower())
-
-                    filePath = os.path.join(incoming_path, filename)
-
-                    self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
-                    self.import_deleted(filePath)
-                    processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                    shutil.move(filePath, processed_path)
+            self.process_deletefiles(files['deletes'])
 
         self.log_change(
             state='finish'
@@ -418,6 +353,81 @@ class ppdb_NBA():
         self.finish_job()
 
         return True
+
+    def process_imports(self, files):
+        global cache
+        incoming_path = self.config.get('paths').get('incoming', '/tmp')
+
+        for source, filenames in files.items():
+            for filename in filenames:
+                self.filename = filename
+                self.set_source(source.lower())
+
+                filePath = os.path.join(incoming_path, filename)
+
+                self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
+
+                self.log_change(
+                    state='import',
+                    comment='{filepath}'.format(filepath=filePath)
+                )
+                if not self.tabulaRasa:
+                    # A normal import
+                    try:
+                        self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
+                    except Exception:
+                        # import fails? remove the lock, return false
+                        self.set_metainfo(key='status', value='failed', source=source.lower(), filename=filename)
+                        logger.error(
+                            "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower())
+                        )
+                        # return False
+
+                    # import successful, move the data file
+                    processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
+                    self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
+                    shutil.move(filePath, processed_path)
+
+                    self.remove_doubles()
+                    self.handle_changes()
+                else:
+                    # clear the table first
+                    self.clear_data(self.sourceConfig.get('table') + '_current')
+                    self.import_data(self.sourceConfig.get('table') + '_current', datafile=filePath)
+                    self.remove_doubles(suffix='current')
+                    self.set_indexes(self.sourceConfig.get('table') + '_current')
+
+                    # copy the data straight to the import
+                    output_path = os.path.join(self.config.get('paths').get('delta', '/tmp'), filename)
+                    self.add_deltafile(output_path)
+
+                    enrichSources = self.sourceConfig.get('src-enrich', None)
+                    if enrichSources:
+                        cache.clear()
+                        with open(file=output_path, mode='w') as outputFile:
+                            self.export_records(fp=outputFile)
+                            logger.debug('Creating an enriched export file: "{file}"'.format(file=output_path))
+                    else:
+                        shutil.copy(filePath, output_path)
+                        logger.debug('Copy the import file: "{file}"'.format(file=output_path))
+
+                    # move the import data
+                    processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
+                    self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
+                    shutil.move(filePath, processed_path)
+
+    def process_deletefiles(self, files):
+        incoming_path = self.config.get('paths').get('incoming', '/tmp')
+        for source, filenames in files.items():
+            for filename in filenames:
+                self.set_source(source.lower())
+
+                filePath = os.path.join(incoming_path, filename)
+
+                self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
+                self.import_deleted(filePath)
+                processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
+                shutil.move(filePath, processed_path)
 
     def finish_job(self):
         self.unlock()
