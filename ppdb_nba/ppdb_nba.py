@@ -19,7 +19,6 @@ from dateutil import parser
 from diskcache import Cache
 from .schema import *
 
-
 logger = logging.getLogger('ppdb_nba')
 
 # Caching on disk (diskcache) using sqlite, it should be fast
@@ -273,7 +272,10 @@ class ppdb_NBA():
 
         :rtype: object
         """
-        files = {}
+        files = {
+            'imports': {},
+            'deletes': {}
+        }
         self.job = json.loads(jsonData)
 
         # Get the id of the job
@@ -296,9 +298,17 @@ class ppdb_NBA():
                 export = self.job.get('validator').get(key)
                 for validfile in export.get('results').get('outfiles').get('valid'):
                     source = self.supplier + '-' + key
-                    if source not in files:
-                        files[source] = []
-                    files[source].append(validfile.split('/')[-1])
+                    if source not in files['imports']:
+                        files['imports'][source] = []
+                    files['imports'][source].append(validfile.split('/')[-1])
+
+        if self.job.get('delete'):
+            for key in self.job.get('delete').keys():
+                for deletefile in self.job.get('delete').get(key):
+                    source = self.supplier + '-' + key
+                    if source not in files['deletes']:
+                        files['deletes'][source] = []
+                    files['deletes'][source].append(deletefile.split('/')[-1])
 
         return files
 
@@ -329,59 +339,75 @@ class ppdb_NBA():
         self.slack('*Percolator* started `{job}`'.format(job=jobFile))
 
         # import each file
-        for source, filenames in files.items():
-            for filename in filenames:
-                self.filename = filename
-                self.set_source(source.lower())
+        # @todo: refactor this, it is way too big!
+        if len(files['imports']):
+            for source, filenames in files['imports'].items():
+                for filename in filenames:
+                    self.filename = filename
+                    self.set_source(source.lower())
 
-                filePath = os.path.join(incoming_path, filename)
+                    filePath = os.path.join(incoming_path, filename)
 
-                self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
+                    self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
 
-                self.log_change(
-                    state='import',
-                    comment='{filepath}'.format(filepath=filePath)
-                )
-                if not self.tabulaRasa:
-                    try:
-                        self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
-                    except Exception:
-                        # import fails? remove the lock, return false
-                        self.set_metainfo(key='status', value='failed', source=source.lower(), filename=filename)
-                        logger.error(
-                            "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
-                        return False
+                    self.log_change(
+                        state='import',
+                        comment='{filepath}'.format(filepath=filePath)
+                    )
+                    if not self.tabulaRasa:
+                        # A normal import
+                        try:
+                            self.import_data(table=self.sourceConfig.get('table') + '_import', datafile=filePath)
+                        except Exception:
+                            # import fails? remove the lock, return false
+                            self.set_metainfo(key='status', value='failed', source=source.lower(), filename=filename)
+                            logger.error(
+                                "Import of '{file}' into '{source}' failed".format(file=filePath, source=source.lower()))
+                            return False
 
-                    # import successful, move the data file
-                    processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                    self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
-                    shutil.move(filePath, processed_path)
+                        # import successful, move the data file
+                        processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
+                        self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
+                        shutil.move(filePath, processed_path)
 
-                    self.remove_doubles()
-                    self.handle_changes()
-                else:
-                    self.clear_data(self.sourceConfig.get('table') + '_current')
-                    self.import_data(self.sourceConfig.get('table') + '_current', datafile=filePath)
-                    self.remove_doubles(suffix='current')
-                    self.set_indexes(self.sourceConfig.get('table') + '_current')
-
-                    # copy the data straight to the import
-                    output_path = os.path.join(self.config.get('paths').get('delta', '/tmp'), filename)
-                    self.add_deltafile(output_path)
-
-                    enrichSources = self.sourceConfig.get('src-enrich', None)
-                    if enrichSources:
-                        cache.clear()
-                        with open(file=output_path, mode='w') as outputFile:
-                            self.export_records(fp=outputFile)
-                            logger.debug('Creating an enriched export file: "{file}"'.format(file=output_path))
+                        self.remove_doubles()
+                        self.handle_changes()
                     else:
-                        shutil.copy(filePath, output_path)
-                        logger.debug('Copy the import file: "{file}"'.format(file=output_path))
+                        # clear the table first
+                        self.clear_data(self.sourceConfig.get('table') + '_current')
+                        self.import_data(self.sourceConfig.get('table') + '_current', datafile=filePath)
+                        self.remove_doubles(suffix='current')
+                        self.set_indexes(self.sourceConfig.get('table') + '_current')
 
-                    # move the import data
+                        # copy the data straight to the import
+                        output_path = os.path.join(self.config.get('paths').get('delta', '/tmp'), filename)
+                        self.add_deltafile(output_path)
+
+                        enrichSources = self.sourceConfig.get('src-enrich', None)
+                        if enrichSources:
+                            cache.clear()
+                            with open(file=output_path, mode='w') as outputFile:
+                                self.export_records(fp=outputFile)
+                                logger.debug('Creating an enriched export file: "{file}"'.format(file=output_path))
+                        else:
+                            shutil.copy(filePath, output_path)
+                            logger.debug('Copy the import file: "{file}"'.format(file=output_path))
+
+                        # move the import data
+                        processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
+                        self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
+                        shutil.move(filePath, processed_path)
+
+        if len(files['deletes']):
+            for source, filenames in files['deletes'].items():
+                for filename in filenames:
+                    self.set_source(source.lower())
+
+                    filePath = os.path.join(incoming_path, filename)
+
+                    self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
+                    self.import_deleted(filename)
                     processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
-                    self.set_metainfo(key='out', value=processed_path, source=source.lower(), filename=filename)
                     shutil.move(filePath, processed_path)
 
         self.log_change(
@@ -403,9 +429,9 @@ class ppdb_NBA():
         self.job['percolator'] = self.percolatorMeta
 
         self.slack('*Percolator* finished `{job}` ```{json}```'.format(
-                job=self.jobId,
-                json=json.dumps(self.percolatorMeta,indent=3)
-            )
+            job=self.jobId,
+            json=json.dumps(self.percolatorMeta, indent=3)
+        )
         )
 
         try:
@@ -635,7 +661,12 @@ class ppdb_NBA():
 
         if deltaFile:
             deltaFile.close()
-
+            meta = {
+                'count': len(deleteIds),
+                'file': deltaFile.name,
+                'elapsed': timer() - start
+            }
+            self.set_metainfo(key='delete', value=meta)
 
     @db_session
     def import_data(self, table='', datafile=''):
@@ -678,8 +709,8 @@ class ppdb_NBA():
             )
         except Exception as err:
             msg = 'Import of "{datafile}" into "{table}" failed:\n\n{error}'.format(table=table,
-                                                                                  datafile=datafile,
-                                                                                  error=str(err))
+                                                                                    datafile=datafile,
+                                                                                    error=str(err))
             logger.fatal(msg)
             self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             raise
@@ -802,9 +833,9 @@ class ppdb_NBA():
         doubleQuery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
                       "FROM {source}_{suffix} " \
                       "GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
-                        suffix=suffix,
-                        source=self.sourceConfig.get('table'),
-                        idfield=self.sourceConfig.get('id'))
+            suffix=suffix,
+            source=self.sourceConfig.get('table'),
+            idfield=self.sourceConfig.get('id'))
         doubles = self.db.select(doubleQuery)
         logger.debug('[{elapsed:.2f} seconds] Find doubles'.format(elapsed=(timer() - lap)))
 
@@ -1003,8 +1034,8 @@ class ppdb_NBA():
 
             insertQuery = "INSERT INTO {table}_current (rec, hash, datum) " \
                           "SELECT rec, hash, datum FROM {table}_import where id={id}".format(
-                            table=self.sourceConfig.get('table'),
-                            id=importId)
+                table=self.sourceConfig.get('table'),
+                id=importId)
 
             if (deltaFile):
                 json.dump(jsonRec, deltaFile)
@@ -1038,7 +1069,7 @@ class ppdb_NBA():
             meta = {
                 'count': len(self.changes['new']),
                 'file': deltaFile.name,
-                'elapsed': timer()-start
+                'elapsed': timer() - start
             }
             self.set_metainfo(key='new', value=meta)
 
@@ -1082,9 +1113,9 @@ class ppdb_NBA():
                           "(SELECT rec, hash, datum FROM {table}_import " \
                           "WHERE {table}_import.id={importid}) " \
                           "WHERE {table}_current.id={currentid}".format(
-                            table=tableBase,
-                            currentid=recordIds[1],
-                            importid=importRec.id)
+                table=tableBase,
+                currentid=recordIds[1],
+                importid=importRec.id)
             if deltaFile:
                 json.dump(jsonRec, deltaFile)
                 deltaFile.write('\n')
@@ -1123,7 +1154,7 @@ class ppdb_NBA():
             meta = {
                 'count': len(self.changes['update']),
                 'file': deltaFile.name,
-                'elapsed': timer()-start
+                'elapsed': timer() - start
             }
             self.set_metainfo(key='update', value=meta)
 
@@ -1187,13 +1218,12 @@ class ppdb_NBA():
 
                 logger.info("Record [{deleteid}] deleted".format(deleteid=deleteId))
 
-        if (deltaFile):
+        if deltaFile:
             deltaFile.close()
-
             meta = {
                 'count': len(self.changes['delete']),
                 'file': deltaFile.name,
-                'elapsed': timer()-start
+                'elapsed': timer() - start
             }
             self.set_metainfo(key='delete', value=meta)
 
@@ -1395,7 +1425,7 @@ class ppdb_NBA():
             logger.debug(
                 '[{elapsed:.2f} seconds] Created enrichment for "{scinamegroup}" in "{source}"'.format(
                     source=source,
-                    elapsed=(timer()-lap),
+                    elapsed=(timer() - lap),
                     scinamegroup=scientificNameGroup
                 )
             )
@@ -1533,12 +1563,12 @@ class ppdb_NBA():
                     meta = self.get_metainfo(key='enrich:' + index)
                     if isinstance(meta, dict):
                         meta['count'] += len(impactedRecords)
-                        meta['elapsed'] += timer()-start
+                        meta['elapsed'] += timer() - start
                     else:
                         meta = {
                             'count': len(impactedRecords),
                             'file': deltaFile.name,
-                            'elapsed': timer()-start
+                            'elapsed': timer() - start
                         }
 
                     self.set_metainfo(key='enrich:' + index, value=meta)
