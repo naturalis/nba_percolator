@@ -406,7 +406,7 @@ class ppdb_NBA():
                     filePath = os.path.join(incoming_path, filename)
 
                     self.set_metainfo(key='in', value=filePath, source=source.lower(), filename=filename)
-                    self.import_deleted(filename)
+                    self.import_deleted(filePath)
                     processed_path = os.path.join(self.config.get('paths').get('processed', '/tmp'), filename)
                     shutil.move(filePath, processed_path)
 
