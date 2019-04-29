@@ -616,7 +616,7 @@ class ppdb_NBA():
         table = self.sourceConfig.get('table')
         index = self.sourceConfig.get('index', 'noindex')
         enriches = self.sourceConfig.get('dst-enrich', None)
-        lap = timer()
+        start = lap = timer()
         deleteIds = []
 
         try:
