@@ -670,6 +670,8 @@ class ppdb_NBA():
                 statusRecord = Deleted_records(recid=deleteId, status='REMOVED', count=0)
             statusRecord.count += 1
 
+            code = self.sourceConfig.get('code')
+
             self.log_change(
                 state='kill',
                 recid=deleteId,
