@@ -670,16 +670,16 @@ class ppdb_NBA():
                 statusRecord = Deleted_records(recid=deleteId, status='REMOVED', count=0)
             statusRecord.count += 1
 
+            self.log_change(
+                state='kill',
+                recid=deleteId,
+                type=index,
+                source=code
+            )
+
             oldRecord = self.get_record(deleteId)
             if oldRecord:
                 oldRecord.delete()
-
-                self.log_change(
-                    state='kill',
-                    recid=deleteId,
-                    type=index,
-                    source=code
-                )
 
                 if enriches:
                     for source in enriches:
