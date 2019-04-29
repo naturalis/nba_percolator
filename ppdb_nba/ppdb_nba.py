@@ -65,8 +65,6 @@ class ppdb_NBA():
         self.es = self.connect_to_elastic()
         self.connect_to_database()
 
-        self.delta_writable_test()
-
         self.jobDate = datetime.now()
 
         self.job = False
@@ -85,6 +83,8 @@ class ppdb_NBA():
 
         self.paths = self.config.get('paths')
         self.sourceConfig = {}
+
+        self.delta_writable_test()
 
     def set_nologging(self):
         self.elastic_logging = False
