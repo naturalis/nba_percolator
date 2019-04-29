@@ -354,6 +354,11 @@ class ppdb_NBA():
         return True
 
     def process_importfiles(self, files):
+        """
+        Takes each import file and does an import
+
+        :param files:
+        """
         for source, filenames in files.items():
             for filename in filenames:
                 self.filename = filename
@@ -402,7 +407,7 @@ class ppdb_NBA():
 
     def tabularasa_import(self, filename, source):
         """
-        Do a tabula rasa import of a jsonlines file to a defined source
+        Do a tabula rasa import (clear the database first, and import straight to current) of a jsonlines file to a defined source
 
         :param filename:
         :param source:
@@ -436,6 +441,11 @@ class ppdb_NBA():
         shutil.move(filePath, processedPath)
 
     def process_deletefiles(self, files):
+        """
+        Process the file with deleted records
+
+        :param files:
+        """
         for source, filenames in files.items():
             for filename in filenames:
                 self.set_source(source.lower())
@@ -449,6 +459,11 @@ class ppdb_NBA():
                 shutil.move(filePath, processed_path)
 
     def finish_job(self):
+        """
+        Finish the current job
+
+        :return:
+        """
         self.unlock()
         infuserJobFile = self.get_path('done', self.jobId + '.json')
 
@@ -474,6 +489,11 @@ class ppdb_NBA():
         jobFile.close()
 
     def delta_writable_test(self):
+        """
+        Test if the directory exists where the deltafiles should go to
+
+        :return:
+        """
         deltaPath = self.paths.get('delta', '/tmp')
         if not os.path.isdir(deltaPath):
             msg = "Delta directory {deltapath} does not exist".format(deltapath=deltaPath)
@@ -611,6 +631,11 @@ class ppdb_NBA():
 
     @db_session
     def export_records(self, fp=None):
+        """
+        Exports all the records from a source table (enriched)
+
+        :param fp:
+        """
         base = self.sourceConfig.get('table')
         srcEnrich = self.sourceConfig.get('src-enrich', None)
 
@@ -773,6 +798,11 @@ class ppdb_NBA():
 
     @db_session
     def set_indexes(self, table=''):
+        """
+        Sets the indexes of a table
+
+        :param table:
+        """
         lap = timer()
         enrichmentSource = self.sourceConfig.get('src-enrich', False)
         enrichmentDestination = self.sourceConfig.get('dst-enrich', False)

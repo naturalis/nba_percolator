@@ -5,7 +5,7 @@ niet. Standaard wordt het percolator project nu gestart in de _jupyter_ omgeving
 staat op machine `145.136.242.91` in de `/opt/ppdb` directory. Om in die omgeving te komen
 volstaat het commando:
 
-`cd /opt/ppdb;docker-compose exec jupyter bash`
+`cd /opt/ppdb;docker-compose run percolator ppdb_nba --debug`
 
 Voor de test zijn de volgende files en directories in die docker omgeving van belang.
 
@@ -39,18 +39,6 @@ Voor de test zijn de volgende files en directories in die docker omgeving van be
 
  Hierin komen de files met delta gegevens die door de _infuser_ moeten worden ingelezen.
 
-## Meest recente versie van percolator installeren
-
-Een terugkerend probleem is dat de jupyter docker instance een versie van het percolator
-script bevat die verouderd is. Dat komt omdat het script nog in volle ontwikkeling is.
-Het is geen overbodige luxe om aan het begin van iedere test en bij iedere wijziging
-aan het script via pip de meest recente versie te installeren.
-
-```
-cd /opt/ppdb
-docker-compose exec jupyter bash
-pip install -e git+https://github.com/naturalis/ppdb_nba.git#egg=ppdb_nba
-```
 
 ## Legen van een database tabel bijvoorbeeld *brahmsspecimen_current*
 
@@ -92,7 +80,7 @@ veel extra tijd.
 
 ## Importeren met job
 
-Dit is zoals de percolator normaal gesproken gaat werken. De jobs directory wordt
+Dit is zoals de percolator normaal gesproken werkt. De jobs directory wordt
 gescand en het meest oude job bestand met de extensie '.json' wordt als eerste
 opgepakt. De procedure:
 
@@ -131,7 +119,7 @@ cd /opt/ppdb
 docker-compose exec postgres psql -U postgres test20190314
 ```
 
-Daarna de 'ps' query om meer duidelijkheid te krijgen.
+Daarna de `ps` query om meer duidelijkheid te krijgen.
 
 ```
 SELECT
@@ -165,8 +153,8 @@ Daarna moet Tom gevraagd worden om zijn import stap uit te voeren.
 
 ## Test backup
 
-Verstandig is voorafgaande aan een test even de test files te backuppen. Wat loont is in `/shared/percolator/` de
-`jobs` en `incoming` folders te backuppen met.
+Verstandig is voorafgaande aan een test even de test files te backuppen. Wat loont is in 
+`/data/shared-shared/percolator/` de `jobs` en `incoming` folders te backuppen met.
 
 ```
 cd /shared-data/percolator/
@@ -194,51 +182,9 @@ docker-compose run percolator ppdb_nba --debug
 ```
 
 
-
-## Test 3
-
-1. Inloggen in percolator postgres database.
-
-```
-TRUNCATE TABLE public.brahmsspecimen_current;
-TRUNCATE TABLE public.brahmsmedia_current;
-```
-
-2. Inlezen van taxonomische data in current tabellen in jupyter docker:
-
-
-```
-cp /shared-data/percolator/test/3/current/test-* /shared-data/percolator/incoming/
-cd /opt/ppdb
-docker-compose run percolator ppdb_nba --debug --source col-taxon --current /shared-data/percolator/incoming/test-col-taxon-20190401-075433--000.json 
-docker-compose run percolator ppdb_nba --debug --source nsr-taxon --current /shared-data/percolator/incoming/test-nsr-taxon-20190401-075434--000.json 
-```
-
-3. Inlezen van de brahms specimen en multimedia plus verrijkking
-
-```
-cp /shared-data/percolator/test/3/current/brahms*.json /shared-data/percolator/jobs/
-cd /opt/ppdb
-docker-compose run percolator ppdb_nba --debug
-```
-
-Na deze stap zou de data van brahms in /shared-data/infuser/incoming moeten staan. Deze 
-files, plus de taxonomische data van stap 2 moeten door Tom worden ingelezen.
-
-4. Starten van het inlezen van de taxonomische data voor incrementele verrijking
-
-```
-cp /shared-data/percolator/test/3/jobs/* /shared-data/percolator/jobs/
-cp /shared-data/percolator/test/3/incoming/* /shared-data/percolator/incoming/
-cd /opt/ppdb
-docker-compose run percolator ppdb_nba --debug
-docker-compose run percolator ppdb_nba --debug
-```
-
 Let op! ppdb_nba net zo vaak draaien tot de boodschap 'No jobs - nothing to do'.
 
-Hierna staat in `/shared-data/infuser/incoming` de taxon en  verrijkte incrementele 
-data. Die moeten op de host machine in `/data/incremental` worden gekopieerd.
+Hierna staat in `/data/shared-data/infuser/incoming` de taxon en  verrijkte incrementele data.
 
 
 
