@@ -145,6 +145,8 @@ class ppdb_NBA():
         """
         Connect to elastic search for logging
         """
+        host = os.environ.get('LOGGING_HOST')
+        logger.debug('Connecting to elastic: {host}'.format(host=host))
         try:
             es = Elasticsearch(
                 hosts=os.environ.get('LOGGING_HOST'),
@@ -161,6 +163,7 @@ class ppdb_NBA():
             logger.fatal(msg)
             self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             sys.exit(msg)
+        logger.debug('Connected to elastic: {host}'.format(host=host))
 
     def connect_to_database(self):
         """
