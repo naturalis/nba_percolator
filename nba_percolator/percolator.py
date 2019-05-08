@@ -157,13 +157,13 @@ class Percolator:
                 timeout=30,
                 max_retries=10
             )
+            logger.debug('Connected to elastic: {host}'.format(host=host))
             return es
         except ElasticsearchException:
             msg = 'Cannot connect to elastic search server (needed for logging)'
             logger.fatal(msg)
             self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             sys.exit(msg)
-        logger.debug('Connected to elastic: {host}'.format(host=host))
 
     def connect_to_database(self):
         """
@@ -489,9 +489,9 @@ class Percolator:
         self.job['percolator'] = self.percolatorMeta
 
         self.slack('*Percolator* finished `{job}` ```{json}```'.format(
-                job=self.jobId,
-                json=json.dumps(self.percolatorMeta, indent=3)
-            )
+            job=self.jobId,
+            json=json.dumps(self.percolatorMeta, indent=3)
+        )
         )
 
         try:
@@ -1043,9 +1043,18 @@ class Percolator:
             currenttable = globals()[source_base.capitalize() + '_current']
 
             # new or update
+            count = 0
             for result in neworupdates:
                 if result[1]:
-                    # @todo add debug of the process
+                    count += 1
+                    if count % 1000 == 0:
+                        logger.debug('{count} new records: '
+                                     '{new} new, {update} updates, {delete} deletes'.format(
+                            count=count,
+                            update=len(self.changes['update']),
+                            delete=len(self.changes['delete']),
+                            new=len(self.changes['new'])
+                        ))
                     r = importtable.get(hash=result[1])
                     if r.rec:
                         uuid = r.rec[idField]
@@ -1064,11 +1073,20 @@ class Percolator:
 
             if not self.is_incremental():
                 # incremental sources only have explicit deletes
+                count = 0
                 for result in updateOrDeletes:
+                    count += 1
+                    if count % 1000 == 0:
+                        logger.debug('{count} updated or deleted records handled: '
+                                     '{new} new, {update} updates, {delete} deletes'.format(
+                            count=count,
+                            update=len(self.changes['update']),
+                            delete=len(self.changes['delete']),
+                            new=len(self.changes['new'])
+                        ))
                     if result[1]:
-                        # @todo add debug of the process
                         r = currenttable.get(hash=result[1])
-                        if (r.rec):
+                        if r.rec:
                             uuid = r.rec[idField]
                             if self.changes['new'].get(uuid, False):
                                 self.changes['update'][uuid] = self.changes['new'].get(uuid)
