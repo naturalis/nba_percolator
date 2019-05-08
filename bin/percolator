@@ -14,10 +14,10 @@ logger = None
 
 
 def setup_logging():
-    loginstance = logging.getLogger('percolator')
+    loginstance = logging.getLogger('nba_percolator')
     formatter = logging.Formatter(u'%(asctime)s - %(levelname)s - %(message)s')
 
-    fh = logging.FileHandler(filename='percolator.log')
+    fh = logging.FileHandler(filename='nba_percolator.log')
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
 
@@ -194,7 +194,7 @@ def main():
                         action='store_true',
                         help='Generate database tables needed for importing')
     parser.add_argument('--noslack',
-                        action='store',
+                        action='store_true',
                         help='Be silent, no need to inform slack')
     parser.add_argument('--nologging',
                         action='store_true',
