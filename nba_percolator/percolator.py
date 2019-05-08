@@ -1,7 +1,7 @@
-"""NBA preprocessing database module - the percolator
+"""NBA percolator - the NBA pre processing database
 
 This module contains all the database dependencies and functions used
-for importing new and updated data into the NBA documentstore.
+for importing new and updated data into the NBA document store.
 """
 import json
 import logging
@@ -19,15 +19,15 @@ from dateutil import parser
 from diskcache import Cache
 from .schema import *
 
-logger = logging.getLogger('ppdb_nba')
+logger = logging.getLogger('nba_percolator')
 
 # Caching on disk (diskcache) using sqlite, it should be fast
-cache = Cache('/tmp/import_cache')
+cache = Cache('/tmp/percolator_cache')
 cache.clear()
 
 
 # noinspection SqlNoDataSourceInspection,SqlResolve,PyTypeChecker,PyUnresolvedReferences,SpellCheckingInspection
-class ppdb_NBA():
+class Percolator:
     """
     Preprocessor class containing all functions needed for
     importing the data and create incremental insert, update
@@ -171,9 +171,9 @@ class ppdb_NBA():
         """
         logger.debug('Connecting to database')
 
-        global ppdb
+        global db
 
-        self.db = ppdb
+        self.db = db
 
         user = os.environ.get('DATABASE_USER')
         password = os.environ.get('DATABASE_PASSWORD')
@@ -591,7 +591,7 @@ class ppdb_NBA():
 
         return True
 
-    def log_change(self, state='unknown', recid='ppdb_nba', source='', type='', comment=''):
+    def log_change(self, state='unknown', recid='percolator', source='', type='', comment=''):
         """
         Logging of the state change of a record to the elastic logging
         database

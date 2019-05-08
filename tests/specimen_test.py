@@ -1,5 +1,5 @@
 import unittest
-from ppdb_nba import ppdb_NBA
+from nba_percolator import Percolator
 import logging
 
 
@@ -43,7 +43,7 @@ class SpecimenTestCase(unittest.TestCase):
         super(SpecimenTestCase, self).__init__(*args, **kwargs)
         logger = logging.getLogger('ppdb_nba')
         logger.setLevel(logging.ERROR)
-        self.pp = ppdb_NBA(config=self.config)
+        self.pp = Percolator(config=self.config)
         self.pp.set_source(self.source)
         try:
             self.pp.generate_mapping(create_tables=True)
