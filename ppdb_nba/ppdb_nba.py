@@ -175,13 +175,23 @@ class ppdb_NBA():
 
         self.db = ppdb
 
+        user = os.environ.get('DATABASE_USER')
+        password = os.environ.get('DATABASE_PASSWORD')
+        host = os.environ.get('DATABASE_HOST')
+        database = os.environ.get('DATABASE_DB')
+        if self.config.get('postgres'):
+            user = self.config.get('postgres').get('user')
+            password = self.config.get('postgres').get('pass')
+            database = self.config.get('postgres').get('db')
+            host = self.config.get('postgres').get('host')
+
         try:
             self.db.bind(
                 provider='postgres',
-                user=os.environ.get('DATABASE_USER'),
-                password=os.environ.get('DATABASE_PASSWORD'),
-                host=os.environ.get('DATABASE_HOST'),
-                database=os.environ.get('DATABASE_DB')
+                user=user,
+                password=password,
+                host=host,
+                database=database
             )
         except TypeError:
             return
@@ -192,7 +202,7 @@ class ppdb_NBA():
             sys.exit(msg)
 
         logger.debug('Connected to database: {database}'.format(
-            database=os.environ.get('DATABASE_DB'))
+            database=database
         )
 
     def generate_mapping(self, create_tables=False):
