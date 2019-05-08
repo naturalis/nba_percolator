@@ -39,7 +39,7 @@ De data set bevat:
 )
 
 ```bash
-ppdb_nba --current --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-before.json
+percolator --current --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-before.json
 ```
  
  * Doe een update van 1 record
@@ -57,8 +57,8 @@ locality:"Amsterdam, langs Amsterdam-Rijnkanaal."
 ```
 
 ```bash
-ppdb_nba --current --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-before.json
-ppdb_nba --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-1update.json
+percolator --current --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-before.json
+percolator --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-1update.json
 ```
 
 
@@ -80,8 +80,8 @@ L.3747562@BRAHMS
 ```
 
 ```bash
-ppdb_nba --current --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-before.json
-ppdb_nba --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-moreupdates.json
+percolator --current --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-before.json
+percolator --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-moreupdates.json
 ```
  
  Resultaat: een json met acht geupdate records inclusief enrichment
@@ -91,8 +91,8 @@ ppdb_nba --debug --source brahms-specimen /shared-data/joepitest/enrichment_test
  JV00001@BRAHMS 
  
 ```bash
-ppdb_nba --current --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-before.json
-ppdb_nba --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-addone.json
+percolator --current --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-before.json
+percolator --debug --source brahms-specimen /shared-data/joepitest/enrichment_tests/bellis-addone.json
 ```
  
  
@@ -131,7 +131,7 @@ De data set bevat:
 )
 
 ```bash
-ppdb_nba --current --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-before.json
+percolator --current --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-before.json
 ```
     
  * Doe een update van 1 record
@@ -139,8 +139,8 @@ ppdb_nba --current --debug --source crs-specimen /shared-data/joepitest/enrichme
  Toevoegen: `"sex":"male"`  aan RMNH.ART.2185@CRS
 
 ```bash
-ppdb_nba --current --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-before.json
-ppdb_nba --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-1update.json
+percolator --current --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-before.json
+percolator --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-1update.json
 ```
  
  Resultaat: een json van een record inclusief enrichment
@@ -159,8 +159,8 @@ RMNH.AVES.228330@CRS
 ```
 
 ```bash
-ppdb_nba --current --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-before.json
-ppdb_nba --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-moreupdates.json
+percolator --current --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-before.json
+percolator --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-moreupdates.json
 ```
  
  Resultaat: een json met de geupdate records inclusief enrichment
@@ -168,8 +168,8 @@ ppdb_nba --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/f
  * Voeg een of meer records toe
  
 ```bash
-ppdb_nba --current --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-before.json
-ppdb_nba --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-addone.json
+percolator --current --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-before.json
+percolator --debug --source crs-specimen /shared-data/joepitest/enrichment_tests/fulica-addone.json
 ```
  
  Resultaat: een json met de nieuwe records inclusief enrichment

@@ -40,7 +40,7 @@ class CreateTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super(CreateTestCase, self).__init__(*args, **kwargs)
-        logger = logging.getLogger('ppdb_nba')
+        logger = logging.getLogger('percolator')
         logger.setLevel(logging.ERROR)
         self.pp = Percolator(config=self.config)
         self.pp.set_source(self.source)

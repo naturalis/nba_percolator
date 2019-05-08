@@ -1045,8 +1045,9 @@ class Percolator:
             # new or update
             for result in neworupdates:
                 if result[1]:
+                    # @todo add debug of the process
                     r = importtable.get(hash=result[1])
-                    if (r.rec):
+                    if r.rec:
                         uuid = r.rec[idField]
                         if self.is_incremental() and self.get_record(uuid):
                             oldrec = self.get_record(uuid)
@@ -1065,6 +1066,7 @@ class Percolator:
                 # incremental sources only have explicit deletes
                 for result in updateOrDeletes:
                     if result[1]:
+                        # @todo add debug of the process
                         r = currenttable.get(hash=result[1])
                         if (r.rec):
                             uuid = r.rec[idField]

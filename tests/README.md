@@ -27,7 +27,7 @@ To run these tests:
 
  1. Setup the development environment
  2. Copy the data to `/shared-data/test/`
- 3. `pip install -e git+https://github.com/naturalis/ppdb_nba.git#egg=ppdb_nba`
+ 3. `pip install -e git+https://github.com/naturalis/nba_percolator.git#egg=nba_percolator`
  4. `cd src`
  5. run `pytest`
 

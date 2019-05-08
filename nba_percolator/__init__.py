@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-ppdb_nba
-==========
-See https://github.com/jandevires71/ppdb_nba for documentation.
+nba_percolator
+==============
+See https://github.com/naturalis/nba_percolator for documentation.
 :copyright: (c) 2018 by Naturalis Biodiversity Center
 :license: LGPL, see LICENSE for more details
 """
@@ -13,4 +13,4 @@ from .__about__ import (
     __url__,
 )
 
-from .ppdb_nba import *
+from .percolator import *

@@ -86,7 +86,7 @@ worden weggeschreven:
  - kill
  
 Dit gebeurt met de functie 
-[log_change](https://github.com/naturalis/nba_percolator/blob/c499b29875254045e0093006d8655731973a9129/ppdb_nba/nba_percolator.py#L316).
+[log_change](https://github.com/naturalis/nba_percolator/blob/c499b29875254045e0093006d8655731973a9129/nba_percolator/nba_percolator.py#L316).
 
 ## Directory structuur
 
