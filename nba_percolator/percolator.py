@@ -759,6 +759,13 @@ class Percolator:
         enrichmentSource = self.sourceConfig.get('src-enrich', False)
         enrichmentDestination = self.sourceConfig.get('dst-enrich', False)
 
+        logger.debug(
+            '[{elapsed:.2f} seconds] Start import data "{datafile}" into "{table}"'.format(
+                datafile=datafile,
+                table=table,
+                elapsed=(timer() - lap)
+            )
+        )
         # Use the name of the filename as a job id
         if not self.jobId:
             filename = datafile.split('/')[-1]
@@ -797,7 +804,7 @@ class Percolator:
             raise
 
         logger.debug(
-            '[{elapsed:.2f} seconds] Import data "{datafile}" into "{table}"'.format(
+            '[{elapsed:.2f} seconds] End import data "{datafile}" into "{table}"'.format(
                 datafile=datafile,
                 table=table,
                 elapsed=(timer() - lap)
@@ -806,9 +813,11 @@ class Percolator:
         lap = timer()
 
         # zet de hash
+        logger.debug(
+            '[{elapsed:.2f} seconds] Start set hashing on "{table}"'.format(table=table, elapsed=(timer() - lap)))
         self.db.execute("UPDATE {table} SET hash=md5(rec::text)".format(table=table))
         logger.debug(
-            '[{elapsed:.2f} seconds] Set hashing on "{table}"'.format(table=table, elapsed=(timer() - lap)))
+            '[{elapsed:.2f} seconds] End set hashing on "{table}"'.format(table=table, elapsed=(timer() - lap)))
         lap = timer()
 
         self.set_indexes(table=table)
@@ -825,13 +834,19 @@ class Percolator:
         enrichmentDestination = self.sourceConfig.get('dst-enrich', False)
 
         # zet de hashing index
+        logger.debug(
+            '[{elapsed:.2f} seconds] Start set hashing index on "{table}"'.format(
+                table=table,
+                elapsed=(timer() - lap)
+            )
+        )
         self.db.execute(
             "CREATE INDEX IF NOT EXISTS idx_{table}__hash "
             "ON public.{table} USING BTREE(hash)".format(
                 table=table)
         )
         logger.debug(
-            '[{elapsed:.2f} seconds] Set hashing index on "{table}"'.format(
+            '[{elapsed:.2f} seconds] End set hashing index on "{table}"'.format(
                 table=table,
                 elapsed=(timer() - lap)
             )
@@ -839,6 +854,11 @@ class Percolator:
         lap = timer()
 
         # zet de jsonid index
+        logger.debug(
+            '[{elapsed:.2f} seconds] Start set index on jsonid '.format(
+                elapsed=(timer() - lap)
+            )
+        )
         self.db.execute(
             "CREATE INDEX IF NOT EXISTS idx_{table}__jsonid "
             "ON public.{table} USING BTREE(({table}.rec->>'{idfield}'))".format(
@@ -847,20 +867,25 @@ class Percolator:
             )
         )
         logger.debug(
-            '[{elapsed:.2f} seconds] Set index on jsonid '.format(
+            '[{elapsed:.2f} seconds] End set index on jsonid '.format(
                 elapsed=(timer() - lap)
             )
         )
 
         # set an index on identifications, which should be present in enriched data
         if enrichmentSource:
+            logger.debug(
+                '[{elapsed:.2f} seconds] Start set index on indentifications in "{table}"'.format(
+                    table=table,
+                    elapsed=(timer() - lap))
+            )
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__gin "
                 "ON public.{table} USING gin((rec->'identifications') jsonb_path_ops)".format(
                     table=table)
             )
             logger.debug(
-                '[{elapsed:.2f} seconds] Set index on indentifications in "{table}"'.format(
+                '[{elapsed:.2f} seconds] End set index on indentifications in "{table}"'.format(
                     table=table,
                     elapsed=(timer() - lap))
             )
@@ -868,6 +893,11 @@ class Percolator:
         # set an index on the part containing scientificNameGroup,
         # which should be present in taxa sources
         if enrichmentDestination:
+            logger.debug(
+                '[{elapsed:.2f} seconds] Start set index on scientificNameGroup in "{table}"'.format(
+                    table=table,
+                    elapsed=(timer() - lap))
+            )
             self.db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_{table}__sciname "
                 "ON public.{table} USING gin((rec->'acceptedName') jsonb_path_ops)".format(
@@ -875,7 +905,7 @@ class Percolator:
                 )
             )
             logger.debug(
-                '[{elapsed:.2f} seconds] Set index on scientificNameGroup in "{table}"'.format(
+                '[{elapsed:.2f} seconds] End set index on scientificNameGroup in "{table}"'.format(
                     table=table,
                     elapsed=(timer() - lap))
             )
@@ -916,6 +946,10 @@ class Percolator:
         """
         start = lap = timer()
 
+        logger.debug(
+            '[{elapsed:.2f} seconds] Start filtere records with more than one entry in the source data'.format(
+                elapsed=(timer() - lap))
+        )
         doubleQuery = "SELECT array_agg(id) importids, rec->>'{idfield}' recid " \
                       "FROM {source}_{suffix} " \
                       "GROUP BY rec->>'{idfield}' HAVING COUNT(*) > 1".format(
@@ -938,7 +972,7 @@ class Percolator:
             count += 1
 
         logger.debug(
-            '[{elapsed:.2f} seconds] Filtered {doubles} records with more than one entry in the source data'.format(
+            '[{elapsed:.2f} seconds] End filtered {doubles} records with more than one entry in the source data'.format(
                 doubles=count,
                 elapsed=(timer() - lap))
         )
