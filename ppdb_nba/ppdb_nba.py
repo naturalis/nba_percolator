@@ -191,6 +191,10 @@ class ppdb_NBA():
             self.slack('*Percolator* failed: {msg}'.format(msg=msg))
             sys.exit(msg)
 
+        logger.debug('Connected to database: {database}'.format(
+            database=os.environ.get('DATABASE_DB'))
+        )
+
     def generate_mapping(self, create_tables=False):
         """
         Generates mapping of the database
@@ -983,13 +987,19 @@ class ppdb_NBA():
 
         lap = timer()
         if len(source_base):
+            logger.debug(
+                '[{elapsed:.2f} seconds] Start left full outer join on "{source}"'.format(
+                    source=source_base,
+                    elapsed=(timer() - lap)
+                )
+            )
             leftdiffquery = 'SELECT {source}_import.id, {source}_import.hash ' \
                             'FROM {source}_import ' \
                             'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                             'WHERE {source}_current.hash is null'.format(source=source_base)
             neworupdates = self.db.select(leftdiffquery)
             logger.debug(
-                '[{elapsed:.2f} seconds] Left full outer join on "{source}": {count}'.format(
+                '[{elapsed:.2f} seconds] End left full outer join on "{source}": {count}'.format(
                     source=source_base,
                     elapsed=(timer() - lap),
                     count=len(neworupdates)
@@ -999,13 +1009,19 @@ class ppdb_NBA():
 
             if not self.is_incremental():
                 # this part is only done when a source is non incremental
+                logger.debug(
+                    '[{elapsed:.2f} seconds] Start right full outer join on "{source}"'.format(
+                        source=source_base,
+                        elapsed=(timer() - lap)
+                    )
+                )
                 rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash ' \
                                  'FROM {source}_import ' \
                                  'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
                                  'WHERE {source}_import.hash is null'.format(source=source_base)
                 updateOrDeletes = self.db.select(rightdiffquery)
                 logger.debug(
-                    '[{elapsed:.2f} seconds] Right full outer join on "{source}": {count}'.format(
+                    '[{elapsed:.2f} seconds] End right full outer join on "{source}": {count}'.format(
                         source=source_base,
                         elapsed=(timer() - lap),
                         count=len(updateOrDeletes)
