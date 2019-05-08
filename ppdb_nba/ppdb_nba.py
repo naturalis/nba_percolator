@@ -203,7 +203,7 @@ class ppdb_NBA():
 
         logger.debug('Connected to database: {database}'.format(
             database=database
-        )
+        ))
 
     def generate_mapping(self, create_tables=False):
         """
