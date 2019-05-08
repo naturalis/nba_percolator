@@ -1,14 +1,14 @@
 import setuptools
 
 setuptools.setup(
-      name='ppdb_nba',
+      name='nba_percolator',
       version='0.1',
-      scripts=['bin/ppdb_nba'],
-      description='Pre-processing database for NBA',
-      url='https://github.com/naturalis/ppdb_nba',
+      scripts=['bin/percolator'],
+      description='NBA Percolator - Pre-processing database for NBA',
+      url='https://github.com/naturalis/nba_percolator',
       author='Joep Vermaat',
       author_email='joep.vermaat@naturalis.nl',
-      packages=['ppdb_nba'],
+      packages=['nba_percolator'],
       zip_safe=False,
       classifiers=(
         "Programming Language :: Python :: 3",
