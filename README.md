@@ -1,4 +1,4 @@
-<h1 id="ppdb_nba">ppdb_nba.ppdb_NBA</h1>
+<h1 id="percolator">nba_percolator.Percolator</h1>
 
 This is the NBA preprocessing database class.
 
@@ -10,19 +10,19 @@ data and create incremental insert, update or delete files.
 
 Install can be done through pip. This is a python3 module.
 
-`pip install -e git+https://github.com/naturalis/ppdb_nba.git#egg=ppdb_nba`
+`pip install -e git+https://github.com/naturalis/nba_percolator.git#egg=nba_percolator`
 
-This installs `ppdb_nba` as well as the `ppdb_nba` script in your executable
+This installs `nba_percolator` as well as the `percolator` script in your executable
 path.
 
 ```
-ppdb_nba
+percolator
 ```
 
 or
 
 ```
-ppdb_nba --source [bronnaam] /shared-data/source/jsonlinesfile.json
+percolator --source [bronnaam] /shared-data/source/jsonlinesfile.json
 ```
 
 **LET OP: Het pad naar de jsonlines bestand moet exact 
@@ -32,7 +32,7 @@ absoluut!**
 Meer opties zijn te vinden bij aanroep met --help
 
 ```
-usage: ppdb_nba --source sourcename /path/file1
+usage: percolator --source sourcename /path/file1
 
 Preprocessing data to create incremental updates
 
@@ -54,13 +54,13 @@ optional arguments:
 
 ## Cron
 
-By default the ppdb_nba script will be run by the crontab scheduler.
+By default the percolator script will be run by the crontab scheduler.
 
 ```
- * * * * * cd /shared-data && ppdb_nba
+ * * * * * cd /shared-data && percolator
 ```
 
-Periodiek scant `ppdb_nba` de jobs directory. De files die hier worden 
+Periodiek scant `percolator` de jobs directory. De files die hier worden 
 aangetroffen worden op volgorde van timestamp (oplopend) verwerkt. Er wordt 
 maar één job per keer verwerkt. Op het moment dat een job wordt behandelt 
 wordt er een lock file gezet, zolang die lock file er staat wordt er geen 
@@ -77,18 +77,16 @@ waarna de volgende job wordt opgepakt.
 
 ## Logging
 
-ppdb_nba logt naar een elastic search server. Alle relevante acties 
+percolator logt naar een elastic search server. Alle relevante acties 
 worden weggeschreven:
 
- - start
- - finish
- - fail
  - new
  - update
  - delete
+ - kill
  
 Dit gebeurt met de functie 
-[log_change](https://github.com/naturalis/ppdb_nba/blob/c499b29875254045e0093006d8655731973a9129/ppdb_nba/ppdb_nba.py#L316).
+[log_change](https://github.com/naturalis/nba_percolator/blob/c499b29875254045e0093006d8655731973a9129/ppdb_nba/nba_percolator.py#L316).
 
 ## Directory structuur
 
@@ -139,7 +137,7 @@ search database.
 
 ### Import proces
 
-Periodiek scant `ppdb_nba` de jobs directory. De files die hier worden 
+Periodiek scant `percolator` de jobs directory. De files die hier worden 
 aangetroffen worden op volgorde van timestamp (oplopend) verwerkt. Er
 wordt maar een job per keer verwerkt. Op het moment dat een job wordt
 behandelt wordt er een lock file gezet, zolang die lock file wordt
@@ -160,12 +158,12 @@ waarna de volgende job wordt opgepakt.
 Om de class te gebruiken:
 
 ```python
-from ppdb_nba import ppdb_NBA
-pp = ppdb_NBA(config='config.yml')
+from nba_percolator import Percolator
+pp = Percolator(config='config.yml')
 pp.set_source('naam-van-bron')
 ```
 
-<h2 id="ppdb_nba.ppdb_nba.clear_data">ppdbNBA.clear_data</h2>
+<h2 id="nba_percolator.nba_percolator.clear_data">Percolator.clear_data</h2>
 
 ```python
 pp.clear_data(table='')
@@ -173,7 +171,7 @@ pp.clear_data(table='')
 
 Remove data from table
 
-<h2 id="ppdb_nba.ppdb_nba.import_data">ppdbNBA.import_data</h2>
+<h2 id="nba_percolator.nba_percolator.import_data">Percolator.import_data</h2>
 
 ```python
 pp.import_data(table='', datafile='')
@@ -181,7 +179,7 @@ pp.import_data(table='', datafile='')
 
 Imports data directly to the postgres database.
 
-<h2 id="ppdb_nba.ppdb_nba.remove_doubles">ppdbNBA.remove_doubles</h2>
+<h2 id="nba_percolator.nba_percolator.remove_doubles">Percolator.remove_doubles</h2>
 
 ```python
 pp.remove_doubles()
@@ -190,7 +188,7 @@ pp.remove_doubles()
 Removes double records. Some sources can contain double records,
 these should be removed, before checking the hash.
 
-<h2 id="ppdb_nba.ppdb_nba.list_changes">ppdbNBA.list_changes</h2>
+<h2 id="nba_percolator.nba_percolator.list_changes">Percolator.list_changes</h2>
 
 ```python
 pp.list_changes()
@@ -227,7 +225,7 @@ The 'update' changes should be pairs of record id, which point to the id of
 records in the import and the current databases.
 
 
-<h2 id="ppdb_nba.ppdb_nba.handle_new">ppdbNBA.handle_new</h2>
+<h2 id="nba_percolator.nba_percolator.handle_new">Percolator.handle_new</h2>
 
 ```python
 pp.handle_new()
@@ -236,7 +234,7 @@ pp.handle_new()
 Handles all new records.
 
 
-<h2 id="ppdb_nba.ppdb_nba.handle_updates">ppdbNBA.handle_updates</h2>
+<h2 id="nba_percolator.nba_percolator.handle_updates">Percolator.handle_updates</h2>
 
 ```python
 pp.handle_updates()
@@ -244,7 +242,7 @@ pp.handle_updates()
 
 Handles all updated records.
 
-<h2 id="ppdb_nba.ppdb_nba.handle_deletes">ppdbNBA.handle_deletes</h2>
+<h2 id="nba_percolator.nba_percolator.handle_deletes">Percolator.handle_deletes</h2>
 
 ```python
 pp.handle_deletes()
@@ -252,7 +250,7 @@ pp.handle_deletes()
 
 Handles all deleted records.
 
-<h2 id="ppdb_nba.ppdb_nba.handle_changes">ppdbNBA.handle_changes</h2>
+<h2 id="nba_percolator.nba_percolator.handle_changes">Percolator.handle_changes</h2>
 
 ```python
 pp.handle_changes()
@@ -260,7 +258,7 @@ pp.handle_changes()
 
 Handles all changes.
 
-## ppdbNBA.import_deleted(filename='')
+## Percolator.import_deleted(filename='')
 
 ```python
 pp.import_deleted('/path/to/listofdeleteids.txt')
@@ -275,11 +273,11 @@ do not supply complete dumps.
 Example of a normal import flow
 
 ```python
-from ppdb_nba import *
+from nba_percolator import *
 logger.setLevel(logging.DEBUG)
 # Zet de logging level op DEBUG
 
-pp = ppdbNBA(config='config.yml')
+pp = Percolator(config='config.yml')
 pp.set_source('brahms-specimen')
 
 pp.clear_data(table=pp.source_config.get('table') + "_import")
