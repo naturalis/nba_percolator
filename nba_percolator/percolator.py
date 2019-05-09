@@ -1073,8 +1073,8 @@ class Percolator:
                 )
             lap = timer()
 
-            importtable = globals()[source_base.capitalize() + '_import']
-            currenttable = globals()[source_base.capitalize() + '_current']
+            #importtable = globals()[source_base.capitalize() + '_import']
+            #currenttable = globals()[source_base.capitalize() + '_current']
 
             # new or update
             count = 0
@@ -1187,6 +1187,7 @@ class Percolator:
         start = lap = timer()
         for jsonId, databaseIds in self.changes['new'].items():
             importId = databaseIds[0]
+            # @todo: potentieel geheugenprobleem, ook fixen?
             importRec = importTable[importId]
             jsonRec = importRec.rec
             if srcEnrich:
@@ -1260,6 +1261,7 @@ class Percolator:
         start = lap = timer()
         for change, recordIds in self.changes['update'].items():
             # first id points to the new rec
+            # @todo: potentieel geheugenprobleem, ook fixen?
             importRec = importTable[recordIds[0]]
             oldRec = currentTable[recordIds[1]]
             jsonRec = importRec.rec
