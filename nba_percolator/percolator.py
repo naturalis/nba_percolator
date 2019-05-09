@@ -1078,22 +1078,26 @@ class Percolator:
 
             # new or update
             count = 0
+            cursor = self.db.get_connection().cursor()
             for result in neworupdates:
                 if result[1]:
                     count += 1
                     if count % 1000 == 0:
-                        logger.debug('{count} new records: '
+                        logger.debug('{count} neworupdates: '
                                      '{new} new, {update} updates, {delete} deletes'.format(
                             count=count,
                             update=len(self.changes['update']),
                             delete=len(self.changes['delete']),
                             new=len(self.changes['new'])
                         ))
-                    r = importtable.get(hash=result[1])
-                    if r.rec:
-                        uuid = r.rec[idField]
-                        if self.is_incremental() and self.get_record(uuid):
-                            oldrec = self.get_record(uuid)
+                    importsql = 'SELECT {source}_import.* FROM {source}_import WHERE {source}_import.hash=%s'.format(source=source_base)
+                    cursor.execute(importsql, (result[1]))
+                    r = cursor.fetchone()
+                    if r:
+                        rec = json.loads(r[1])
+                        uuid = rec[idField]
+                        oldrec = self.get_record(uuid)
+                        if self.is_incremental() and oldrec:
                             self.changes['update'][uuid] = [r.id]
                             self.changes['update'][uuid].append(oldrec.id)
                             logger.debug('Update {oldid} to {newid}'.format(
@@ -1111,7 +1115,7 @@ class Percolator:
                 for result in updateOrDeletes:
                     count += 1
                     if count % 1000 == 0:
-                        logger.debug('{count} updated or deleted records handled: '
+                        logger.debug('{count} updatedordeletes: '
                                      '{new} new, {update} updates, {delete} deletes'.format(
                             count=count,
                             update=len(self.changes['update']),
@@ -1119,9 +1123,12 @@ class Percolator:
                             new=len(self.changes['new'])
                         ))
                     if result[1]:
-                        r = currenttable.get(hash=result[1])
-                        if r.rec:
-                            uuid = r.rec[idField]
+                        currentsql = 'SELECT {source}_current.* FROM {source}_current WHERE {source}_current.hash=%s'.format(source=source_base)
+                        cursor.execute(currentsql, (result[1]))
+                        r = cursor.fetchone()
+                        if r:
+                            rec = json.loads(r[1])
+                            uuid = rec[idField]
                             if self.changes['new'].get(uuid, False):
                                 self.changes['update'][uuid] = self.changes['new'].get(uuid)
                                 self.changes['update'][uuid].append(r.id)
