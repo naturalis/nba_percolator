@@ -1187,16 +1187,24 @@ class Percolator:
         start = lap = timer()
         for jsonId, databaseIds in self.changes['new'].items():
             importId = databaseIds[0]
+
             # @todo: potentieel geheugenprobleem, ook fixen?
-            importRec = importTable[importId]
-            jsonRec = importRec.rec
+            currentsql = 'SELECT {source}_import.* FROM {source}_import WHERE {source}_import.id=%s'.format(
+                source=table.capitalize(),
+                id=importId
+            )
+            cursor.execute(currentsql, (result[1]))
+            importRec = cursor.fetchone()
+            #importRec = importTable[importId]
+            jsonRec = json.loads(importRec[1])
             if srcEnrich:
                 jsonRec = self.enrich_record(jsonRec, srcEnrich)
 
             insertQuery = "INSERT INTO {table}_current (rec, hash, datum) " \
                           "SELECT rec, hash, datum FROM {table}_import where id={id}".format(
                 table=self.sourceConfig.get('table'),
-                id=importId)
+                id=importId
+            )
 
             if (deltaFile):
                 json.dump(jsonRec, deltaFile)
@@ -1210,7 +1218,7 @@ class Percolator:
 
             self.log_change(
                 state='new',
-                recid=importRec.rec[idField],
+                recid=jsonRec.get(idField, 'no id'),
                 source=code,
                 type=index
             )
@@ -1218,7 +1226,7 @@ class Percolator:
                 '[{elapsed:.2f} seconds] New record "{recordid}" inserted in "{source}"'.format(
                     elapsed=(timer() - lap),
                     source=table + '_current',
-                    recordid=importRec.rec[idField]
+                    recordid=jsonRec.get(idField, 'no id')
                 )
             )
             lap = timer()
