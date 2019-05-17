@@ -1,0 +1,12 @@
+psycopg2cffi==2.7.7
+psycopg2-binary
+pony==0.7.3
+pyyaml
+diskcache==3.1.1
+urllib3==1.24.2
+elasticsearch
+requests
+python-dateutil
+pytest
+git+https://github.com/naturalis/nba_percolator.git#egg=nba_percolator
+
