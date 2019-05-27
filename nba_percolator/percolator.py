@@ -97,7 +97,7 @@ class Percolator:
         """
 
         self.source = source
-        if self.config.get('sources').get(source):
+    if self.config.get('sources').get(source):
             self.sourceConfig = self.config.get('sources').get(source)
         else:
             msg = 'Source "%s" does not exist in config file' % (source)
@@ -723,7 +723,7 @@ class Percolator:
 
             oldRecord = self.get_record(deleteId)
             if oldRecord:
-                oldRecord.delete()
+                self.delete_record(oldrecord[0])
 
                 if enriches:
                     for source in enriches:
@@ -929,14 +929,51 @@ class Percolator:
             table=tableName,
             id=id
         ))
-        dataTable = globals()[tableName]
-        jsonsql = '(rec ->> \'{idfield}\' = \'{idvalue}\')'.format(
+        jsonsql = '(rec->>\'{idfield}\' = \'{idvalue}\')'.format(
             idfield=idField,
             idvalue=id
         )
-        query = dataTable.select(lambda p: raw_sql(jsonsql))
+        #dataTable = globals()[tableName]
+        #query = dataTable.select(lambda p: raw_sql(jsonsql))
+        result = False
+        query = "SELECT * " \
+                "FROM {table}" \
+                "WHERE {where}".format(
+            table=tableName,
+            where=jsonsql
+        )
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                result = cursor.fetchone()
 
-        return query.get()
+        return result
+
+    @db_session
+    def delete_record(self, id, suffix="current"):
+        """
+        Gets records from the (current) table, suffix is optional and
+        'current' by default. The other option is 'import'.
+
+        :param id:
+        :param suffix (optional, 'current' is default):
+        :return query result:
+        """
+        base = self.sourceConfig.get('table')
+        idField = self.sourceConfig.get('id', 'id')
+
+        tableName = base.capitalize() + '_' + suffix
+
+        query = "DELETE FROM {table}" \
+                "WHERE id={id}".format(
+            table=tableName,
+            id=id
+        )
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+
+        return
 
     @db_session
     def remove_doubles(self, suffix='import'):
@@ -1039,7 +1076,8 @@ class Percolator:
             )
             leftdiffquery = 'SELECT {source}_import.id, {source}_import.hash ' \
                             'FROM {source}_import ' \
-                            'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
+                            'FULL OUTER JOIN {source}_current ' \
+                            'ON {source}_import.hash = {source}_current.hash ' \
                             'WHERE {source}_current.hash is null'.format(source=source_base)
             neworupdates = self.db.select(leftdiffquery)
             logger.debug(
@@ -1061,7 +1099,8 @@ class Percolator:
                 )
                 rightdiffquery = 'SELECT {source}_current.id, {source}_current.hash ' \
                                  'FROM {source}_import ' \
-                                 'FULL OUTER JOIN {source}_current ON {source}_import.hash = {source}_current.hash ' \
+                                 'FULL OUTER JOIN {source}_current ' \
+                                 'ON {source}_import.hash = {source}_current.hash ' \
                                  'WHERE {source}_import.hash is null'.format(source=source_base)
                 updateOrDeletes = self.db.select(rightdiffquery)
                 logger.debug(
@@ -1078,65 +1117,74 @@ class Percolator:
 
             # new or update
             count = 0
-            cursor = self.db.get_connection().cursor()
-            for result in neworupdates:
-                if result[1]:
-                    count += 1
-                    if count % 1000 == 0:
-                        logger.debug('{count} neworupdates: '
-                                     '{new} new, {update} updates, {delete} deletes'.format(
-                            count=count,
-                            update=len(self.changes['update']),
-                            delete=len(self.changes['delete']),
-                            new=len(self.changes['new'])
-                        ))
-                    importsql = 'SELECT {source}_import.* FROM {source}_import WHERE {source}_import.hash=%s'.format(source=source_base)
-                    cursor.execute(importsql, (result[1]))
-                    r = cursor.fetchone()
-                    if r:
-                        rec = json.loads(r[1])
-                        uuid = rec[idField]
-                        oldrec = self.get_record(uuid)
-                        if self.is_incremental() and oldrec:
-                            self.changes['update'][uuid] = [r.id]
-                            self.changes['update'][uuid].append(oldrec.id)
-                            logger.debug('Update {oldid} to {newid}'.format(
-                                oldid=oldrec.id,
-                                newid=r.id
-                            ))
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    for result in neworupdates:
+                        if result[1]:
+                            count += 1
+                            if count % 1000 == 0:
+                                logger.debug('{count} neworupdates: '
+                                             '{new} new, {update} updates, {delete} deletes'.format(
+                                    count=count,
+                                    update=len(self.changes['update']),
+                                    delete=len(self.changes['delete']),
+                                    new=len(self.changes['new'])
+                                ))
+                            importsql = 'SELECT id, rec ' \
+                                        'FROM {source}_import ' \
+                                        'WHERE {source}_import.hash=%s'.format(
+                                source=source_base
+                            )
+                            cursor.execute(importsql, (result[1]))
+                            r = cursor.fetchone()
+                            if r:
+                                rec = json.loads(r[1])
+                                uuid = rec[idField]
+                                oldrec = self.get_record(uuid)
+                                if self.is_incremental() and oldrec:
+                                    self.changes['update'][uuid] = [r[0]]
+                                    self.changes['update'][uuid].append(oldrec[0])
+                                    logger.debug('Update {oldid} to {newid}'.format(
+                                        oldid=oldrec[0],
+                                        newid=r[0]
+                                    ))
+                                else:
+                                    self.changes['new'][uuid] = [r[0]]
                         else:
-                            self.changes['new'][uuid] = [r.id]
-                else:
-                    logger.error('Empty hash in neworupdates')
+                            logger.error('Empty hash in neworupdates')
 
-            if not self.is_incremental():
-                # incremental sources only have explicit deletes
-                count = 0
-                for result in updateOrDeletes:
-                    count += 1
-                    if count % 1000 == 0:
-                        logger.debug('{count} updatedordeletes: '
-                                     '{new} new, {update} updates, {delete} deletes'.format(
-                            count=count,
-                            update=len(self.changes['update']),
-                            delete=len(self.changes['delete']),
-                            new=len(self.changes['new'])
-                        ))
-                    if result[1]:
-                        currentsql = 'SELECT {source}_current.* FROM {source}_current WHERE {source}_current.hash=%s'.format(source=source_base)
-                        cursor.execute(currentsql, (result[1]))
-                        r = cursor.fetchone()
-                        if r:
-                            rec = json.loads(r[1])
-                            uuid = rec[idField]
-                            if self.changes['new'].get(uuid, False):
-                                self.changes['update'][uuid] = self.changes['new'].get(uuid)
-                                self.changes['update'][uuid].append(r.id)
-                                del self.changes['new'][uuid]
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    if not self.is_incremental():
+                        # incremental sources only have explicit deletes
+                        count = 0
+                        for result in updateOrDeletes:
+                            count += 1
+                            if count % 1000 == 0:
+                                logger.debug('{count} updatedordeletes: '
+                                             '{new} new, {update} updates, {delete} deletes'.format(
+                                    count=count,
+                                    update=len(self.changes['update']),
+                                    delete=len(self.changes['delete']),
+                                    new=len(self.changes['new'])
+                                ))
+                            if result[1]:
+                                currentsql = 'SELECT id, rec ' \
+                                             'FROM {source}_current ' \
+                                             'WHERE {source}_current.hash=%s'.format(source=source_base)
+                                cursor.execute(currentsql, (result[1]))
+                                r = cursor.fetchone()
+                                if r:
+                                    rec = json.loads(r[1])
+                                    uuid = rec[idField]
+                                    if self.changes['new'].get(uuid, False):
+                                        self.changes['update'][uuid] = self.changes['new'].get(uuid)
+                                        self.changes['update'][uuid].append(r[0])
+                                        del self.changes['new'][uuid]
+                                    else:
+                                        self.changes['delete'][uuid] = [r[0]]
                             else:
-                                self.changes['delete'][uuid] = [r.id]
-                    else:
-                        logger.error('Empty hash in updateordeletes')
+                                logger.error('Empty hash in updateordeletes')
 
             if len(self.changes['new']) or len(self.changes['update']) or len(self.changes['delete']):
                 if len(self.changes['new']):
@@ -1185,51 +1233,54 @@ class Percolator:
         deltaFile = self.open_deltafile('new', index)
 
         start = lap = timer()
-        for jsonId, databaseIds in self.changes['new'].items():
-            importId = databaseIds[0]
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                for jsonId, databaseIds in self.changes['new'].items():
+                    importId = databaseIds[0]
 
-            # @todo: potentieel geheugenprobleem, ook fixen?
-            currentsql = 'SELECT {source}_import.* FROM {source}_import WHERE {source}_import.id=%s'.format(
-                source=table.capitalize(),
-                id=importId
-            )
-            cursor.execute(currentsql, (result[1]))
-            importRec = cursor.fetchone()
-            #importRec = importTable[importId]
-            jsonRec = json.loads(importRec[1])
-            if srcEnrich:
-                jsonRec = self.enrich_record(jsonRec, srcEnrich)
+                    importsql = 'SELECT rec ' \
+                                 'FROM {source}_import ' \
+                                 'WHERE {source}_import.id=%s'.format(
+                        source=table.capitalize(),
+                        id=importId
+                    )
+                    cursor.execute(importsql, (result[1]))
+                    importRec = cursor.fetchone()
+                    #importRec = importTable[importId]
+                    jsonRec = json.loads(importRec[0])
+                    if srcEnrich:
+                        jsonRec = self.enrich_record(jsonRec, srcEnrich)
 
-            insertQuery = "INSERT INTO {table}_current (rec, hash, datum) " \
-                          "SELECT rec, hash, datum FROM {table}_import where id={id}".format(
-                table=self.sourceConfig.get('table'),
-                id=importId
-            )
+                    insertQuery = "INSERT INTO {table}_current (rec, hash, datum) " \
+                                  "SELECT rec, hash, datum FROM {table}_import where id={id}".format(
+                        table=self.sourceConfig.get('table'),
+                        id=importId
+                    )
 
-            if (deltaFile):
-                json.dump(jsonRec, deltaFile)
-                deltaFile.write('\n')
+                    if deltaFile:
+                        json.dump(jsonRec, deltaFile)
+                        deltaFile.write('\n')
 
-            self.db.execute(insertQuery)
+                    self.db.execute(insertQuery)
 
-            code = self.sourceConfig.get('code')
-            if dstEnrich:
-                self.cache_taxon_record(jsonRec, code)
+                    code = self.sourceConfig.get('code')
+                    if dstEnrich:
+                        self.cache_taxon_record(jsonRec, code)
 
-            self.log_change(
-                state='new',
-                recid=jsonRec.get(idField, 'no id'),
-                source=code,
-                type=index
-            )
-            logger.debug(
-                '[{elapsed:.2f} seconds] New record "{recordid}" inserted in "{source}"'.format(
-                    elapsed=(timer() - lap),
-                    source=table + '_current',
-                    recordid=jsonRec.get(idField, 'no id')
-                )
-            )
-            lap = timer()
+                    self.log_change(
+                        state='new',
+                        recid=jsonRec.get(idField, 'no id'),
+                        source=code,
+                        type=index
+                    )
+                    logger.debug(
+                        '[{elapsed:.2f} seconds] New record "{recordid}" inserted in "{source}"'.format(
+                            elapsed=(timer() - lap),
+                            source=table + '_current',
+                            recordid=jsonRec.get(idField, 'no id')
+                        )
+                    )
+                    lap = timer()
 
         self.set_indexes(table + '_current')
 
@@ -1267,57 +1318,74 @@ class Percolator:
         # Write updated records to the deltafile
 
         start = lap = timer()
-        for change, recordIds in self.changes['update'].items():
-            # first id points to the new rec
-            # @todo: potentieel geheugenprobleem, ook fixen?
-            importRec = importTable[recordIds[0]]
-            oldRec = currentTable[recordIds[1]]
-            jsonRec = importRec.rec
-
-            # If this record should be enriched by specified sources
-            if enrichSources:
-                jsonRec = self.enrich_record(jsonRec, enrichSources)
-
-            # @todo: when it is an update, the record should be checked in the deleted list
-            updateQuery = "UPDATE {table}_current SET (rec, hash, datum) = " \
-                          "(SELECT rec, hash, datum FROM {table}_import " \
-                          "WHERE {table}_import.id={importid}) " \
-                          "WHERE {table}_current.id={currentid}".format(
-                table=tableBase,
-                currentid=recordIds[1],
-                importid=importRec.id)
-            if deltaFile:
-                json.dump(jsonRec, deltaFile)
-                deltaFile.write('\n')
-
-            self.db.execute(updateQuery)
-
-            # If this record has impact on records that should
-            # be enriched again
-            if enrichDestinations:
-                code = self.sourceConfig.get('code')
-                self.cache_taxon_record(jsonRec, code)
-
-                for source in enrichDestinations:
-                    logger.debug(
-                        'Enrich source = {source}'.format(source=source)
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                for change, recordIds in self.changes['update'].items():
+                    # first id points to the new rec
+                    # @todo: potentieel geheugenprobleem, ook fixen?
+                    importsql = 'SELECT {source}_import.rec ' \
+                                'FROM {source}_import ' \
+                                'WHERE {source}_import.id=%s'.format(
+                        source=table.capitalize()
                     )
-                    self.handle_impacted(source, oldRec)
+                    cursor.execute(importsql, (recordIds[0]))
+                    importRec = cursor.fetchone()
 
-            logger.debug(
-                '[{elapsed:.2f} seconds] Updated record "{recordid}" in "{source}"'.format(
-                    source=tableBase + '_current',
-                    elapsed=(timer() - lap),
-                    recordid=importRec.rec[idField]
-                )
-            )
-            self.log_change(
-                state='update',
-                recid=importRec.rec[idField],
-                source=code,
-                type=index
-            )
-            lap = timer()
+                    #importRec = importTable[recordIds[0]]
+                    currentsql = 'SELECT {source}_current.rec ' \
+                                 'FROM {source}_current ' \
+                                 'WHERE {source}_current.id=%s'.format(
+                        source=table.capitalize()
+                    )
+                    cursor.execute(currentsql, (recordIds[1]))
+                    oldRec = cursor.fetchone()
+                    jsonRec = json.loads(importRec[0])
+
+                    # If this record should be enriched by specified sources
+                    if enrichSources:
+                        jsonRec = self.enrich_record(jsonRec, enrichSources)
+
+                    # @todo: when it is an update, the record should be checked in the deleted list
+                    updateQuery = "UPDATE {table}_current SET (rec, hash, datum) = " \
+                                  "(SELECT rec, hash, datum FROM {table}_import " \
+                                  "WHERE {table}_import.id={importid}) " \
+                                  "WHERE {table}_current.id={currentid}".format(
+                        table=tableBase,
+                        currentid=recordIds[1],
+                        importid=recordIds[0])
+
+                    if deltaFile:
+                        json.dump(jsonRec, deltaFile)
+                        deltaFile.write('\n')
+
+                    self.db.execute(updateQuery)
+
+                    # If this record has impact on records that should
+                    # be enriched again
+                    if enrichDestinations:
+                        code = self.sourceConfig.get('code')
+                        self.cache_taxon_record(jsonRec, code)
+
+                        for source in enrichDestinations:
+                            logger.debug(
+                                'Enrich source = {source}'.format(source=source)
+                            )
+                            self.handle_impacted(source, jsonRec)
+
+                    logger.debug(
+                        '[{elapsed:.2f} seconds] Updated record "{recordid}" in "{source}"'.format(
+                            source=tableBase + '_current',
+                            elapsed=(timer() - lap),
+                            recordid=jsonRec.get(idField,'')
+                        )
+                    )
+                    self.log_change(
+                        state='update',
+                        recid=jsonRec.get(idField,''),
+                        source=code,
+                        type=index
+                    )
+                    lap = timer()
 
         if deltaFile:
             deltaFile.close()
@@ -1344,49 +1412,61 @@ class Percolator:
         deltaFile = self.open_deltafile('delete', index)
 
         start = lap = timer()
-        for change, dbids in self.changes['delete'].items():
-            oldRecord = currentTable[dbids[0]]
-            if oldRecord:
-                jsonRec = oldRecord.rec
-                deleteId = oldRecord.rec.get(idField)
-                if deltaFile:
-                    deleteRecord = self.create_delete_record(self.source, deleteId, 'REJECTED')
-                    json.dump(deleteRecord, deltaFile)
-                    deltaFile.write('\n')
-
-                statusRecord = Deleted_records.get(recid=deleteId)
-                if not statusRecord:
-                    statusRecord = Deleted_records(recid=deleteId, status='REJECTED', count=0)
-                statusRecord.count += 1
-
-                # @todo: only when a certain threshold is reached, the old record should be removed
-                oldRecord.delete()
-
-                self.log_change(
-                    state='delete',
-                    recid=deleteId,
-                    type=index,
-                    source=code
-                )
-
-                if enriches:
-                    code = self.sourceConfig.get('code')
-                    self.cache_taxon_record(jsonRec, code)
-
-                    for source in enriches:
-                        logger.debug('Enrich source = {source}'.format(source=source))
-                        self.handle_impacted(source, oldRecord)
-
-                logger.debug(
-                    '[{elapsed:.2f} seconds] Temporarily deleted record "{deleteid}" in "{source}"'.format(
-                        source=table + '_current',
-                        elapsed=(timer() - lap),
-                        deleteid=deleteId
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                for change, recordIds in self.changes['delete'].items():
+                    currentsql = 'SELECT {source}_current.rec ' \
+                                 'FROM {source}_current ' \
+                                 'WHERE {source}_current.id=%s'.format(
+                        source=table.capitalize()
                     )
-                )
-                lap = timer()
+                    cursor.execute(currentsql, (recordIds[0]))
+                    oldRecord = cursor.fetchone()
+                    if oldRecord:
+                        jsonRec = json.loads(oldRecord[0])
+                        deleteId = jsonrec.get(idField)
+                        if deltaFile and deleteId:
+                            deleteRecord = self.create_delete_record(self.source, deleteId, 'REJECTED')
+                            json.dump(deleteRecord, deltaFile)
+                            deltaFile.write('\n')
 
-                logger.info("Record [{deleteid}] deleted".format(deleteid=deleteId))
+                        statusRecord = Deleted_records.get(recid=deleteId)
+                        if not statusRecord:
+                            statusRecord = Deleted_records(recid=deleteId, status='REJECTED', count=0)
+                        statusRecord.count += 1
+
+                        # @todo: only when a certain threshold is reached, the old record should be removed
+                        deleteqry = 'DELETE FROM {source}_current' \
+                                    'WHERE {source}_current.id=%s'.format(
+                            source=table.capitalize()
+                        )
+                        cursor.execute(deleteqry, (recordIds[0]))
+
+                        self.log_change(
+                            state='delete',
+                            recid=deleteId,
+                            type=index,
+                            source=code
+                        )
+
+                        if enriches:
+                            code = self.sourceConfig.get('code')
+                            self.cache_taxon_record(jsonRec, code)
+
+                            for source in enriches:
+                                logger.debug('Enrich source = {source}'.format(source=source))
+                                self.handle_impacted(source, jsonRec)
+
+                        logger.debug(
+                            '[{elapsed:.2f} seconds] Temporarily deleted record "{deleteid}" in "{source}"'.format(
+                                source=table + '_current',
+                                elapsed=(timer() - lap),
+                                deleteid=deleteId
+                            )
+                        )
+                        lap = timer()
+
+                        logger.info("Record [{deleteid}] deleted".format(deleteid=deleteId))
 
         if deltaFile:
             deltaFile.close()
@@ -1410,7 +1490,18 @@ class Percolator:
         jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (
             scientificNameGroup
         )
-        items = currenttable.select(lambda p: raw_sql(jsonsql))
+        #items = currenttable.select(lambda p: raw_sql(jsonsql))
+        items = []
+        query = "SELECT * " \
+                "FROM {table}" \
+                "WHERE {where}".format(
+            table=table.capitalize() + '_current',
+            where=jsonsql
+        )
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                items = cursor.fetchall()
 
         if len(items):
             logger.info(
@@ -1699,8 +1790,8 @@ class Percolator:
         lap = start = timer()
 
         # Retrieve scientificNameGroup from the acceptedName part
-        if record.rec.get('acceptedName'):
-            scientificNameGroup = record.rec.get('acceptedName').get('scientificNameGroup')
+        if record.get('acceptedName'):
+            scientificNameGroup = record.get('acceptedName').get('scientificNameGroup')
 
         if scientificNameGroup:
             impactedRecords = self.list_impacted(sourceConfig, scientificNameGroup)
@@ -1708,14 +1799,14 @@ class Percolator:
                 deltaFile = self.open_deltafile('enrich', index)
                 if deltaFile:
                     for impacted in impactedRecords:
-                        jsonRecord = impacted.rec
+                        jsonRecord = json.loads(impacted[1])
                         if enrichmentSources:
                             jsonRecord = self.enrich_record(jsonRecord, enrichmentSources)
 
                         json.dump(jsonRecord, deltaFile)
                         deltaFile.write('\n')
 
-                        impactId = impacted.rec[idField]
+                        impactId = jsonRecord.get(idField)
                         logger.debug(
                             '[{elapsed:.2f} seconds] Record "{recordid}" of "{source}" needs to be enriched'.format(
                                 source=source,
