@@ -224,6 +224,7 @@ def main():
         logger.fatal("Configuration file '{config}' missing".format(config=configfile))
         exit(1)
 
+    pp.noslack = os.environ.get('SLACK_ENABLED', False) == '0'
     if args.noslack:
         pp.noslack = True
 
