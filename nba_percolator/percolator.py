@@ -1249,8 +1249,8 @@ class Percolator:
                     importId = databaseIds[0]
 
                     importsql = 'SELECT rec ' \
-                                 'FROM {source}_import ' \
-                                 'WHERE {source}_import.id=%s'.format(
+                                'FROM {source}_import ' \
+                                'WHERE {source}_import.id=%s'.format(
                         source=table.capitalize()
                     )
                     cursor.execute(importsql, (importId,))
@@ -1560,7 +1560,7 @@ class Percolator:
             scientificNameGroup
         )
         #taxonQuery = currentTable.select(lambda p: raw_sql(sciSql))
-        query = "SELECT rec" \
+        query = "SELECT rec " \
                 "FROM {table} " \
                 "WHERE {where}".format(
             table=table.capitalize() + '_current',
