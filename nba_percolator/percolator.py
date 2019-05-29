@@ -666,7 +666,7 @@ class Percolator:
             with conn.cursor() as cursor:
                 cursor.execute(exportsql)
                 for r in cursor:
-                    jsonRec = r[0]
+                    jsonRec = json.loads(r[0])
                     if srcEnrich:
                         jsonRec = self.enrich_record(jsonRec, srcEnrich)
                     if fp:
