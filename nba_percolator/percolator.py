@@ -97,7 +97,7 @@ class Percolator:
         """
 
         self.source = source
-    if self.config.get('sources').get(source):
+        if self.config.get('sources').get(source):
             self.sourceConfig = self.config.get('sources').get(source)
         else:
             msg = 'Source "%s" does not exist in config file' % (source)
@@ -653,21 +653,28 @@ class Percolator:
 
         :param fp:
         """
-        base = self.sourceConfig.get('table')
         srcEnrich = self.sourceConfig.get('src-enrich', None)
 
+        base = self.sourceConfig.get('table')
         tableName = base.capitalize() + '_current'
-        dataTable = globals()[tableName]
 
-        for record in dataTable.select():
-            jsonRec = record.rec
-            if srcEnrich:
-                jsonRec = self.enrich_record(jsonRec, srcEnrich)
-            if fp:
-                json.dump(jsonRec, fp)
-                fp.write('\n')
-            else:
-                print(json.dumps(jsonRec))
+        exportsql = 'SELECT rec ' \
+                    'FROM {tablename}'.format(
+            tablename=tableName
+        )
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(exportsql)
+                for r in cursor():
+                    jsonRec = r[0]
+                    if srcEnrich:
+                        jsonRec = self.enrich_record(jsonRec, srcEnrich)
+                    if fp:
+                        json.dump(jsonRec, fp)
+                        fp.write('\n')
+                    else:
+                        print(json.dumps(jsonRec))
+
 
     @db_session
     def clear_data(self, table=''):
@@ -933,8 +940,6 @@ class Percolator:
             idfield=idField,
             idvalue=id
         )
-        #dataTable = globals()[tableName]
-        #query = dataTable.select(lambda p: raw_sql(jsonsql))
         result = False
         query = "SELECT * " \
                 "FROM {table}" \
@@ -993,6 +998,7 @@ class Percolator:
             suffix=suffix,
             source=self.sourceConfig.get('table'),
             idfield=self.sourceConfig.get('id'))
+
         doubles = self.db.select(doubleQuery)
         logger.debug('[{elapsed:.2f} seconds] Find doubles'.format(elapsed=(timer() - lap)))
 
@@ -1079,6 +1085,8 @@ class Percolator:
                             'FULL OUTER JOIN {source}_current ' \
                             'ON {source}_import.hash = {source}_current.hash ' \
                             'WHERE {source}_current.hash is null'.format(source=source_base)
+
+            # @todo: maybe rewrite this to native postgres
             neworupdates = self.db.select(leftdiffquery)
             logger.debug(
                 '[{elapsed:.2f} seconds] End left full outer join on "{source}": {count}'.format(
@@ -1102,6 +1110,8 @@ class Percolator:
                                  'FULL OUTER JOIN {source}_current ' \
                                  'ON {source}_import.hash = {source}_current.hash ' \
                                  'WHERE {source}_import.hash is null'.format(source=source_base)
+
+                # @todo: maybe rewrite this to native postgres
                 updateOrDeletes = self.db.select(rightdiffquery)
                 logger.debug(
                     '[{elapsed:.2f} seconds] End right full outer join on "{source}": {count}'.format(
@@ -1226,13 +1236,13 @@ class Percolator:
         table = self.sourceConfig.get('table')
         idField = self.sourceConfig.get('id')
         index = self.sourceConfig.get('index', 'noindex')
-        importTable = globals()[table.capitalize() + '_import']
         srcEnrich = self.sourceConfig.get('src-enrich', False)
         dstEnrich = self.sourceConfig.get('dst-enrich', None)
 
         deltaFile = self.open_deltafile('new', index)
 
         start = lap = timer()
+
         with self.db.get_connection() as conn:
             with conn.cursor() as cursor:
                 for jsonId, databaseIds in self.changes['new'].items():
@@ -1245,9 +1255,8 @@ class Percolator:
                         id=importId
                     )
                     cursor.execute(importsql, (result[1]))
-                    importRec = cursor.fetchone()
-                    #importRec = importTable[importId]
-                    jsonRec = json.loads(importRec[0])
+                    r = cursor.fetchone()
+                    jsonRec = json.loads(r[0])
                     if srcEnrich:
                         jsonRec = self.enrich_record(jsonRec, srcEnrich)
 
@@ -1309,8 +1318,6 @@ class Percolator:
         idField = self.sourceConfig.get('id')
         enrichDestinations = self.sourceConfig.get('dst-enrich', None)
         enrichSources = self.sourceConfig.get('src-enrich', None)
-        importTable = globals()[tableBase.capitalize() + '_import']
-        currentTable = globals()[tableBase.capitalize() + '_current']
         index = self.sourceConfig.get('index', 'noindex')
         code = self.sourceConfig.get('code', '')
 
@@ -1331,7 +1338,6 @@ class Percolator:
                     cursor.execute(importsql, (recordIds[0]))
                     importRec = cursor.fetchone()
 
-                    #importRec = importTable[recordIds[0]]
                     currentsql = 'SELECT {source}_current.rec ' \
                                  'FROM {source}_current ' \
                                  'WHERE {source}_current.id=%s'.format(
@@ -1403,7 +1409,6 @@ class Percolator:
         """
         table = self.sourceConfig.get('table')
         idField = self.sourceConfig.get('id')
-        currentTable = globals()[table.capitalize() + '_current']
         enriches = self.sourceConfig.get('enriches', None)
         index = self.sourceConfig.get('index', 'noindex')
         code = self.sourceConfig.get('code', '')
@@ -1490,7 +1495,6 @@ class Percolator:
         jsonsql = 'rec->\'identifications\' @> \'[{"scientificName":{"scientificNameGroup":"%s"}}]\'' % (
             scientificNameGroup
         )
-        #items = currenttable.select(lambda p: raw_sql(jsonsql))
         items = []
         query = "SELECT * " \
                 "FROM {table}" \
@@ -1518,8 +1522,7 @@ class Percolator:
                     source=table.capitalize(),
                     namegroup=scientificNameGroup)
             )
-            # logger.debug(items.get_sql())
-            return False
+            return items
 
     def get_taxon(self, scientificNameGroup, source):
         """
@@ -1558,25 +1561,31 @@ class Percolator:
         sciSql = 'rec->\'acceptedName\' @> \'{"scientificNameGroup":"%s"}\'' % (
             scientificNameGroup
         )
-        taxonQuery = currentTable.select(lambda p: raw_sql(sciSql))
+        #taxonQuery = currentTable.select(lambda p: raw_sql(sciSql))
+        query = "SELECT rec" \
+                "FROM {table}" \
+                "WHERE {where}".format(
+            table=table.capitalize() + '_current',
+            where=sciSql
+        )
 
-        if taxonQuery.count() > 0:
-            taxons = []
-            for taxon in taxonQuery:
-                taxons.append(taxon.rec)
+        taxons = []
+        with self.db.get_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                logger.debug('get_taxon: {taxonkey} store json in cache'.format(
+                    taxonkey=taxonKey
+                ))
+                for taxon in cursor:
+                    taxons.append(taxon[0])
 
-            logger.debug('get_taxon: {taxonkey} store json in cache'.format(
-                taxonkey=taxonKey
-            ))
-            cache.set(taxonKey, taxons)
-            return taxons
-        else:
-            # No taxon found, store this also in the cache
-            logger.debug('get_taxon: {taxonkey} store FALSE in cache'.format(
-                taxonkey=taxonKey
-            ))
-            cache.set(taxonKey, False)
-            return False
+        cache.set(taxonKey, taxons)
+        logger.debug('get_taxon: {taxonkey} store {records} records in cache'.format(
+            taxonkey=taxonKey,
+            records=len(taxons)
+        ))
+
+        return taxons
 
     def cache_taxon_record(self, jsonRec, systemCode):
         """
@@ -1592,17 +1601,19 @@ class Percolator:
 
             cachedTaxons = cache.get(taxonKey)
             if cachedTaxons:
-                for taxon in cachedTaxons:
-                    if taxon['id'] == jsonRec['id']:
-                        taxons.append(jsonRec)
+                for jsonTaxon in cachedTaxons:
+                    taxon = json.loads(jsonTaxon)
+                    if taxon.get('id') == jsonRec.get('id'):
+                        taxons.append(json.dumps(jsonRec))
                     else:
-                        taxons.append(taxon)
+                        taxons.append(jsonTaxon)
             else:
-                taxons.append(jsonRec)
+                taxons.append(json.dumps(jsonRec))
 
             logger.debug('cache_taxon_records: {taxonkey} store json in cache'.format(
-                taxonkey=taxonKey
-            ))
+                    taxonkey=taxonKey
+                )
+            )
             cache.set(taxonKey, taxons)
 
     def create_name_summary(self, vernacularName):
@@ -1655,8 +1666,9 @@ class Percolator:
         :return:
         """
         enrichments = []
-        for rec in taxonRecs:
+        for jsonRec in taxonRecs:
             lap = timer()
+            rec = json.loads(jsonRec)
             vernacularNames = rec.get('vernacularNames')
             scientificNameGroup = rec.get('acceptedName').get('scientificNameGroup')
             enrichment = {}
