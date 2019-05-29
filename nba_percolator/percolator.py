@@ -942,7 +942,7 @@ class Percolator:
         )
         result = False
         query = "SELECT * " \
-                "FROM {table}" \
+                "FROM {table} " \
                 "WHERE {where}".format(
             table=tableName,
             where=jsonsql
@@ -969,7 +969,7 @@ class Percolator:
 
         tableName = base.capitalize() + '_' + suffix
 
-        query = "DELETE FROM {table}" \
+        query = "DELETE FROM {table} " \
                 "WHERE id={id}".format(
             table=tableName,
             id=id
@@ -1441,7 +1441,7 @@ class Percolator:
                         statusRecord.count += 1
 
                         # @todo: only when a certain threshold is reached, the old record should be removed
-                        deleteqry = 'DELETE FROM {source}_current' \
+                        deleteqry = 'DELETE FROM {source}_current ' \
                                     'WHERE {source}_current.id=%s'.format(
                             source=table.capitalize()
                         )
@@ -1497,7 +1497,7 @@ class Percolator:
         )
         items = []
         query = "SELECT * " \
-                "FROM {table}" \
+                "FROM {table} " \
                 "WHERE {where}".format(
             table=table.capitalize() + '_current',
             where=jsonsql
@@ -1563,7 +1563,7 @@ class Percolator:
         )
         #taxonQuery = currentTable.select(lambda p: raw_sql(sciSql))
         query = "SELECT rec" \
-                "FROM {table}" \
+                "FROM {table} " \
                 "WHERE {where}".format(
             table=table.capitalize() + '_current',
             where=sciSql
