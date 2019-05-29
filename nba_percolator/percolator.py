@@ -1251,10 +1251,9 @@ class Percolator:
                     importsql = 'SELECT rec ' \
                                  'FROM {source}_import ' \
                                  'WHERE {source}_import.id=%s'.format(
-                        source=table.capitalize(),
-                        id=importId
+                        source=table.capitalize()
                     )
-                    cursor.execute(importsql, (result[1],))
+                    cursor.execute(importsql, (importId,))
                     r = cursor.fetchone()
                     jsonRec = json.loads(r[0])
                     if srcEnrich:
@@ -1266,11 +1265,10 @@ class Percolator:
                         id=importId
                     )
 
+                    self.db.execute(insertQuery)
                     if deltaFile:
                         json.dump(jsonRec, deltaFile)
                         deltaFile.write('\n')
-
-                    self.db.execute(insertQuery)
 
                     code = self.sourceConfig.get('code')
                     if dstEnrich:
@@ -1329,7 +1327,6 @@ class Percolator:
             with conn.cursor() as cursor:
                 for change, recordIds in self.changes['update'].items():
                     # first id points to the new rec
-                    # @todo: potentieel geheugenprobleem, ook fixen?
                     importsql = 'SELECT {source}_import.rec ' \
                                 'FROM {source}_import ' \
                                 'WHERE {source}_import.id=%s'.format(
@@ -1345,53 +1342,54 @@ class Percolator:
                     )
                     cursor.execute(currentsql, (recordIds[1],))
                     oldRec = cursor.fetchone()
-                    jsonRec = json.loads(importRec[0])
+                    if (oldRec):
+                        jsonRec = json.loads(importRec[0])
 
-                    # If this record should be enriched by specified sources
-                    if enrichSources:
-                        jsonRec = self.enrich_record(jsonRec, enrichSources)
+                        # If this record should be enriched by specified sources
+                        if enrichSources:
+                            jsonRec = self.enrich_record(jsonRec, enrichSources)
 
-                    # @todo: when it is an update, the record should be checked in the deleted list
-                    updateQuery = "UPDATE {table}_current SET (rec, hash, datum) = " \
-                                  "(SELECT rec, hash, datum FROM {table}_import " \
-                                  "WHERE {table}_import.id={importid}) " \
-                                  "WHERE {table}_current.id={currentid}".format(
-                        table=tableBase,
-                        currentid=recordIds[1],
-                        importid=recordIds[0])
+                        # @todo: when it is an update, the record should be checked in the deleted list
+                        updateQuery = "UPDATE {table}_current SET (rec, hash, datum) = " \
+                                      "(SELECT rec, hash, datum FROM {table}_import " \
+                                      "WHERE {table}_import.id={importid}) " \
+                                      "WHERE {table}_current.id={currentid}".format(
+                            table=tableBase,
+                            currentid=recordIds[1],
+                            importid=recordIds[0])
 
-                    if deltaFile:
-                        json.dump(jsonRec, deltaFile)
-                        deltaFile.write('\n')
+                        if deltaFile:
+                            json.dump(jsonRec, deltaFile)
+                            deltaFile.write('\n')
 
-                    self.db.execute(updateQuery)
+                        self.db.execute(updateQuery)
 
-                    # If this record has impact on records that should
-                    # be enriched again
-                    if enrichDestinations:
-                        code = self.sourceConfig.get('code')
-                        self.cache_taxon_record(jsonRec, code)
+                        # If this record has impact on records that should
+                        # be enriched again
+                        if enrichDestinations:
+                            code = self.sourceConfig.get('code')
+                            self.cache_taxon_record(jsonRec, code)
 
-                        for source in enrichDestinations:
-                            logger.debug(
-                                'Enrich source = {source}'.format(source=source)
+                            for source in enrichDestinations:
+                                logger.debug(
+                                    'Enrich source = {source}'.format(source=source)
+                                )
+                                self.handle_impacted(source, jsonRec)
+
+                        logger.debug(
+                            '[{elapsed:.2f} seconds] Updated record "{recordid}" in "{source}"'.format(
+                                source=tableBase + '_current',
+                                elapsed=(timer() - lap),
+                                recordid=jsonRec.get(idField,'')
                             )
-                            self.handle_impacted(source, jsonRec)
-
-                    logger.debug(
-                        '[{elapsed:.2f} seconds] Updated record "{recordid}" in "{source}"'.format(
-                            source=tableBase + '_current',
-                            elapsed=(timer() - lap),
-                            recordid=jsonRec.get(idField,'')
                         )
-                    )
-                    self.log_change(
-                        state='update',
-                        recid=jsonRec.get(idField,''),
-                        source=code,
-                        type=index
-                    )
-                    lap = timer()
+                        self.log_change(
+                            state='update',
+                            recid=jsonRec.get(idField,''),
+                            source=code,
+                            type=index
+                        )
+                        lap = timer()
 
         if deltaFile:
             deltaFile.close()
