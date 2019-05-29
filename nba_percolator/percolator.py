@@ -1330,7 +1330,7 @@ class Percolator:
                     importsql = 'SELECT {source}_import.rec ' \
                                 'FROM {source}_import ' \
                                 'WHERE {source}_import.id=%s'.format(
-                        source=table.capitalize()
+                        source=tableBase.capitalize()
                     )
                     cursor.execute(importsql, (recordIds[0],))
                     importRec = cursor.fetchone()
@@ -1338,7 +1338,7 @@ class Percolator:
                     currentsql = 'SELECT {source}_current.rec ' \
                                  'FROM {source}_current ' \
                                  'WHERE {source}_current.id=%s'.format(
-                        source=table.capitalize()
+                        source=tableBase.capitalize()
                     )
                     cursor.execute(currentsql, (recordIds[1],))
                     oldRec = cursor.fetchone()
