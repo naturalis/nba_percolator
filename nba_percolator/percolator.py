@@ -1145,7 +1145,7 @@ class Percolator:
                                         'WHERE {source}_import.hash=%s'.format(
                                 source=source_base
                             )
-                            cursor.execute(importsql, (result[1]))
+                            cursor.execute(importsql, (result[1],))
                             r = cursor.fetchone()
                             if r:
                                 rec = json.loads(r[1])
@@ -1182,7 +1182,7 @@ class Percolator:
                                 currentsql = 'SELECT id, rec ' \
                                              'FROM {source}_current ' \
                                              'WHERE {source}_current.hash=%s'.format(source=source_base)
-                                cursor.execute(currentsql, (result[1]))
+                                cursor.execute(currentsql, (result[1],))
                                 r = cursor.fetchone()
                                 if r:
                                     rec = json.loads(r[1])
@@ -1254,7 +1254,7 @@ class Percolator:
                         source=table.capitalize(),
                         id=importId
                     )
-                    cursor.execute(importsql, (result[1]))
+                    cursor.execute(importsql, (result[1],))
                     r = cursor.fetchone()
                     jsonRec = json.loads(r[0])
                     if srcEnrich:
@@ -1335,7 +1335,7 @@ class Percolator:
                                 'WHERE {source}_import.id=%s'.format(
                         source=table.capitalize()
                     )
-                    cursor.execute(importsql, (recordIds[0]))
+                    cursor.execute(importsql, (recordIds[0],))
                     importRec = cursor.fetchone()
 
                     currentsql = 'SELECT {source}_current.rec ' \
@@ -1343,7 +1343,7 @@ class Percolator:
                                  'WHERE {source}_current.id=%s'.format(
                         source=table.capitalize()
                     )
-                    cursor.execute(currentsql, (recordIds[1]))
+                    cursor.execute(currentsql, (recordIds[1],))
                     oldRec = cursor.fetchone()
                     jsonRec = json.loads(importRec[0])
 
@@ -1425,7 +1425,7 @@ class Percolator:
                                  'WHERE {source}_current.id=%s'.format(
                         source=table.capitalize()
                     )
-                    cursor.execute(currentsql, (recordIds[0]))
+                    cursor.execute(currentsql, (recordIds[0],))
                     oldRecord = cursor.fetchone()
                     if oldRecord:
                         jsonRec = json.loads(oldRecord[0])
@@ -1445,7 +1445,7 @@ class Percolator:
                                     'WHERE {source}_current.id=%s'.format(
                             source=table.capitalize()
                         )
-                        cursor.execute(deleteqry, (recordIds[0]))
+                        cursor.execute(deleteqry, (recordIds[0],))
 
                         self.log_change(
                             state='delete',
