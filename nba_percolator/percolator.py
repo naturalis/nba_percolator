@@ -1427,7 +1427,7 @@ class Percolator:
                     oldRecord = cursor.fetchone()
                     if oldRecord:
                         jsonRec = json.loads(oldRecord[0])
-                        deleteId = jsonrec.get(idField)
+                        deleteId = jsonRec.get(idField)
                         if deltaFile and deleteId:
                             deleteRecord = self.create_delete_record(self.source, deleteId, 'REJECTED')
                             json.dump(deleteRecord, deltaFile)
